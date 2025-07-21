@@ -116,7 +116,7 @@ if not video_id:
     print(f"Error: Could not extract video ID from URL: {url}")
 
 # Create the output template for the downloaded audio file
-output_template = os.path.join("downloads", f"{video_id}_%(title)s.%(ext)s")
+output_template = os.path.join("workspace", f"{video_id}_%(title)s.%(ext)s")
 
 # Set the options for the YouTube downloader
 ydl_opts = {
@@ -171,9 +171,9 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     
     # Look for downloaded audio file
     audio_files = []
-    for file in os.listdir("downloads"):
+    for file in os.listdir("workspace"):
         if video_id in file and file.endswith('.mp3'):
-            audio_files.append(os.path.join("downloads", file))
+            audio_files.append(os.path.join("workspace", file))
     
     if audio_files:
         for audio_file in audio_files:
@@ -188,7 +188,7 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print(f"Audio length: {audio.info.length:.2f} seconds\n")
             print(f"Bitrate: {audio.info.bitrate} bps\n")
     else:
-        print("Audio file not found after download. Check downloads directory.\n")
+        print("Audio file not found after download. Check workspace directory.\n")
 ```
 
 ### How to Catch A Screenshot from the Middle of A YouTube Video?
@@ -226,7 +226,7 @@ video_title = video_info.get('title', 'Unknown Video')
 
 # Generate output filename
 clean_timestamp = timestamp.replace(':', '')
-output_path = os.path.join("downloads", f"{video_id}_{clean_timestamp}.jpg")
+output_path = os.path.join("workspace", f"{video_id}_{clean_timestamp}.jpg")
 
 # Method 1: Download video segment and extract screenshot
 def timestamp_to_seconds(ts):
@@ -242,7 +242,7 @@ start_seconds = timestamp_to_seconds(timestamp)
 end_seconds = start_seconds + 5  # Download 5 second segment, change it if you want to download a different segment (e.g. 10 seconds)
 
 # Create temp file
-with tempfile.NamedTemporaryFile(suffix='.%(ext)s', delete=False, dir="downloads") as temp_file:
+with tempfile.NamedTemporaryFile(suffix='.%(ext)s', delete=False, dir="workspace") as temp_file:
     temp_template = temp_file.name
 
 # Download video segment using yt-dlp
@@ -321,7 +321,7 @@ video_title = video_info.get('title', 'Unknown Video')
 
 # Generate output filename
 clean_timestamp = timestamp.replace(':', '')
-output_path = os.path.join("downloads", f"{video_id}_{clean_timestamp}.jpg")
+output_path = os.path.join("workspace", f"{video_id}_{clean_timestamp}.jpg")
 
 screenshot_cmd = [
     'yt-dlp',
@@ -352,8 +352,8 @@ url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 # The language of the subtitles to get, for example, "en" for English, "zh" for Chinese, "es" for Spanish, "fr" for French, "de" for German, "ja" for Japanese, "ko" for Korean
 language = "en"
 
-downloads_dir = "downloads"
-os.makedirs(downloads_dir, exist_ok=True)
+workspace_dir = "workspace"
+os.makedirs(workspace_dir, exist_ok=True)
 
 # Get video info first
 info_cmd = [
@@ -372,7 +372,7 @@ if info_result.returncode != 0:
 video_info = json.loads(info_result.stdout)
 video_id = video_info.get('id', 'unknown')
 video_title = video_info.get('title', 'Unknown Video')
-output_path = os.path.join(downloads_dir, video_id)
+output_path = os.path.join(workspace_dir, video_id)
 
 print(f"YouTube Subtitle Download")
 print("=" * 50)

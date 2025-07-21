@@ -9,8 +9,8 @@ import requests
 # The URL of the file to download, for example https://arxiv.org/pdf/1706.03762
 url = "https://arxiv.org/pdf/1706.03762"
 
-# The path to save the downloaded file, provide a valid path with file name and extension such as "downloads/dog.png"
-save_path = "downloads/target_paper.pdf"
+# The path to save the downloaded file, provide a valid path with file name and extension such as "workspace/dog.png"
+save_path = "workspace/target_paper.pdf"
 
 os.makedirs(os.path.dirname(save_path), exist_ok=True)
 

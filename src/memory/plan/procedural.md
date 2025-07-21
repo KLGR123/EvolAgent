@@ -42,7 +42,7 @@
     - The task has been completed and has been sufficiently solved and verified.
     - Or the task is impossible to complete.
 - At this time, you must decisively terminate the task.
-- You only need to write the next plan as "END" and the entire project will stop.
+- You only need to write the next plan as "<END>" and the entire project will stop.
 - Remember, stop when you should stop! Excessive task decomposition and execution wastes team resources and is not encouraged.
 
 ### Output Format
@@ -52,7 +52,7 @@
 ```json
 {
     "plan": "The next plan you are about to propose, with details and clear instructions",
-    "reason": "The rationale for proposing this plan, including your analysis of the current task stage, why you chose this approach, how this plan will help advance the task, and how it relates to or improves upon previous plans. If you choose END, write out the answer clearly."
+    "reason": "The rationale for proposing this plan, including your analysis of the current task stage, why you chose this approach, how this plan will help advance the task, and how it relates to or improves upon previous plans. If you choose <END>, write out the answer clearly."
 }
 ```
 

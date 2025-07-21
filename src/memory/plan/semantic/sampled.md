@@ -6,7 +6,7 @@ plan: Find the publication date of the arXiv paper with ID arXiv:2505.00695v1 ti
 dev: Web search results: ....
 plan: Crawl the official arXiv page (https://arxiv.org/abs/2505.00695) to get the exact submission date and verify the paper details.
 dev: ArXiv page content: ... - [v1] Thu, 1 May 2025 17:55:50 UTC (13,441 KB)\n- [v2] Thu, 8 May 2025 04:21:29 UTC (13,442 KB)\n\nSimple Holography in General Spacetimes ....
-plan: END
+plan: <END>
 ```
 
 ### Find Royal Bank of Canada Q1 2025 PCL Growth
@@ -17,7 +17,7 @@ plan: Find the year-over-year increase in consolidated total Provision for Credi
 dev: Web search results: ... $$237 million increase and 29% year-over-year growth ....
 plan: Crawl and access the official RBC Q1 2025 report PDF to get the precise figures and verify the consolidated total PCL numbers.
 dev: RBC Q1 2025 report content: ... - Total consolidated PCL for Q1 2025: $$1,050 million\n- Total consolidated PCL for Q1 2024: $$813 million\n- Year-over-year increase: $$237 million (29%) ....
-plan: END
+plan: <END>
 ```
 
 ### Identify Actor and Find Director's First Work
@@ -30,5 +30,5 @@ plan: Find the film for which Cillian Murphy won an Oscar for Best Actor, then i
 dev: Cillian Murphy won the Academy Award for Best Actor for his performance in Oppenheimer, directed by Christopher Nolan.
 plan: Find Christopher Nolan's first directorial work.
 dev: ... Following (1996).
-plan: END
+plan: <END>
 ```

@@ -8,8 +8,8 @@ from mutagen import File
 import speech_recognition as sr
 from pydub import AudioSegment
 
-# The path to the audio file to be parsed, for example: "downloads/task.mp3"
-audio_path = "downloads/task.mp3"
+# The path to the audio file to be parsed, for example: "workspace/task.mp3"
+audio_path = "workspace/task.mp3"
 
 if not os.path.exists(audio_path):
     print(f"Error: Audio file '{audio_path}' does not exist.")
@@ -71,8 +71,8 @@ Parse a Word document (.docx) and return the text content. Uses the LangChain co
 import os
 from langchain_community.document_loaders import Docx2txtLoader
 
-# The path to the Word document to be parsed, for example: "downloads/task.docx"
-docx_path = "downloads/task.docx"
+# The path to the Word document to be parsed, for example: "workspace/task.docx"
+docx_path = "workspace/task.docx"
 
 if not os.path.exists(docx_path):
     print(f"Error: Word document '{docx_path}' does not exist.")
@@ -104,8 +104,8 @@ Parse and extract text from an image file using Hugging Face Tesseract-OCR Space
 import os
 from gradio_client import Client, handle_file
 
-# The path to the image file to be parsed, for example: "downloads/task.png"
-image_path = "downloads/task.png"
+# The path to the image file to be parsed, for example: "workspace/task.png"
+image_path = "workspace/task.png"
 
 if not os.path.exists(image_path):
     print(f"Error: Image file '{image_path}' does not exist.")
@@ -143,8 +143,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# The local path to the image file to be parsed, for example: "downloads/task.png"
-image_path = "downloads/task.png"
+# The local path to the image file to be parsed, for example: "workspace/task.png"
+image_path = "workspace/task.png"
 # Optional question to ask about the image. If None, provides general analysis
 question = "What is the main content of the image?"
 
@@ -253,8 +253,8 @@ from Bio.PDB import PDBParser
 
 warnings.filterwarnings("ignore")
 
-# The path to the PDB file to be parsed, for example: "downloads/task.pdb"
-pdb_path = "downloads/task.pdb"
+# The path to the PDB file to be parsed, for example: "workspace/task.pdb"
+pdb_path = "workspace/task.pdb"
 # The starting index for atom lines to preview (default: 0)
 start_atom_idx = 0
 # The ending index for atom lines to preview (default: 5)
@@ -359,8 +359,8 @@ Parse a PDF file and return the text content with optional page range selection.
 ```python
 from langchain_community.document_loaders import PyPDFLoader
 
-# The path to the PDF file to be parsed, for example: "downloads/task.pdf"
-pdf_path = "downloads/task.pdf"
+# The path to the PDF file to be parsed, for example: "workspace/task.pdf"
+pdf_path = "workspace/task.pdf"
 # The starting page number to read from (1-indexed). If None, read from the beginning
 start_page = None
 # The ending page number to read to (1-indexed, inclusive). If None, read to the end
@@ -420,8 +420,8 @@ import tempfile
 import base64
 import pptx
 
-# The path to the PowerPoint file to be parsed, for example: "downloads/task.pptx"
-pptx_path = "downloads/task.pptx"
+# The path to the PowerPoint file to be parsed, for example: "workspace/task.pptx"
+pptx_path = "workspace/task.pptx"
 
 def _is_picture(shape):
     """Check if a shape is a picture."""
@@ -558,8 +558,8 @@ import os
 import pandas as pd
 from openpyxl import load_workbook
 
-# The path to the Excel file to be parsed, for example: "downloads/task.xlsx" or "downloads/task.csv"
-xlsx_path = "downloads/task.xlsx"
+# The path to the Excel file to be parsed, for example: "workspace/task.xlsx" or "workspace/task.csv"
+xlsx_path = "workspace/task.xlsx"
 
 def get_cell_style(cell):
     """Extract style information from a cell and return as CSS style string."""
@@ -671,8 +671,8 @@ Simply read the content of a text file with support for multiple encodings and o
 ```python
 import os
 
-# The path to the file to read. For example, "downloads/task.txt"
-file_path = "downloads/task.txt"
+# The path to the file to read. For example, "workspace/task.txt"
+file_path = "workspace/task.txt"
 # The starting line number to read from (1-indexed). If None, read from the beginning
 start_line = None
 # The ending line number to read to (1-indexed, inclusive). If None, read to the end

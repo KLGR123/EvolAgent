@@ -8,15 +8,18 @@ Agent framework with
 - Multi Paths Sampling for Self-Consistency
 
 Command for running experiments.
+
+Rename `.env.example` to `.env` and set environment variables.
+
 ```bash
-python3 venv venv
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
 export TOKENIZERS_PARALLELISM=true
-mkdir -p "downloads"
-python test.py
-rm -rf downloads/*
+mkdir -p "workspace"
+python main.py
+rm -rf workspace/*
 ```
 
 `Cognitive Architectures for Language Agents`.

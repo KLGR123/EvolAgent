@@ -69,7 +69,7 @@ class DevNode(BaseNode):
         next_code = self._parse_json_response(response)["code"] # type: ignore
         description = self._parse_json_response(response)["description"] # type: ignore
 
-        if "END" not in next_code:
+        if "<END>" not in next_code:
             self.last_code = deepcopy(next_code)
 
         self._add_history(content=next_code, name="dev")

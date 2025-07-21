@@ -1,5 +1,5 @@
 from string import Template
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from .base import BaseNode
 from ..memory import Memory
@@ -40,10 +40,13 @@ class CriticNode(BaseNode):
         _init_counter()
         # self._add_history(content=self.task, name="task")
 
-    def __call__(self, histories: List[str], answers: List[str]) -> Tuple[str, str]:
+    def __call__(self, histories: List[str], answers: List[str]) -> Tuple[str, str, int]:
         """
         Criticize the answers from the plan and dev nodes.
         Current the critic node only supports 3 trajectories.
+        
+        Returns:
+            Tuple of (final_answer, reason, best_member_index)
         """
 
         assert len(histories) == len(answers) == 3, "CriticNode only supports 3 trajectories."
@@ -57,9 +60,19 @@ class CriticNode(BaseNode):
         )
         response = self._forward(prompt=prompt)
 
-        final_answer = self._parse_json_response(response)["final_answer"] # type: ignore
-        reason = self._parse_json_response(response)["reason"] # type: ignore
-        return final_answer, reason
+        parsed_response = self._parse_json_response(response)
+        final_answer = parsed_response["final_answer"] # type: ignore
+        reason = parsed_response["reason"] # type: ignore
+        
+        # Extract best member index, with fallback to 0 if not provided or invalid
+        try:
+            best_member_index = int(parsed_response.get("best_member_index", 0))
+            if best_member_index not in [0, 1, 2]:
+                best_member_index = 0
+        except (ValueError, TypeError):
+            best_member_index = 0
+            
+        return final_answer, reason, best_member_index
 
 
 if __name__ == "__main__":

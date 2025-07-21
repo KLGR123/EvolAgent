@@ -56,7 +56,8 @@ Please present your complete analysis and conclusion in the following JSON forma
 ```json
 {
     "final_answer": "The definitive answer to the problem",
-    "reason": "Your comprehensive analysis process, including evaluation of each member's approach, identification of contradictions or agreements, and detailed justification for your final answer"
+    "reason": "Your comprehensive analysis process, including evaluation of each member's approach, identification of contradictions or agreements, and detailed justification for your final answer",
+    "best_member_index": "The index (0, 1, or 2) of the member whose approach was most correct and should be used for learning. Choose the member with the most sound reasoning, accurate methodology, and reliable solution path."
 }
 ```
 

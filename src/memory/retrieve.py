@@ -13,7 +13,14 @@ from qdrant_client.models import (
     SparseVectorParams,
 )
 
-from .utils import DenseEmbedModel, SparseEmbedModel, SearchResult
+from .utils import (
+    DenseEmbedModel, 
+    SparseEmbedModel, 
+    SearchResult, 
+    check_token_length, 
+    truncate_text_to_tokens,
+    get_timeout_feedback_message,
+)
 
 
 class Retriever:
@@ -69,28 +76,71 @@ class Retriever:
             except Exception as e:
                 print(f"Collection {self.collection_name} creation failed: {e}")
         
-    def add(self,  # TODO chunking corruption due to text length longer than 8192?
+    def add(self,  
         texts: List[str], 
         metadatas: Optional[List[Dict]] = None, 
         ids: Optional[List[str]] = None, 
-        hybrid: bool = True
+        codes: Optional[List[Optional[str]]] = None,  # New parameter for code blocks
+        hybrid: bool = True,
+        max_tokens: int = 8192  # New parameter for token limit
     ) -> None:
         """
-        Add the texts to the collection.
+        Add the texts to the collection with optional code blocks and token validation.
+        
+        Args:
+            texts: List of text descriptions (used for embedding and search)
+            metadatas: Optional metadata for each text
+            ids: Optional IDs for each text
+            codes: Optional code blocks associated with each text
+            hybrid: Whether to use hybrid search
+            max_tokens: Maximum tokens allowed per text chunk
         """
 
         ids = [str(uuid.uuid4()) for _ in texts] if ids is None else ids
+        codes = codes if codes is not None else [None] * len(texts)
+        
         if metadatas is None:
             metadatas = [{"text": text} for text in texts]
         else:
             for i, metadata in enumerate(metadatas):
                 metadata["text"] = texts[i]
         
-        dense_embeddings = self.dense_model.embed(texts)
+        # Validate and process texts for token limits
+        processed_texts = []
+        processed_metadatas = []
+        processed_codes = []
+        processed_ids = []
+        
+        for i, (text, metadata, code, text_id) in enumerate(zip(texts, metadatas, codes, ids)):
+            # Check token length for the text (not including code)
+            is_within_limit, token_count = check_token_length(text, max_tokens)
+            
+            if not is_within_limit:
+                print(f"Warning: Text chunk {i} has {token_count} tokens, exceeding limit of {max_tokens}")
+                # Option 1: Truncate (more conservative)
+                processed_text = truncate_text_to_tokens(text, max_tokens)
+                print(f"Truncated text chunk {i} to {max_tokens} tokens")
+                
+                # Option 2: Raise error (uncomment if preferred)
+                # raise ValueError(f"Text chunk {i} exceeds token limit: {token_count} > {max_tokens}")
+            else:
+                processed_text = text
+            
+            # Add code to metadata if present
+            if code is not None:
+                metadata["code"] = code
+            
+            processed_texts.append(processed_text)
+            processed_metadatas.append(metadata)
+            processed_codes.append(code)
+            processed_ids.append(text_id)
+        
+        # Generate embeddings only for the text descriptions (not code)
+        dense_embeddings = self.dense_model.embed(processed_texts)
         points_to_add = []
 
         if hybrid:
-            sparse_embeddings = self.sparse_model.embed(texts)
+            sparse_embeddings = self.sparse_model.embed(processed_texts)
             points_to_add = [
                 PointStruct(
                     id=idx,
@@ -103,7 +153,7 @@ class Retriever:
                         ),
                     },
                 )
-                for idx, meta, dense_emb, sparse_emb in zip(ids, metadatas, dense_embeddings, sparse_embeddings)
+                for idx, meta, dense_emb, sparse_emb in zip(processed_ids, processed_metadatas, dense_embeddings, sparse_embeddings)
             ]
         else:
             points_to_add = [
@@ -112,7 +162,7 @@ class Retriever:
                     payload=meta,
                     vector={"dense": dense_emb},
                 )
-                for idx, meta, dense_emb in zip(ids, metadatas, dense_embeddings)
+                for idx, meta, dense_emb in zip(processed_ids, processed_metadatas, dense_embeddings)
             ]
 
         self.client.upsert(
@@ -145,7 +195,7 @@ class Retriever:
     def _search_dense(self, 
         query: str, 
         limit: int = 10, 
-        score_threshold: float = 0.5
+        score_threshold: float = 0.35
     ) -> List[SearchResult]:
         """
         Search the dense model.
@@ -166,7 +216,8 @@ class Retriever:
                 id=str(hit.id),
                 score=hit.score,
                 payload=payload,
-                text=payload.get("text", "")
+                text=payload.get("text", ""),
+                code=payload.get("code", None)  # Include code in search results
             )
             results.append(result)     
         return results
@@ -198,12 +249,13 @@ class Retriever:
                 id=str(hit.id),
                 score=hit.score,
                 payload=payload,
-                text=payload.get("text", "")
+                text=payload.get("text", ""),
+                code=payload.get("code", None)  # Include code in search results
             )
             results.append(result)
         return results
         
-    def _search_hybrid(self, query: str, limit: int = 10, score_threshold: float = 0.5) -> List[SearchResult]:
+    def _search_hybrid(self, query: str, limit: int = 10, score_threshold: float = 0.35) -> List[SearchResult]:
         """
         Search the hybrid model.
         """
@@ -246,9 +298,8 @@ class Retriever:
     def search(self, 
         query: str, 
         limit: int = 5, 
-        method: Literal["dense", "sparse", "hybrid"] = "hybrid", 
-        score_threshold: float = 0.6, # TODO: add score_threshold
-        augment: bool = False # TODO: add augment
+        method: Literal["dense", "sparse", "hybrid"] = "dense", 
+        score_threshold: float = 0.35, # TODO: add score_threshold
     ) -> List[SearchResult]:
         """
         Search for documents in the collection.

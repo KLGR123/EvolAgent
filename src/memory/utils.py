@@ -1,9 +1,11 @@
 import os
+import re
 import requests
 import time
+import tiktoken
 from dotenv import load_dotenv
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Union, Any
+from typing import List, Dict, Optional, Union, Any, Tuple
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -28,6 +30,7 @@ class SearchResult:
     score: float
     payload: Dict[str, Any]
     text: str
+    code: Optional[str] = None
 
 
 class DenseEmbedModel:
@@ -98,3 +101,99 @@ class SparseEmbedModel:
         except Exception as e:
             print(f"Sparse embedding failed: {e}")
             raise e
+
+
+def split_content_blocks(content: str) -> List[Dict[str, str]]:
+    """
+    Split markdown content into blocks, separating text descriptions from code blocks.
+    
+    Args:
+        content: Markdown content to split
+        
+    Returns:
+        List of dictionaries with 'text' and 'code' keys
+    """
+    # Split by headers (### pattern)
+    blocks = re.split(r'(?=^### )', content, flags=re.MULTILINE)
+    result_blocks = []
+    
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+            
+        # Extract code blocks from the current block
+        code_pattern = r'```(?:\w+)?\n?(.*?)\n?```'
+        code_matches = re.findall(code_pattern, block, re.DOTALL)
+        
+        # Remove code blocks from text to get clean description
+        text_without_code = re.sub(code_pattern, '', block, flags=re.DOTALL)
+        text_without_code = re.sub(r'\n\s*\n\s*\n+', '\n\n', text_without_code).strip()
+        
+        # Combine all code blocks
+        combined_code = '\n\n'.join(code_matches) if code_matches else None
+        
+        result_blocks.append({
+            'text': text_without_code,
+            'code': combined_code
+        })
+    
+    return result_blocks
+
+
+def check_token_length(text: str, max_tokens: int = 8192) -> Tuple[bool, int]:
+    """
+    Check if text exceeds token limit using tiktoken.
+    
+    Args:
+        text: Text to check
+        max_tokens: Maximum allowed tokens
+        
+    Returns:
+        Tuple of (is_within_limit, actual_token_count)
+    """
+    encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+    token_count = len(encoding.encode(text))
+    return token_count <= max_tokens, token_count
+
+
+def truncate_text_to_tokens(text: str, max_tokens: int = 8192) -> str:
+    """
+    Truncate text to fit within token limit.
+    
+    Args:
+        text: Text to truncate
+        max_tokens: Maximum allowed tokens
+        
+    Returns:
+        Truncated text
+    """
+    encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+    tokens = encoding.encode(text)
+    
+    if len(tokens) <= max_tokens:
+        return text
+    
+    # Truncate and decode back
+    truncated_tokens = tokens[:max_tokens]
+    return encoding.decode(truncated_tokens)
+
+
+def get_timeout_feedback_message(attempts: int) -> str:
+    """
+    Generate feedback message when development/testing loop exceeds attempt threshold.
+    
+    Args:
+        attempts: Number of attempts made
+        
+    Returns:
+        Formatted feedback message
+    """
+    return (
+        f"ATTENTION: The development cycle has reached {attempts} attempts, which exceeds the reasonable threshold. "
+        f"This indicates potential inefficiency and resource waste in our collaborative process. "
+        f"Please reflect on the current approach and consider implementing a fundamentally different strategy "
+        f"or methodology to solve this problem. If after careful consideration you believe this task "
+        f"is technically impossible or beyond the scope of current capabilities, please terminate "
+        f"the process with <END> and provide a clear explanation of the limitations encountered."
+    )
