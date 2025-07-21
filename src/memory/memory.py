@@ -55,7 +55,11 @@ class Memory:
             return "\n\n".join(semantic)
         else:
             self.logger.debug(f"Searching semantic memory for: {query[:100]}...")
-            hits = self.semantic_retriever.search(query, limit=config.semantic_search_limit)
+            hits = self.semantic_retriever.search(query,
+                method="hybrid",
+                score_threshold=config.score_threshold, 
+                limit=config.semantic_search_limit
+            )
             self.logger.debug(f"Found {len(hits)} semantic results")
             
             # Combine text and code for the final output
@@ -82,7 +86,11 @@ class Memory:
             return "\n\n".join(episodic)
         else:
             self.logger.debug(f"Searching episodic memory for: {query[:100]}...")
-            hits = self.episodic_retriever.search(query, limit=config.episodic_search_limit)
+            hits = self.episodic_retriever.search(query, 
+                method="hybrid",
+                score_threshold=config.score_threshold, 
+                limit=config.episodic_search_limit
+            )
             self.logger.debug(f"Found {len(hits)} episodic results")
             
             # Combine text and code for the final output

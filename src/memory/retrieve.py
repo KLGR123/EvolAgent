@@ -202,15 +202,16 @@ class Retriever:
         """
         
         query_embedding = self.dense_model.embed(query)[0]
-        search_result = self.client.search(
+        search_result = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_embedding,
+            query=query_embedding,
+            using="dense",
             limit=limit,
             with_payload=True,
             score_threshold=score_threshold
         )
         results = []
-        for hit in search_result:
+        for hit in search_result.points:
             payload = hit.payload or {}
             result = SearchResult(
                 id=str(hit.id),
@@ -290,7 +291,8 @@ class Retriever:
                 id=str(hit.id),
                 score=hit.score,
                 payload=payload,
-                text=payload.get("text", "")
+                text=payload.get("text", ""),
+                code=payload.get("code", None)  # Include code in search results
             )
             results.append(result)
         return results
