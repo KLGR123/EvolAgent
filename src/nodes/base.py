@@ -87,7 +87,7 @@ class BaseNode:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=64000,
+                max_tokens=config.max_tokens,
                 timeout=config.api_timeout,
                 extra_headers={
                     'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),

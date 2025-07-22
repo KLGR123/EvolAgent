@@ -189,6 +189,9 @@ class Config:
     def summarize_temperature(self) -> float:
         return self.get('task.summarize_temperature', 0.1)
 
+    @property
+    def max_tokens(self) -> int:
+        return self.get('models.max_tokens', 32000)
 
 # Global configuration instance
 config = Config()

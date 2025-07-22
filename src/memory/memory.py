@@ -16,6 +16,7 @@ class Memory:
     Long-term Memory for the node with configuration-driven initialization.
     """
     _shared_client: Optional[QdrantClient] = None # TODO local client, remote client supporting concurrent
+    _semantic_loaded: dict[str, bool] = {}  # keep track of loaded semantic content
 
     def __init__(self, name: Literal["plan", "dev", "test", "critic"]):
         self.name = name
@@ -107,6 +108,11 @@ class Memory:
         Add the semantic memory with code/text separation for better retrieval.
         Use content hash as ID to avoid duplicates.
         """
+        # check if semantic content is already loaded
+        if Memory._semantic_loaded.get(self.name, False):
+            self.logger.debug(f"Semantic content already loaded for {self.name}, skipping")
+            return
+            
         semantic_texts = []
         semantic_codes = []
         semantic_ids = []
@@ -136,14 +142,20 @@ class Memory:
                 ids=semantic_ids, 
                 codes=semantic_codes
             )
+            # mark as loaded
+            Memory._semantic_loaded[self.name] = True
         else:
             self.logger.debug(f"No semantic content found for {self.name}")
+            # even if there is no content, mark as loaded to avoid repeated checks for empty directories
+            Memory._semantic_loaded[self.name] = True
 
     def _clear_semantic(self) -> None:
         """
         Clear the semantic memory.
         """
         self.semantic_retriever.delete_all()
+        # reset loading state, allowing re-loading
+        Memory._semantic_loaded[self.name] = False
 
     def add_episodic(self, text: str) -> None:
         """
