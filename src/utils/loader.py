@@ -53,7 +53,7 @@ def load_gaia_dataset(use_raw_dataset: bool, split: str) -> datasets.Dataset:
 
     eval_ds = eval_ds.rename_columns({"Question": "question", "Final answer": "true_answer", "Level": "level"})
     eval_ds = eval_ds.map(preprocess_file_paths)
-    return eval_ds # type: ignore
+    return eval_ds 
 
 
 def get_task_from_gaia(task_id: str, split: str) -> dict:
@@ -76,9 +76,9 @@ def get_task_from_gaia(task_id: str, split: str) -> dict:
 
     if task["file_name"]:
         if ".zip" in task["file_name"]:
-            question += "\n\nAttached local file(s): " + str(get_zip_files(task['file_name']))
+            question += " Attached local file(s): " + str(get_zip_files(task['file_name']))
         else:
-            question += "\n\nAttached local file(s): " + str(task['file_name'])
+            question += " Attached local file(s): " + str(task['file_name'])
 
     task_info = {
         "task_id": task["task_id"],

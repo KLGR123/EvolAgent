@@ -1,9 +1,3 @@
-"""
-Centralized logging system for EvolAgent.
-Provides structured logging with configurable output formats and destinations.
-"""
-
-import os
 import logging
 import logging.handlers
 from typing import Optional

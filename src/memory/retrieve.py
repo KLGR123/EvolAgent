@@ -18,8 +18,7 @@ from .utils import (
     SparseEmbedModel, 
     SearchResult, 
     check_token_length, 
-    truncate_text_to_tokens,
-    get_timeout_feedback_message,
+    truncate_text_to_tokens
 )
 
 
@@ -31,12 +30,12 @@ class Retriever:
 
     def __init__(self, 
         client: QdrantClient,
-        name: Literal["plan", "dev", "test", "critic"], 
+        role: Literal["planner", "developer", "tester", "critic"], 
         type: Literal["semantic", "episodic"],
         model: str = "text-embedding-3-large", 
         embed_dim: int = 3072
     ):
-        self.name = name
+        self.role = role
         self.model = model
         self.embed_dim = embed_dim
 
@@ -44,7 +43,7 @@ class Retriever:
         self.dense_model = DenseEmbedModel(model_name="text-embedding-3-large")
         self.sparse_model = SparseEmbedModel()
 
-        self.collection_name = f"{name}_{type}"
+        self.collection_name = f"{role}_{type}"
         self._create_collection()
 
     def _create_collection(self, hybrid: bool = True) -> None:
@@ -178,7 +177,7 @@ class Retriever:
 
         self.client.delete(
             collection_name=self.collection_name,
-            points_selector=ids, # type: ignore
+            points_selector=ids, 
             wait=True,
         )
         print(f"Deleted {len(ids)} points from collection {self.collection_name}")
@@ -301,7 +300,7 @@ class Retriever:
         query: str, 
         limit: int = 5, 
         method: Literal["dense", "sparse", "hybrid"] = "dense", 
-        score_threshold: float = 0.35, # TODO: add score_threshold
+        score_threshold: float = 0.35,
     ) -> List[SearchResult]:
         """
         Search for documents in the collection.
@@ -322,7 +321,7 @@ class Retriever:
 
 if __name__ == "__main__":
     client = QdrantClient(path=os.getenv("QDRANT_PERSIST_PATH"))  
-    retriever = Retriever(client=client, name="plan", type="semantic", model="text-embedding-3-large")
+    retriever = Retriever(client=client, role="planner", type="semantic", model="text-embedding-3-large")
     texts = ["Hello, world!", "Another document", "This is a test."]
     retriever.add(texts=texts)
 

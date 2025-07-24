@@ -1,13 +1,13 @@
 import os
+import random
 from tqdm import tqdm
 from openai import OpenAI
 from typing import Tuple, Optional, List
-# from concurrent.futures import ThreadPoolExecutor, as_completed TODO add concurrent
 
 from .base import BasePipeline
 from ..nodes import CriticNode, TestNode, DevNode, PlanNode
 from ..config import config
-from ..utils.logger import get_logger, log_execution_time, ComponentLoggers
+from ..utils.logger import log_execution_time, ComponentLoggers
 
 
 class EvolvePipeline(BasePipeline):
@@ -24,9 +24,9 @@ class EvolvePipeline(BasePipeline):
         
         # Initialize configuration
         self.logger.info("EvolvePipeline initialized with configuration:")
-        self.logger.info(f"  Max dev-test iterations: {config.max_dev_test_iterations}")
-        self.logger.info(f"  Max parallel tasks: {config.max_parallel_tasks}")
-        self.logger.info(f"  Default models: {config.default_models}")
+        self.logger.info(f"Max dev-test iterations: {config.max_dev_test_iterations}")
+        self.logger.info(f"Max parallel tasks: {config.max_parallel_tasks}")
+        self.logger.info(f"Default models: {config.default_models}")
 
     def _get_or_create_nodes(self, model: str) -> Tuple[PlanNode, DevNode, TestNode]:
         """
@@ -41,15 +41,15 @@ class EvolvePipeline(BasePipeline):
         if model not in self._node_pools:
             self.logger.debug(f"Creating new node pool for model: {model}")
             self._node_pools[model] = {
-                'plan': PlanNode(model=model),
-                'dev': DevNode(model=model),
-                'test': TestNode(model=model)
+                'planner': PlanNode(model=model, past_n=config.plan_history_length),
+                'developer': DevNode(model=model, past_n=config.dev_history_length),
+                'tester': TestNode(model=model, past_n=config.test_history_length)
             }
         else:
             self.logger.debug(f"Reusing existing node pool for model: {model}")
         
         pool = self._node_pools[model]
-        return pool['plan'], pool['dev'], pool['test']
+        return pool['planner'], pool['developer'], pool['tester']
 
     def _reset_node_states(self, plan_node: PlanNode, dev_node: DevNode, test_node: TestNode):
         """
@@ -73,6 +73,7 @@ class EvolvePipeline(BasePipeline):
         """
         Forward the task, sample one trajectory using reusable nodes.
         """
+
         self.task = task
         self.logger.info(f"Starting forward pass for model: {model}")
 
@@ -84,29 +85,29 @@ class EvolvePipeline(BasePipeline):
         
         # Initialize nodes for this task
         self.plan_node._init_prompt(task=task)
-        self.logger.debug(f"Plan node initialized for task: {task[:100]}...")
+        self.logger.debug(f"Plan node initialized for task: {task[:500] if len(task) > 500 else task}...")
 
-        description = None
-        reason = None
+        next_code = None
         plan_iteration = 0
         
         while True:
             plan_iteration += 1
             self.logger.debug(f"Plan iteration {plan_iteration}")
             
-            plan, reason = self.plan_node(content=description, name="dev")
-            self.logger.info(f"Plan generated: {plan[:200]}...")
-            self.logger.debug(f"Plan reason: {reason[:200]}...")
+            next_plan, is_end = self.plan_node(h=next_code)
+            self.plan_node.save_logs_to_file()  # save plan node prompt and history to log file
+            self.logger.info("Plan generated: %s...", next_plan['plan'][:200])
+            self.logger.debug("Plan description: %s...", next_plan['description'][:200])
             
-            if "<END>" in plan:
+            if is_end:
                 self.logger.info("Plan marked as complete with <END>")
                 break
             
-            self.dev_node._init_prompt(plan=plan)
-            self.test_node._init_prompt(plan=plan)
+            self.dev_node._init_prompt(plan=next_plan["plan"])
+            self.test_node._init_prompt(plan=next_plan["plan"])
             self.logger.debug("Dev and test nodes initialized for current plan")
 
-            feedback, code_output = None, None
+            next_feedback = None
             dev_test_iteration = 0
             
             while True:
@@ -115,35 +116,39 @@ class EvolvePipeline(BasePipeline):
                 
                 # Check iteration limit and add timeout feedback if exceeded
                 if dev_test_iteration > config.max_dev_test_iterations:
-                    from src.memory.utils import get_timeout_feedback_message
-                    timeout_message = get_timeout_feedback_message(dev_test_iteration)
                     self.logger.warning(f"Exceeded maximum iterations ({config.max_dev_test_iterations})")
                     self.logger.info("Adding timeout feedback message to encourage reflection")
-                    feedback = timeout_message
-                    code_output = "Iteration limit exceeded"
                     
-                code, description = self.dev_node(content=(feedback, code_output), name="test")
-                self.logger.debug(f"Dev generated code description: {description[:200]}...")
+                    next_feedback["feedback"] += (
+                        f"\nATTENTION: The development cycle has reached {dev_test_iteration} attempts, which is excessive. "
+                        "Please reconsider your approach. If the task is impossible, terminate with <END> and explain why."
+                    )
+                    
+                next_code, is_end = self.dev_node(h=next_feedback)
+                self.dev_node.save_logs_to_file()  # save dev node prompt and history to log file
+                self.logger.debug("Dev generated code description: %s...", next_code['description'][:200])
                 
-                if "<END>" in code:
+                if is_end:
                     self.logger.info("Dev marked task as complete with <END>")
                     break
 
-                feedback, code_output = self.test_node(content=code, name="dev")
-                self.logger.debug(f"Test feedback: {feedback[:200]}...")
+                next_feedback = self.test_node(h=next_code)
+                self.test_node.save_logs_to_file()  # save test node prompt and history to log file
+                self.logger.debug("Test feedback: %s...", next_feedback['feedback'][:200])
                 
                 # Double check after test feedback to prevent infinite loops
                 if dev_test_iteration > config.emergency_break_iterations:
-                    self.logger.error("EMERGENCY BREAK: Forcing termination due to excessive iterations")
+                    self.logger.warning("Forcing termination due to excessive iterations")
+                    next_code = {
+                        "role": "developer",
+                        "code": "print('The task is too complex for me to handle. Please provide a simpler task.')",
+                        "description": "The task is too complex for me to handle. Please provide a simpler task."
+                    }
                     break
         
-        history = self.plan_node.export_history(past_n=config.dev_history_length)
-        answer = reason
-        
+        history = self.plan_node.export_history(past_n=config.critic_length)
         self.logger.info(f"Forward pass completed for model: {self.plan_node.model}")
-        self.logger.debug(f"Final answer: {answer[:200]}...")
-        
-        return history, answer
+        return history
 
     @log_execution_time()
     def __call__(self,
@@ -160,32 +165,31 @@ class EvolvePipeline(BasePipeline):
         Returns:
             Final answer from the critic node
         """
+
         if models is None:
             models = config.default_models
             
         self.logger.info(f"Starting task evolution with {len(models)} models")
-        self.logger.debug(f"Task: {task[:200]}...")
+        self.logger.debug("Task: %s...", task[:200])
         self.logger.debug(f"Models: {models}")
         
-        self.critic_node = CriticNode(model=models[0])  # Use first model for critic
+        # Use a random model for critic
+        self.critic_node = CriticNode(model=models[random.randint(0, len(models) - 1)])
         self.critic_node._init_prompt(task=task)
         
-        histories, answers = [], []
-        # Store all execution paths for potential learning
-        self.execution_paths = []
+        histories = []
+        self.execution_paths = [] # Store all execution paths for potential learning
                 
         for i, model in enumerate(tqdm(models, desc="Processing models")):
             self.logger.info(f"Starting execution path {i+1}/{len(models)} with model: {model}")
             
-            history, answer = self._forward(task, model)
+            history = self._forward(task, model)
             histories.append(history)
-            answers.append(answer)
             
             # Store the complete execution context for this path
             execution_path = {
                 'model': model,
                 'history': history,
-                'answer': answer,
                 'plan_node': self.plan_node,
                 'dev_node': self.dev_node,
                 'index': i
@@ -194,14 +198,15 @@ class EvolvePipeline(BasePipeline):
             self.logger.info(f"Completed execution path {i+1}/{len(models)} with model: {model}")
 
         self.logger.info("All execution paths completed, starting critic evaluation")
-        final_answer, reason, best_member_index = self.critic_node(histories=histories, answers=answers)
+        final_answer, reason, best_id = self.critic_node(histories=histories)
+        self.critic_node.save_logs_to_file()  # save critic node prompt and history to log file
         
-        self.logger.info(f"Critic evaluation completed")
-        self.logger.debug(f"Critic reason: {reason[:500]}...")
-        self.logger.info(f"Best member index: {best_member_index} (model: {models[best_member_index]})")
+        self.logger.info("Critic evaluation completed")
+        self.logger.debug("Critic reason: %s...", reason[:200] if len(reason) > 500 else reason)
+        self.logger.info(f"Best member index: {best_id} (model: {models[best_id]})")
         
         # Store the best path information for learning
-        self.best_member_index = best_member_index
+        self.best_id = best_id
         
         self.logger.info(f"Task evolution completed successfully")
         return final_answer
@@ -211,26 +216,15 @@ class EvolvePipeline(BasePipeline):
         Learn from the past experiences, save the successful experiences to the long-term memory.
         Only saves the best path as determined by the critic node.
         """ 
-        if hasattr(self, 'best_member_index') and hasattr(self, 'execution_paths'):
-            best_path = self.execution_paths[self.best_member_index]
+        if hasattr(self, 'best_id') and hasattr(self, 'execution_paths'):
+            best_path = self.execution_paths[self.best_id]
+            self.best_plan_node: PlanNode = best_path['plan_node']
+            self.best_dev_node: DevNode = best_path['dev_node']
             
-            # Temporarily set the nodes to the best path for saving
-            original_plan_node = getattr(self, 'plan_node', None)
-            original_dev_node = getattr(self, 'dev_node', None)
-            
-            self.plan_node = best_path['plan_node']
-            self.dev_node = best_path['dev_node']
-            
-            self.logger.info(f"Learning from best path (index {self.best_member_index}, model: {best_path['model']})")
+            self.logger.info(f"Learning from best path (index {self.best_id}, model: {best_path['model']})")
             self._save_plan_episodic()
             self._save_dev_episodic()
-            
-            # Restore original nodes if they existed
-            if original_plan_node:
-                self.plan_node = original_plan_node
-            if original_dev_node:
-                self.dev_node = original_dev_node
-                
+
             self.logger.info("Successfully saved the best path experiences to the long-term memory")
         else:
             self.logger.warning("No valid execution paths found for learning")
@@ -251,35 +245,85 @@ class EvolvePipeline(BasePipeline):
             self.logger.error(f"Failed to summarize task: {e}")
             return "Task Summary Failed"
 
+    def _summarize_use_cases(self, plan: str, code: str) -> str:
+        """Generate use cases for the given plan and code implementation."""
+        try:
+            prompt = f"""Based on the following plan and code implementation, generate 6-8 practical use cases in the exact format shown below. Each use case should be a specific, real-world application scenario that demonstrates when and why someone would use this solution.
+
+PLAN: {plan}
+
+CODE: {code}
+
+Generate use cases following this exact format:
+- [Specific use case description for a particular domain/scenario]
+- [Another specific use case for a different application area]
+- [Continue with practical, real-world applications]
+
+Requirements:
+1. Each use case should start with a dash (-)
+2. Focus on specific, practical applications
+3. Cover diverse domains (business, research, automation, analysis, etc.)
+4. Be concise but descriptive
+5. Avoid generic descriptions - be specific about the application
+6. Generate 6-8 use cases total
+
+Example format:
+- Financial report analysis and automated data extraction for accounting workflows
+- Scientific research data processing and statistical analysis for academic publications
+- E-commerce inventory management and product catalog automation
+- Social media content monitoring and sentiment analysis for marketing teams"""
+
+            response = self.client.chat.completions.create(
+                model="o4-mini",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=config.get('summarize_max_tokens', 500),
+                temperature=config.get('summarize_temperature', 0.3),
+            )
+            
+            use_cases = response.choices[0].message.content or "- General automation and data processing tasks"
+            
+            # Clean up the response to ensure proper formatting
+            lines = use_cases.strip().split('\n')
+            formatted_lines = []
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('-'):
+                    line = '- ' + line
+                if line:
+                    formatted_lines.append(line)
+            
+            result = '\n'.join(formatted_lines)
+            self.logger.debug(f"Use cases generated: {len(formatted_lines)} items")
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Failed to generate use cases: {e}")
+            return "- General automation and data processing tasks\n- Custom scripting and workflow optimization"
+
     def _save_plan_episodic(self) -> None:
         """Save plan episodic memory with task summary and execution history."""
         try:
             title = self._summarize_task(self.task)
-            history = self.plan_node.export_history()
-            content = f"### {title}\n\n```\n{history}\n```\n"
+            history = self.best_plan_node.export_history()
+            content = f"### {title}\n\n**TASK**: {self.task}\n\n```\n{history}\n```"
             self.plan_memory.add_episodic(content)
             self.logger.debug(f"Plan episodic memory saved: {title}")
         except Exception as e:
             self.logger.error(f"Failed to save plan episodic memory: {e}")
 
-    def _save_dev_episodic(self, include_code: bool = True) -> None:
+    def _save_dev_episodic(self) -> None:
         """
         Save development episodic memory with improved code/text separation.
         Now that we have better RAG handling, we should include code by default.
         """
         try:
-            title = self._summarize_task(self.task)
-            code = self.dev_node.export_final_code()
-            
-            if include_code and code:
-                # Create structured content that our new splitting function can handle properly
-                content = f"### {title}\n\n**Task Description:**\n{self.task}\n\n**Implementation:**\n\n```python\n{code}\n```"
-                self.logger.debug(f"Dev episodic memory saved with code: {title}")
-            else:
-                content = f"### {title}\n\n**Task Description:**\n{self.task}"
-                self.logger.debug(f"Dev episodic memory saved without code: {title}")
-            
-            self.dev_memory.add_episodic(content)
+            plan_code_trajectory = self.best_dev_node.export_plan_code_trajectory()
+            for plan, code in plan_code_trajectory:
+                title = self._summarize_task(plan)
+                use_cases = self._summarize_use_cases(plan=plan, code=code)
+                content = f"### {title}\n\n**Description**: {plan}\n\n**Use Cases**:\n{use_cases}\n\n```\n{code}\n```"
+                self.logger.debug(f"Dev episodic memory saved: {title}")
+                self.dev_memory.add_episodic(content)
         except Exception as e:
             self.logger.error(f"Failed to save dev episodic memory: {e}")
 

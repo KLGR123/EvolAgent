@@ -1,8 +1,17 @@
 ### How to Fetch and Parse the Content of A Web Page Given a URL?
 
-Get and parse any given webpage, extracting text content, images, and links.
+**Description**: Get and parse any given webpage, extracting text content, images, and links.
 
-```python
+**Use Cases**:
+- Web scraping and data extraction from websites
+- Content analysis and text mining from web pages
+- SEO analysis and webpage structure examination
+- Academic research and citation verification
+- News article and blog content aggregation
+- E-commerce product information collection
+- Social media and forum content monitoring
+
+```
 import requests
 from bs4 import BeautifulSoup
 
@@ -98,11 +107,18 @@ if images:
 
 ### If needed, How to get an archived (old) version of a webpage?
 
-Get an archived version of a webpage from the Wayback Machine.
+**Description**: Get an archived version of a webpage from the Wayback Machine. Not all websites have snapshots available for every past moment. If no archived version is found, try to access the current website and look for historical information, or search google to find answers about the website's past.
 
-Not all websites have snapshots available for every past moment. If no archived version is found, try to access the current website and look for historical information, or search google to find answers about the website's past.
+**Use Cases**:
+- Historical research and digital archaeology
+- Website change tracking and evolution analysis
+- Legal evidence collection and compliance verification
+- Academic research on web content development
+- Brand monitoring and reputation management
+- Dead link recovery and content restoration
+- Digital preservation and archival studies
 
-```python
+```
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -177,4 +193,40 @@ if text:
     print(text)
 
 print("Note: This is an archived version from the Wayback Machine")
+```
+
+### Get webpage content throuhg `crawl4ai` library
+
+**Description**: Crawl4AI is the #1 trending GitHub repository, it delivers blazing-fast, AI-ready web crawling tailored for LLMs, AI agents, and data pipelines. It can creates smart, concise Markdown optimized for RAG and Agent applications.
+
+**Use Cases**:
+- AI-powered content extraction and preprocessing
+- RAG (Retrieval-Augmented Generation) data pipeline creation
+- LLM training data collection and curation
+- Intelligent web scraping with content filtering
+- Automated knowledge base construction
+- Smart document processing and analysis
+- Agent-ready web content preparation
+
+```
+# official profile: https://docs.crawl4ai.com/
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+
+md_generator = DefaultMarkdownGenerator(
+    content_filter=PruningContentFilter(threshold=0.4, threshold_type="fixed") # Set makrdown generator configuration, the threshold controls filter level. 
+)
+
+config = CrawlerRunConfig(
+    cache_mode=CacheMode.BYPASS,
+    markdown_generator=md_generator
+)
+
+async with AsyncWebCrawler() as crawler:
+    result = await crawler.arun("https://news.ycombinator.com", config=config)
+    print("Raw Markdown:", result.markdown.raw_markdown) # Output raw makrdown content of webpage
+    print("Fit Markdown :", result.markdown.fit_markdown) # Output filterd markdown content of webpage (controlled by threshopd argument)
+    print("Raw HTML content", result.html) # Output raw HTML content including all elements of webpage
+    print("Fit Markdown:",  result.fit_html) # Output filterd HTML content of webpage.
 ```

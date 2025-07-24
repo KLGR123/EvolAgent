@@ -22,33 +22,45 @@ class BaseNode:
     """
 
     def __init__(self, 
-        name: str,
+        role: str,
         model: str
     ):
         """
         Initialize the node with configuration and logging.
         """
 
-        self.name: str = name
+        self.role: str = role
         self.model: str = model
-        self.logger = get_logger(f"evolagent.node.{name}")
-        
+        self.logger = get_logger(f"evolagent.node.{role}")
+
         self.client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY"),
             base_url=os.getenv("OPENAI_BASE_URL"),
         )
         self.encoding = tiktoken.encoding_for_model("gpt-4o-mini")
         self.init_prompt: str = ""
-        self.history: List[str] = []
+        self.history: List[Dict[str, str]] = []
         self._last_history_token_counts = 0
-        
-        self.logger.debug(f"Initialized {name} node with model {model}")
+    
+        self.logger.debug(f"Initialized {role} node with model {model}")
 
-    def _is_token_limit_exceeded(self, h: str) -> bool:
+    def _init_counter(self) -> None:
+        """
+        Initialize the token counter for the node.
+        The counter is used to check if the prompt is too long.
+        """
+
+        _ = Template(self.init_prompt).safe_substitute(
+            history=self.export_history(),
+        )
+        self._last_history_token_counts = len(self.encoding.encode(_))
+    
+    def _is_token_limit_exceeded(self, h: Dict[str, str]) -> bool:
         """
         Check if the history is too long using configured limits.
         """
-        token_counts = len(self.encoding.encode(h))
+
+        token_counts = len(self.encoding.encode(str(h)))
         limit_exceeded = self._last_history_token_counts + token_counts > config.max_history_tokens
         
         if limit_exceeded:
@@ -56,33 +68,34 @@ class BaseNode:
         
         return limit_exceeded
     
-    def _add_history(self, content: str, name: Literal["plan", "dev", "test", "critic", "task"]) -> None:
+    def add_history(self, h: Dict[str, str]) -> None:
         """
         Add the history to the node with token tracking.
         """
-        h = f"{name}: {content}"
+
         if self._is_token_limit_exceeded(h):
-            self.logger.warning(f"History token limit exceeded, attempting maintenance")
             self._maintain_history(h)
         else:
             self.history.append(h)
-            self._last_history_token_counts += len(self.encoding.encode(h))
-            self.logger.debug(f"Added history entry from {name}: {content[:100]}... (tokens: {len(self.encoding.encode(h))})")
+            self._last_history_token_counts += len(self.encoding.encode(str(h)))
+            self.logger.debug(f"Added history entry from {h['role']}, with {len(self.encoding.encode(str(h)))} tokens")
 
-    def _maintain_history(self, h: str) -> None: # TODO compress the history, Mem0 style 
+    def _maintain_history(self, h: Dict[str, str]) -> None:
         """
         Maintain the history when token limit is exceeded.
         Achieved by either removing the oldest history or compressing the history.
         """
-        self.logger.error(f"History token limit exceeded for {self.name} node")
+
+        self.logger.error(f"History token limit exceeded for {self.role} node")
         raise ValueError("Token limit exceeded - history compression not yet implemented")
 
-    def _forward(self, prompt: str) -> str:
+    def forward(self, prompt: str) -> str:
         """
         Forward the prompt to the LLM API with error handling and logging.
         """
+
         try:
-            self.logger.debug(f"Sending prompt to {self.model}: {prompt[:200]}...")
+            self.logger.debug("Sending prompt to %s: %s...", self.model, prompt[:200] if len(prompt) > 200 else prompt)
             
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -99,59 +112,87 @@ class BaseNode:
                 raise Exception(response.error['message'])
             
             result = response.choices[0].message.content or ""
-            self.logger.debug(f"Received response from {self.model}: {result[:200]}...")
+            self.logger.debug("Received response from %s: %s...", self.model, result[:200])
             return result
             
         except Exception as e:
             self.logger.error(f"API call failed for {self.model}: {str(e)}")
             raise
 
-    def _parse_json_response(self, response: str) -> Dict[str, Any]:
+    def parse_response(self, response: str) -> Dict[str, str]:
         """
         Parse the JSON response from the API response with enhanced error handling.
         """
-        self.logger.debug(f"Parsing JSON response: {response[:200]}...")
+
+        self.logger.debug("Parsing JSON response: %s...", response[:200])
         
         json_pattern = r'```json\s*\n?(.*?)\n?```'
         matches = re.findall(json_pattern, response, re.DOTALL | re.IGNORECASE)
+
         if matches:
             json_content = matches[0].strip()
             self.logger.debug("Found JSON in code block")
+
         else:
             json_content = response.strip()
             self.logger.debug("Using entire response as JSON")
             
         try:
             parsed_json = json_repair.loads(json_content)
-            self.logger.debug("JSON parsed successfully")
-            return parsed_json
-        except json.JSONDecodeError as e:
-            self.logger.error(f"JSON parsing failed for {self.name}: {str(e)}")
-            self.logger.debug(f"Failed JSON content: {json_content}")
-            raise json.JSONDecodeError(f"{self.name}: JSON parsing failed, {str(e)}", json_content, e.pos)
+            self.logger.debug("JSON parsed successfully using json_repair")
+            
+            try:
+                assert parsed_json["role"] == self.role
+            except Exception as e:
+                self.logger.warning(f"{parsed_json["role"]} is not equal to {self.role}, setting to {self.role} manually")
+                parsed_json["role"] = self.role
 
-    def __call__(self) -> None:
+            return parsed_json
+
+        except json.JSONDecodeError as e:
+            self.logger.error(f"JSON parsing failed for {self.role}: {str(e)}")
+            self.logger.debug("Failed JSON content: %s", json_content)
+            raise json.JSONDecodeError(f"{self.role}: JSON parsing failed, {str(e)}", json_content, e.pos)
+
+    def __call__(self, h: Dict[str, str]) -> Dict[str, str]:
         """
         One single call for the node.
         """
-        pass
+        self.logger.debug(f"{self.role} received history from {h['role']}")
+        self.add_history(h=h)
+
+        prompt = Template(self.init_prompt).safe_substitute(history=self.export_history(past_n=self.past_n))
+        response = self.forward(prompt=prompt)
+        h = self.parse_response(response)
+        self.add_history(h=h)
+        return h
 
     def export_history(self, past_n: Optional[int] = None) -> str:
         """
-        Export the history to a string with conversation markers for better model understanding.
+        Export the history to a string with pretty format.
+
+        Args:
+            past_n: Optional[int], the number of history to export. If None, export all history.
+
+        Returns:
+            str, the history to export.
         """
-        history_to_export = self.history if past_n is None else self.history[-past_n:]
-        
+
+        history_to_export = self.history[-past_n:] if past_n is not None and past_n > 0 else self.history
+
+        def format_dict(d: Dict[str, str]) -> str:
+            items = list(d.items())
+            items.sort(key=lambda x: (0 if x[0] == "role" else 1))
+            lines = ["{"]
+            for k, v in items:
+                lines.append(f'    "{k}": {repr(v)},')
+            lines.append("}")
+            return "\n".join(lines)
+
         if not history_to_export:
             return ""
-        
-        # Add conversation markers to enhance model understanding of dialogue structure
-        formatted_history = []
-        for entry in history_to_export:
-            formatted_entry = f"<|im_start|>{entry}<|im_end|>"
-            formatted_history.append(formatted_entry)
-        
-        return "\n".join(formatted_history)
+
+        return "\n".join(format_dict(h) for h in history_to_export)
 
     def export_prompt(self) -> str:
         """
@@ -159,21 +200,39 @@ class BaseNode:
         """
 
         return Template(self.init_prompt).safe_substitute(
-            history="", 
-            code="",
-            code_output=""
+            history=self.export_history()
         )
 
+    def save_logs_to_file(self) -> None:
+        """
+        Save the prompt and history to the log file, overwriting the existing file.
+        The file is saved in the logs directory, named {node_name}.md
+        """
+
+        try:
+            logs_dir = config.log_folder_path
+            if not os.path.exists(logs_dir):
+                os.makedirs(logs_dir)
+
+            prompt_file = os.path.join(logs_dir, f"{self.role}.md")
+            with open(prompt_file, 'w', encoding='utf-8') as f:
+                f.write(self.export_prompt())
+                
+            self.logger.debug(f"Saved logs for {self.role} node to {prompt_file}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to save logs for {self.role} node: {str(e)}")
+
     def __repr__(self):
-        return f"Node(name={self.name}, model={self.model})"
+        return f"Node(role={self.role}, model={self.model})"
 
     def __str__(self):
-        return f"Node(name={self.name}, model={self.model})"
+        return f"Node(role={self.role}, model={self.model})"
 
 
 if __name__ == '__main__':
     llm = BaseNode(
-        name="base", 
+        role="base", 
         model="anthropic.claude-sonnet-4-20250514-v1:0"
     )
     print(llm.export_prompt())

@@ -1,8 +1,14 @@
 ### How to Get the Detailed Information about a YouTube Video?
 
-Get detailed information about a YouTube video.
-    
-```python
+**Description**: Get detailed information about a YouTube video.
+
+**Use Cases**:
+- Youtube content analysis and video metadata extraction
+- Social media monitoring and trend analysis
+- Educational resource cataloging and organization
+- Marketing research and competitor video analysis
+
+```
 import subprocess
 import json
 
@@ -90,14 +96,20 @@ if thumbnail:
 
 ### How to Extract the Whole Audio Sound from an Online YouTube Video?
 
-Extract audio from a YouTube video and save as a local MP3 file.
-    
-```python
+**Description**: Extract audio from a YouTube video and save as a local MP3 file.
+
+**Use Cases**:
+- Podcast creation from video content
+- Youtube content analysis and video information extraction
+- Youtube music and audio sample collection
+- Language learning and pronunciation practice
+- Youtube content archival and offline access
+
+```
 import os
 import yt_dlp
 from urllib.parse import urlparse, parse_qs
 from mutagen.mp3 import MP3
-
 
 # The URL of the YouTube video to extract audio from
 url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -193,10 +205,15 @@ with yt_dlp.YoutubeDL(ydl_opts) as ydl:
 
 ### How to Catch A Screenshot from the Middle of A YouTube Video?
 
-Get a screenshot from a YouTube video at the specified timestamp. Returns The path to the downloaded screenshot file.
+**Description**: Get a screenshot from a YouTube video at the specified timestamp. Returns The path to the downloaded screenshot file. Download video segment and extract screenshot.
 
-Download video segment and extract screenshot.
-```python
+**Use Cases**:
+- Youtube content analysis and video information extraction
+- Visual reference extraction for presentations
+- Frame analysis for video research
+- Content moderation and compliance checking
+
+```
 import os
 import json
 import tempfile
@@ -228,7 +245,7 @@ video_title = video_info.get('title', 'Unknown Video')
 clean_timestamp = timestamp.replace(':', '')
 output_path = os.path.join("workspace", f"{video_id}_{clean_timestamp}.jpg")
 
-# Method 1: Download video segment and extract screenshot
+# Download video segment and extract screenshot
 def timestamp_to_seconds(ts):
     parts = ts.split(':')
     if len(parts) == 3:  # HH:MM:SS
@@ -291,57 +308,18 @@ else:
     print(f"Screenshot failed.")
 ```
 
-An alternative that directly screenshot with `yt-dlp` + `ffmpeg`.
-```python
-import os
-import json
-import subprocess
-
-# The URL of the YouTube video to get a screenshot from
-url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-# The timestamp of the video to get a screenshot from, for example, "00:01:30" for the 1 minute 30 seconds mark
-timestamp = "00:02:20"
-
-# Get video info for filename generation
-info_cmd = [
-    'yt-dlp',
-    '--dump-json',
-    '--no-playlist',
-    url
-]
-
-result = subprocess.run(info_cmd, capture_output=True, text=True, timeout=30)
-
-if result.returncode != 0:
-    print(f"Error getting video info: {result.stderr}")
-
-video_info = json.loads(result.stdout)
-video_id = video_info.get('id', 'unknown')
-video_title = video_info.get('title', 'Unknown Video')
-
-# Generate output filename
-clean_timestamp = timestamp.replace(':', '')
-output_path = os.path.join("workspace", f"{video_id}_{clean_timestamp}.jpg")
-
-screenshot_cmd = [
-    'yt-dlp',
-    '--format', 'best[height<=720]',
-    '--exec', f'ffmpeg -ss {timestamp} -i "{{}}" -vframes 1 -q:v 2 -y "{output_path}"',
-    '--exec-before-download', f'echo "Processing video..."',
-    url
-]
-
-# Run the command to get the screenshot
-screenshot_result = subprocess.run(screenshot_cmd, capture_output=True, text=True, timeout=180)
-file_size = os.path.getsize(output_path)
-print(f"Screenshot captured successfully!\nVideo: {video_title}\nTimestamp: {timestamp}\nSaved to: {output_path}\nFile size: {file_size} bytes")
-```
-
 ### How to Get Subtitles from a YouTube Video?
 
-Get subtitles from a YouTube video in the specified language. Supports manual subtitles, auto-generated subtitles, and fallback to common languages.
+**Description**: Get subtitles from a YouTube video in the specified language. Supports manual subtitles, auto-generated subtitles, and fallback to common languages.
 
-```python
+**Use Cases**:
+- Youtube content analysis and video information extraction
+- Accessibility enhancement and closed caption processing
+- Content translation and multilingual analysis
+- Video transcript generation for documentation
+- Educational material creation from video content
+
+```
 import json
 import os
 import glob

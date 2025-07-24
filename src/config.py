@@ -94,6 +94,10 @@ class Config:
         return self.get('memory.max_tokens_per_chunk', 8192)
     
     @property
+    def search_method(self) -> str:
+        return self.get('memory.search_method', 'hybrid')
+    
+    @property
     def semantic_search_limit(self) -> int:
         return self.get('memory.semantic_search_limit', 3)
     
@@ -126,8 +130,8 @@ class Config:
         return self.get('nodes.max_history_tokens', 199999)
     
     @property
-    def adaptive_history_length(self) -> int:
-        return self.get('nodes.adaptive_history_length', 10)
+    def plan_history_length(self) -> int:
+        return self.get('nodes.plan_history_length', 10)
     
     @property
     def dev_history_length(self) -> int:
@@ -138,12 +142,16 @@ class Config:
         return self.get('nodes.test_history_length', 6)
     
     @property
+    def critic_length(self) -> int:
+        return self.get('nodes.critic_length', 5)
+    
+    @property
     def workspace_dir(self) -> str:
         return self.get('environment.workspace_dir', 'workspace')
     
     @property
     def qdrant_persist_path(self) -> str:
-        return self.get('environment.qdrant_persist_path', './qdrant_data')
+        return self.get('environment.qdrant_persist_path', './qdrant')
     
     @property
     def log_level(self) -> str:
@@ -156,6 +164,10 @@ class Config:
     @property
     def log_file_path(self) -> str:
         return self.get('logging.file_path', 'logs/evolagent.log')
+    
+    @property
+    def log_folder_path(self) -> str:
+        return self.get('logging.folder_path', 'logs')
     
     @property
     def log_max_file_size(self) -> int:

@@ -1,4 +1,4 @@
-# type: ignore
+
 
 import io
 import contextlib
@@ -268,16 +268,13 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
     stdout_content = output_buffer.getvalue()
     stderr_content = error_buffer.getvalue()
     
-    # prepare the return result
-    result_parts.append("Code execution completed!")
-    
     # add the output TODO better logging
     if stdout_content:
-        result_parts.append("Output: \n")
+        result_parts.append("Code Output:")
         result_parts.append(stdout_content.rstrip())
     
     if stderr_content:
-        result_parts.append("Error/Warning: \n")
+        result_parts.append("Error/Warning:")
         result_parts.append(stderr_content.rstrip())
     
     return "\n".join(result_parts)
@@ -289,6 +286,9 @@ if __name__ == "__main__":
 import pandas as pd
 import math
 import random
+
+print("Hello, World!")
+print(math.sqrt(16))
 '''
     
     result = interpret_code(test_code, auto_install_packages=['requests', 'pandas'])

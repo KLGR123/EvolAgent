@@ -15,11 +15,15 @@ Rename `.env.example` to `.env` and set environment variables.
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+crawl4ai-setup
+crawl4ai-doctor
 
 export TOKENIZERS_PARALLELISM=true
 mkdir -p "workspace"
 python main.py
 rm -rf workspace/*
+
+pip freeze > requirements.txt
 ```
 
 `Cognitive Architectures for Language Agents`.

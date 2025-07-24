@@ -1,8 +1,18 @@
 ### How to Parse and Extract Text from Audio Files?
 
-Parse an audio file to extract metadata and transcription. This is particularly useful for extracting spoken content from audio recordings.
+**Description**: Parse an audio file to extract metadata and transcription. This is particularly useful for extracting spoken content from audio recordings.
 
-```python
+**Use Cases**:
+- Meeting transcription and note-taking automation
+- Podcast content analysis and searchable transcripts
+- Interview data extraction for qualitative research
+- Voice memo processing and organization
+- Audio accessibility conversion to text format
+- Content moderation and compliance monitoring
+- Language learning and pronunciation analysis
+- Legal deposition and testimony documentation
+
+```
 import os
 from mutagen import File
 import speech_recognition as sr
@@ -65,9 +75,19 @@ print("\n".join(result))
 
 ### How to Parse Word Documents and Extract Text Content?
 
-Parse a Word document (.docx) and return the text content. Uses the LangChain community library for document processing.
+**Description**: Parse a Word document (.docx) and return the text content. Uses the LangChain community library for document processing.
 
-```python
+**Use Cases**:
+- Contract and legal document text extraction
+- Resume and CV content analysis for recruitment
+- Report summarization and key information extraction
+- Academic paper and thesis content processing
+- Technical documentation conversion to structured data
+- Content migration from Word to other platforms
+- Document comparison and version analysis
+- Bulk document processing for data analysis
+
+```
 import os
 from langchain_community.document_loaders import Docx2txtLoader
 
@@ -98,9 +118,19 @@ else:
 
 ### How to Extract Text from Images Using OCR?
 
-Parse and extract text from an image file using Hugging Face Tesseract-OCR Space. This is particularly useful when you need to count words, analyze word frequency, or extract numbers from images, as it provides more accurate and detailed text extraction compared to GPT-4o based VLM tools.
+**Description**: Parse and extract text from an image file using Hugging Face Tesseract-OCR Space. This is particularly useful when you need to count words, analyze word frequency, or extract numbers from images, as it provides more accurate and detailed text extraction compared to GPT-4o based VLM tools.
 
-```python
+**Use Cases**:
+- Scanned document digitization and text recovery
+- Receipt and invoice data extraction for accounting
+- PDF image extraction and recognize
+- Business card information extraction and contact management
+- Historical document preservation and searchable archives
+- Form data extraction from filled paper forms
+- Sign and label text recognition for accessibility
+- Book and magazine content digitization projects
+
+```
 import os
 from gradio_client import Client, handle_file
 
@@ -133,9 +163,18 @@ else:
 
 ### How to Analyze Images Using GPT-4o Multimodal Model?
 
-Parse and analyze an image file using GPT-4o multimodal model. This code can understand complex visual content, generate captions, extract tables as HTML, create SVG code for geometric shapes, and answer specific questions about images.
+**Description**: Parse and analyze an image file using GPT-4o multimodal model. This code can understand complex visual content, generate captions, extract tables as HTML, create SVG code for geometric shapes, and answer specific questions about images.
 
-```python
+**Use Cases**:
+- Product image analysis for e-commerce catalog management
+- Medical image interpretation and diagnostic support
+- Security and surveillance image analysis
+- Educational content creation from visual materials
+- Art and cultural artifact documentation
+- Scientific image analysis and research documentation
+- Social media content moderation and analysis
+
+```
 import os
 import base64
 import requests
@@ -244,9 +283,13 @@ print(output)
 
 ### How to Parse PDB (Protein Data Bank) Files and Extract Structural Information?
 
-Parse a PDB file to extract protein structural information including models, chains, residues, and atoms. It provides detailed analysis of protein structure data.
+**Description**: Parse a PDB file to extract protein structural information including models, chains, residues, and atoms. It provides detailed analysis of protein structure data.
 
-```python
+**Use Cases**:
+- Extract chain, residue, and atom information from PDB files for protein structure analysis
+- Generate summaries of protein models and visualize structural components for bioinformatics research
+
+```
 import os
 import warnings
 from Bio.PDB import PDBParser
@@ -354,9 +397,19 @@ print("\n".join(result))
 
 ### How to Parse PDF Files and Extract Text Content?
 
-Parse a PDF file and return the text content with optional page range selection. Uses the LangChain community library for document processing.
+**Description**: Parse a PDF file and return the text content with optional page range selection. Uses the LangChain community library for document processing.
 
-```python
+**Use Cases**:
+- Research paper analysis and literature review automation
+- Financial report data extraction and analysis
+- Legal document review and contract analysis
+- Technical manual content extraction and searchable documentation
+- Government document processing and compliance checking
+- Academic transcript and certificate verification
+- Insurance claim document processing
+- Medical record digitization and patient data extraction
+
+```
 from langchain_community.document_loaders import PyPDFLoader
 
 # The path to the PDF file to be parsed, for example: "workspace/task.pdf"
@@ -411,9 +464,16 @@ else:
 
 ### How to Parse PowerPoint Presentations and Extract Structured Content?
 
-Parse a PowerPoint presentation and return structured content in HTML format, including text, tables, and image descriptions. This tool can analyze images within presentations and extract table data.
+**Description**: Parse a PowerPoint presentation and return structured content in HTML format, including text, tables, and image descriptions. This tool can analyze images within presentations and extract table data.
 
-```python
+**Use Cases**:
+- Extract text, tables, and images from PowerPoint presentations for content analysis
+- Convert PowerPoint slides to structured HTML for web publishing or further processing
+- Analyze and summarize slide content for meeting notes or documentation
+- Retrieve and describe images within slides for accessibility or image analysis
+- Extract tabular data from presentations for data analysis or reporting
+
+```
 import os
 import html
 import tempfile
@@ -551,9 +611,19 @@ print(html_content.strip())
 
 ### How to Parse Excel Files and Extract Content with Styling?
 
-Parse an Excel file and return the content as formatted HTML with style information preserved. Supports Excel (.xlsx, .xls) and CSV files.
+**Description**: Parse an Excel file and return the content as formatted HTML with style information preserved. Supports Excel (.xlsx, .xls) and CSV files.
 
-```python
+**Use Cases**:
+- Financial report conversion for web dashboards and online reporting
+- Data table migration from Excel to web applications and databases
+- Budget and expense sheet processing for automated accounting systems
+- Inventory and product catalog data extraction for e-commerce platforms
+- Employee data and payroll information processing for HR systems
+- Survey and questionnaire response data analysis and visualization
+- Project timeline and milestone tracking data conversion
+- Scientific dataset processing and research data management
+
+```
 import os
 import pandas as pd
 from openpyxl import load_workbook
@@ -666,9 +736,19 @@ else:
 
 ### How to Read Text Files with Optional Line Range Selection?
 
-Simply read the content of a text file with support for multiple encodings and optional line range selection. Supports common text formats like .txt, .md, .json, .py, and .js.
+**Description**: Simply read the content of a text file with support for multiple encodings and optional line range selection. Supports common text formats like .txt, .md, .json, .py, and .js.
 
-```python
+**Use Cases**:
+- Configuration file analysis and system administration
+- Source code review and documentation generation
+- Log file analysis and system monitoring
+- Data file processing for analytics and reporting
+- Content management and bulk text operations
+- Script and automation file processing
+- Documentation and wiki content management
+- Backup and recovery text file verification
+
+```
 import os
 
 # The path to the file to read. For example, "workspace/task.txt"

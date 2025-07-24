@@ -1,5 +1,4 @@
 import os
-import re
 import hashlib
 from string import Template
 from typing import Literal, Optional
@@ -8,99 +7,119 @@ from qdrant_client import QdrantClient
 from .retrieve import Retriever
 from .utils import split_content_blocks
 from ..config import config
-from ..utils.logger import get_logger, ComponentLoggers
+from ..utils.logger import ComponentLoggers
 
 
 class Memory:
     """
     Long-term Memory for the node with configuration-driven initialization.
     """
-    _shared_client: Optional[QdrantClient] = None # TODO local client, remote client supporting concurrent
-    _semantic_loaded: dict[str, bool] = {}  # keep track of loaded semantic content
 
-    def __init__(self, name: Literal["plan", "dev", "test", "critic"]):
-        self.name = name
+    _shared_client: Optional[QdrantClient] = None
+    _semantic_loaded: dict[str, bool] = {}
+
+    def __init__(self, role: Literal["planner", "developer", "tester", "critic"]):
+        """
+        Initialize the memory for the node.
+        """
+
+        self.role = role
         self.logger = ComponentLoggers.get_memory_logger()
         
         if Memory._shared_client is None:
-            qdrant_path = os.getenv("QDRANT_PERSIST_PATH") or config.qdrant_persist_path
+            qdrant_path = config.qdrant_persist_path
             self.logger.info(f"Initializing Qdrant client at path: {qdrant_path}")
             Memory._shared_client = QdrantClient(path=qdrant_path)
 
         self.client = Memory._shared_client
-        self.semantic_retriever = Retriever(client=self.client, name=name, type="semantic")
-        self.episodic_retriever = Retriever(client=self.client, name=name, type="episodic")
+        if self.role in ["planner", "developer"]:
+            self.semantic_retriever = Retriever(client=self.client, role=role, type="semantic")
+        if self.role in ["developer"]:
+            self.episodic_retriever = Retriever(client=self.client, role=role, type="episodic")
         
-        self.logger.debug(f"Initialized Memory for {name}")
+        self.logger.debug(f"Initialized Memory for {role}")
         self._add_semantic()
 
     def get_procedural(self) -> Template:
         """
         Get the procedural prompt for the node.
         """
-        with open(f"src/memory/{self.name}/procedural.md", "r") as f:
+
+        with open(f"src/memory/{self.role}/procedural.md", "r") as f:
             return Template(f.read())
 
     def get_semantic(self, query: Optional[str] = None) -> str:
         """
         Get the semantic facts for the node.
         """
-        if len(os.listdir(f"src/memory/{self.name}/semantic")) == 0:
+
+        if len(os.listdir(f"src/memory/{self.role}/semantic")) == 0:
             return ""
+
         if query is None:
             semantic = []
-            for file in os.listdir(f"src/memory/{self.name}/semantic"):
+
+            for file in os.listdir(f"src/memory/{self.role}/semantic"):
                 if file.endswith(".md"):
-                    with open(f"src/memory/{self.name}/semantic/{file}", "r") as f:
+                    with open(f"src/memory/{self.role}/semantic/{file}", "r") as f:
                         semantic.append(f.read())
+
             return "\n\n".join(semantic)
         else:
             self.logger.debug(f"Searching semantic memory for: {query[:100]}...")
             hits = self.semantic_retriever.search(query,
-                method="hybrid",
+                method=config.search_method,
                 score_threshold=config.score_threshold, 
                 limit=config.semantic_search_limit
             )
             self.logger.debug(f"Found {len(hits)} semantic results")
-            
-            # Combine text and code for the final output
+
             combined_results = []
+
             for hit in hits:
                 result = hit.text
                 if hit.code:  # If code exists, append it
-                    result += f"\n\n```python\n{hit.code}\n```"
+                    result += f"\n\n```\n{hit.code}\n```"
+
                 combined_results.append(result)
+
             return "\n\n".join(combined_results)
 
     def get_episodic(self, query: Optional[str] = None) -> str:
         """
         Get the episodic for the node.
         """
-        if len(os.listdir(f"src/memory/{self.name}/episodic")) == 0:
+
+        if len(os.listdir(f"src/memory/{self.role}/episodic")) == 0:
             return ""
+
         if query is None:
             episodic = []
-            for file in os.listdir(f"src/memory/{self.name}/episodic"):
+
+            for file in os.listdir(f"src/memory/{self.role}/episodic"):
                 if file.endswith(".md"):
-                    with open(f"src/memory/{self.name}/episodic/{file}", "r") as f:
+                    with open(f"src/memory/{self.role}/episodic/{file}", "r") as f:
                         episodic.append(f.read())
+                        
             return "\n\n".join(episodic)
         else:
             self.logger.debug(f"Searching episodic memory for: {query[:100]}...")
             hits = self.episodic_retriever.search(query, 
-                method="hybrid",
+                method=config.search_method,
                 score_threshold=config.score_threshold, 
                 limit=config.episodic_search_limit
             )
             self.logger.debug(f"Found {len(hits)} episodic results")
-            
-            # Combine text and code for the final output
+
             combined_results = []
+
             for hit in hits:
                 result = hit.text
-                if hit.code:  # If code exists, append it
-                    result += f"\n\n```python\n{hit.code}\n```"
+                if hit.code:
+                    result += f"\n\n```\n{hit.code}\n```"
+
                 combined_results.append(result)
+
             return "\n\n".join(combined_results)
 
     def _add_semantic(self) -> None:
@@ -108,20 +127,23 @@ class Memory:
         Add the semantic memory with code/text separation for better retrieval.
         Use content hash as ID to avoid duplicates.
         """
-        # check if semantic content is already loaded
-        if Memory._semantic_loaded.get(self.name, False):
-            self.logger.debug(f"Semantic content already loaded for {self.name}, skipping")
+    
+        if Memory._semantic_loaded.get(self.role, False):
+            self.logger.debug(f"Semantic content already loaded for {self.role}, skipping")
             return
             
         semantic_texts = []
         semantic_codes = []
         semantic_ids = []
+
+        if not os.path.exists(f"src/memory/{self.role}/semantic"):
+            self.logger.debug(f"No semantic content found for {self.role}")
+            return
         
-        for file in os.listdir(f"src/memory/{self.name}/semantic"):
+        for file in os.listdir(f"src/memory/{self.role}/semantic"):
             if file.endswith(".md"):
-                with open(f"src/memory/{self.name}/semantic/{file}", "r") as f:
+                with open(f"src/memory/{self.role}/semantic/{file}", "r") as f:
                     md_content = f.read()
-                    # Use the new split_content_blocks function for better separation
                     content_blocks = split_content_blocks(md_content)
                     
                     for block_data in content_blocks:
@@ -136,18 +158,18 @@ class Memory:
                             semantic_ids.append(content_hash)
         
         if semantic_texts:
-            self.logger.info(f"Adding {len(semantic_texts)} semantic blocks to {self.name} memory")
+            self.logger.info(f"Adding {len(semantic_texts)} semantic blocks to {self.role} memory")
             self.semantic_retriever.add(
                 texts=semantic_texts, 
                 ids=semantic_ids, 
                 codes=semantic_codes
             )
             # mark as loaded
-            Memory._semantic_loaded[self.name] = True
+            Memory._semantic_loaded[self.role] = True
         else:
-            self.logger.debug(f"No semantic content found for {self.name}")
+            self.logger.debug(f"No semantic content found for {self.role}")
             # even if there is no content, mark as loaded to avoid repeated checks for empty directories
-            Memory._semantic_loaded[self.name] = True
+            Memory._semantic_loaded[self.role] = True
 
     def _clear_semantic(self) -> None:
         """
@@ -155,7 +177,7 @@ class Memory:
         """
         self.semantic_retriever.delete_all()
         # reset loading state, allowing re-loading
-        Memory._semantic_loaded[self.name] = False
+        Memory._semantic_loaded[self.role] = False
 
     def add_episodic(self, text: str) -> None:
         """
@@ -164,7 +186,7 @@ class Memory:
         import uuid
         from datetime import datetime
 
-        episodic_dir = f"src/memory/{self.name}/episodic"
+        episodic_dir = f"src/memory/{self.role}/episodic"
         os.makedirs(episodic_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
@@ -196,7 +218,7 @@ class Memory:
                     ids.append(block_hash)
             
             if texts:
-                self.logger.info(f"Adding {len(texts)} episodic blocks to {self.name} memory")
+                self.logger.info(f"Adding {len(texts)} episodic blocks to {self.role} memory")
                 self.episodic_retriever.add(texts=texts, ids=ids, codes=codes)
         else:
             # Fallback for content that doesn't have clear structure
@@ -210,16 +232,16 @@ class Memory:
         """
         import shutil
 
-        self.logger.info(f"Clearing episodic memory for {self.name}")
+        self.logger.info(f"Clearing episodic memory for {self.role}")
         try:
             self.episodic_retriever.delete_all()
-            episodic_dir = f"src/memory/{self.name}/episodic"
+            episodic_dir = f"src/memory/{self.role}/episodic"
             if os.path.exists(episodic_dir):
                 shutil.rmtree(episodic_dir)
                 os.makedirs(episodic_dir, exist_ok=True)
-            self.logger.debug(f"Episodic memory cleared successfully for {self.name}")
+            self.logger.debug(f"Episodic memory cleared successfully for {self.role}")
         except Exception as e:
-            self.logger.error(f"Failed to clear episodic memory for {self.name}: {e}")
+            self.logger.error(f"Failed to clear episodic memory for {self.role}: {e}")
 
     def __repr__(self) -> str:
-        return f"Memory(name={self.name})"
+        return f"Memory(role={self.role})"

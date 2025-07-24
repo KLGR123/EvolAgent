@@ -3,15 +3,16 @@
 
 # Pipeline Configuration
 pipeline:
-  max_dev_test_iterations: 50  # Maximum iterations for dev-test loop
-  max_parallel_tasks: 3        # Maximum parallel task execution
-  emergency_break_iterations: 55  # Emergency break point (max_dev_test_iterations + 5)
+  max_dev_test_iterations: 20  # Maximum iterations for dev-test loop
+  max_parallel_tasks: 1        # Maximum parallel task execution
+  emergency_break_iterations: 35  # Emergency break point (max_dev_test_iterations + 5)
 
 # Memory and RAG Configuration
 memory:
   max_tokens_per_chunk: 8192   # Maximum tokens allowed per text chunk
-  semantic_search_limit: 4     # Number of semantic search results to return
-  episodic_search_limit: 4     # Number of episodic search results to return
+  search_method: "hybrid"     # Search method for semantic search
+  semantic_search_limit: 5     # Number of semantic search results to return
+  episodic_search_limit: 3     # Number of episodic search results to return
   score_threshold: 0.1        # Minimum confidence score for search results
   hybrid_search_multiplier: 2  # Multiplier for hybrid search prefetch limit
 
@@ -23,29 +24,31 @@ models:
   
   # Model lists for multi-path sampling
   default_models:
-    - "o4-mini"
     - "anthropic.claude-sonnet-4-20250514-v1:0"
-    - "anthropic.claude-opus-4-20250514-v1:0"
+    - "anthropic.claude-sonnet-4-20250514-v1:0"
+    - "anthropic.claude-sonnet-4-20250514-v1:0"
 
   max_tokens: 32000
 
 # Node Configuration
 nodes:
   max_history_tokens: 199999   # Maximum tokens in history before maintenance
-  adaptive_history_length: 10  # Default history length for plan node
+  plan_history_length: 10  # Default history length for plan node
   dev_history_length: 4        # History length for dev node
   test_history_length: 6       # History length for test node
+  critic_length: 5
 
 # Environment Configuration
 environment:
   workspace_dir: "workspace"   # Directory for downloaded files
-  qdrant_persist_path: "./qdrant_data"  # Path for Qdrant database
+  qdrant_persist_path: "./qdrant"  # Path for Qdrant database
   
 # Logging Configuration
 logging:
   level: "INFO"                # Log level (DEBUG, INFO, WARNING, ERROR)
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   file_path: "logs/evolagent.log"
+  folder_path: "logs"
   max_file_size: 10485760      # 10MB
   backup_count: 5              # Number of backup log files
   console_output: true         # Whether to output logs to console

@@ -11,7 +11,8 @@ from src.utils.logger import get_logger, TaskLogger
 
 
 TASK_ID_LIST = [
-    "4b650a35-8529-4695-89ed-8dc7a500a498"
+    # "2a649bb1-795f-4a01-b3be-9a01868dae73",
+    # "4b650a35-8529-4695-89ed-8dc7a500a498",
     # "0512426f-4d28-49f0-be77-06d05daec096",
     # "05407167-39ec-4d3a-a234-73a9120c325d",
     # "17b5a6a3-bc87-42e8-b0fb-6ab0781ef2cc",
@@ -22,7 +23,7 @@ TASK_ID_LIST = [
     # "4fc2f1ae-8625-45b5-ab34-ad4433bc21f8",
     # "56137764-b4e0-45b8-9c52-1866420c3df5",
     # "5d0080cb-90d7-4712-bc33-848150e917d3",
-    # "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
+    "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
     # "676e5e31-a554-4acc-9286-b60d90a92d26",
     # "6b078778-0b90-464d-83f6-59511c811b01",
     # "7619a514-5fa8-43ef-9143-83b66a43d7a4",
@@ -168,6 +169,6 @@ if __name__ == "__main__":
         success_rate = correct_tasks / total_tasks * 100
         logger.info(f"Final Summary: {correct_tasks}/{total_tasks} tasks completed successfully ({success_rate:.1f}%)")
     
-    logger.info("Check Episodic Memories!")
-    # pipeline.clear_episodic()
-    logger.info("EvolAgent execution completed")
+        logger.info("Check Episodic Memories!")
+        # pipeline.clear_episodic()
+        logger.info("EvolAgent execution completed")

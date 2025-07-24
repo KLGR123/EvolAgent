@@ -1,8 +1,18 @@
-### How to Search for Academic Papers Using ArXiv?
+### How to Search for Academic Papers Using arXiv?
 
-Search for academic papers and research publications using the ArXiv database. Uses the LangChain community library for ArXiv API integration.
+**Description**: arXiv is a free distribution service and an open-access archive for nearly 2.4 million scholarly articles in the fields of physics, mathematics, computer science, quantitative biology, quantitative finance, statistics, electrical engineering and systems science, and economics.
+Uses the LangChain community library for arXiv API integration to search for academic papers and research publications using the arXiv database.
 
-```python
+**Use Cases**:
+- General research and Information Gathering
+- E-commerce and Shopping Research
+- Professional and Business Applications
+- Data Collection and Analysis
+- Educational and Learning Support
+- Technical and Development Research
+- Professional and Business Applications
+
+```
 from langchain_community.tools import ArxivQueryRun
 from langchain_community.utilities import ArxivAPIWrapper
 
@@ -23,9 +33,19 @@ print(results)
 
 ### How to Search for Information Using DuckDuckGo?
 
+**Description**: DuckDuckGo is an American software company focused on online privacy whose flagship product is a search engine named DuckDuckGo.
 Search for general information using the DuckDuckGo search engine. Uses the ddgs library for direct API integration.
 
-```python
+**Use Cases**:
+- General research and Information Gathering
+- News and current events monitoring
+- Privacy-focused web searching without tracking
+- Academic and educational research
+- Technical documentation and troubleshooting
+- Business intelligence and market research
+- Content discovery for blogs and social media
+
+```
 from ddgs import DDGS
 
 # The search query to perform, for example: "machine learning tutorial"
@@ -49,7 +69,7 @@ with DDGS() as ddgs:
             region=region,
             timelimit=time
         ))
-        
+      
         # Format results for consistency
         formatted_results = []
         for result in results:
@@ -58,9 +78,9 @@ with DDGS() as ddgs:
                 'link': result.get('href', 'N/A'),
                 'snippet': result.get('body', 'N/A')
             })
-        
+      
         print(formatted_results)
-        
+      
     elif source == "images":
         # Image search
         results = list(ddgs.images(
@@ -69,9 +89,9 @@ with DDGS() as ddgs:
             region=region,
             timelimit=time
         ))
-        
+      
         print(results)
-        
+      
     elif source == "news":
         # News search
         results = list(ddgs.news(
@@ -80,18 +100,28 @@ with DDGS() as ddgs:
             region=region,
             timelimit=time
         ))
-        
+      
         print(results)
-        
+      
     else:
         print(f"Error: Invalid source '{source}'. Must be one of: text, images, news")
 ```
 
 ### How to Search for Information Using Google Search?
 
+**Description**: Google Search (also known simply as Google or Google.com) is a search engine operated by Google. It allows users to search for information on the Web by entering keywords or phrases.
 Search for information using Google search engine with advanced operators and filters. Requires SerpAPI key for accessing Google Search API.
 
-```python
+**Use Cases**:
+- General research and Information Gathering
+- E-commerce and Shopping Research
+- Professional and Business Applications
+- Data Collection and Analysis
+- Educational and Learning Support
+- Technical and Development Research
+- Professional and Business Applications
+
+```
 import os
 import re
 import requests
@@ -126,7 +156,7 @@ if tbs is not None:
         r'^qdr:[hdwmy]\d+$$',
         r'^cdr:1,cd_min:\d{2}/\d{2}/\d{4},cd_max:\d{2}/\d{2}/\d{4}$$'
     ]
-    
+  
     is_valid_tbs = any(re.match(pattern, tbs) for pattern in time_patterns)
     if not is_valid_tbs:
         print(
@@ -191,9 +221,15 @@ elif type == "news":
 
 ### How to Search Wikipedia for Information?
 
-Search Wikipedia for encyclopedic information and return detailed article content. Uses the LangChain community library for Wikipedia API integration.
+**Description**: Search Wikipedia for encyclopedic information and return detailed article content. Uses the LangChain community library for Wikipedia API integration.
 
-```python
+**Use Cases**:
+- Research fact-checking and reference verification
+- Educational content creation and knowledge base building
+- Academic writing and literature review support
+- General knowledge queries and information lookup
+
+```
 from langchain_community.tools import WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 
