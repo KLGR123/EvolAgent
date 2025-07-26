@@ -8,6 +8,8 @@ from .base import BasePipeline
 from ..nodes import CriticNode, TestNode, DevNode, PlanNode
 from ..config import config
 from ..utils.logger import log_execution_time, ComponentLoggers
+from ..utils.workspace_manager import isolated_workspace
+from ..utils.task_logger import get_task_logger
 
 
 class EvolvePipeline(BasePipeline):
@@ -69,13 +71,17 @@ class EvolvePipeline(BasePipeline):
     def _forward(self, 
         task: str, 
         model: str = "o4-mini",
-    ) -> Tuple[str, str]:
+        task_id: str = None,
+    ) -> str:
         """
         Forward the task, sample one trajectory using reusable nodes.
         """
 
         self.task = task
         self.logger.info(f"Starting forward pass for model: {model}")
+
+        # Get task logger for this model
+        task_logger = get_task_logger(task_id, model) if task_id else None
 
         # Get or create reusable nodes for this model
         self.plan_node, self.dev_node, self.test_node = self._get_or_create_nodes(model)
@@ -87,6 +93,11 @@ class EvolvePipeline(BasePipeline):
         self.plan_node._init_prompt(task=task)
         self.logger.debug(f"Plan node initialized for task: {task[:500] if len(task) > 500 else task}...")
 
+        # Log planner initialization
+        if task_logger:
+            episodic_examples = getattr(self.plan_node, 'episodic', '') or ''
+            task_logger.log_planner_start(task, episodic_examples)
+
         next_code = None
         plan_iteration = 0
         
@@ -95,9 +106,13 @@ class EvolvePipeline(BasePipeline):
             self.logger.debug(f"Plan iteration {plan_iteration}")
             
             next_plan, is_end = self.plan_node(h=next_code)
-            self.plan_node.save_logs_to_file()  # save plan node prompt and history to log file
             self.logger.info("Plan generated: %s...", next_plan['plan'][:200])
             self.logger.debug("Plan description: %s...", next_plan['description'][:200])
+            
+            # Log planner history after plan generation
+            if task_logger:
+                planner_history = self.plan_node.export_history()
+                task_logger.log_planner_history(planner_history)
             
             if is_end:
                 self.logger.info("Plan marked as complete with <END>")
@@ -106,6 +121,14 @@ class EvolvePipeline(BasePipeline):
             self.dev_node._init_prompt(plan=next_plan["plan"])
             self.test_node._init_prompt(plan=next_plan["plan"])
             self.logger.debug("Dev and test nodes initialized for current plan")
+
+            # Log developer plan start
+            current_plan_index = None
+            if task_logger:
+                current_plan_index = task_logger.log_developer_plan(
+                    next_plan["plan"], 
+                    next_plan.get("description", "")
+                )
 
             next_feedback = None
             dev_test_iteration = 0
@@ -125,7 +148,6 @@ class EvolvePipeline(BasePipeline):
                     )
                     
                 next_code, is_end = self.dev_node(h=next_feedback)
-                self.dev_node.save_logs_to_file()  # save dev node prompt and history to log file
                 self.logger.debug("Dev generated code description: %s...", next_code['description'][:200])
                 
                 if is_end:
@@ -133,7 +155,6 @@ class EvolvePipeline(BasePipeline):
                     break
 
                 next_feedback = self.test_node(h=next_code)
-                self.test_node.save_logs_to_file()  # save test node prompt and history to log file
                 self.logger.debug("Test feedback: %s...", next_feedback['feedback'][:200])
                 
                 # Double check after test feedback to prevent infinite loops
@@ -145,6 +166,11 @@ class EvolvePipeline(BasePipeline):
                         "description": "The task is too complex for me to handle. Please provide a simpler task."
                     }
                     break
+            
+            # Log developer history after dev-test cycle completion
+            if task_logger and current_plan_index:
+                dev_history = self.dev_node.export_history()
+                task_logger.log_developer_history(current_plan_index, dev_history)
         
         history = self.plan_node.export_history(past_n=config.critic_length)
         self.logger.info(f"Forward pass completed for model: {self.plan_node.model}")
@@ -153,7 +179,8 @@ class EvolvePipeline(BasePipeline):
     @log_execution_time()
     def __call__(self,
         task: str,
-        models: Optional[List[str]] = None, 
+        models: Optional[List[str]] = None,
+        task_id: Optional[str] = None,
     ) -> str:
         """
         Evolve the task, use multiple parallel trajectories and judge them with the critic node.
@@ -161,6 +188,7 @@ class EvolvePipeline(BasePipeline):
         Args:
             task: Task description to solve
             models: List of models to use (defaults to config.default_models)
+            task_id: Optional task identifier for workspace isolation
             
         Returns:
             Final answer from the critic node
@@ -168,47 +196,63 @@ class EvolvePipeline(BasePipeline):
 
         if models is None:
             models = config.default_models
+
+        if task_id is None:
+            import uuid
+            task_id = str(uuid.uuid4())[:8]
             
-        self.logger.info(f"Starting task evolution with {len(models)} models")
+        self.logger.info(f"Starting task evolution with {len(models)} models (task_id: {task_id})")
         self.logger.debug("Task: %s...", task[:200])
         self.logger.debug(f"Models: {models}")
         
-        # Use a random model for critic
-        self.critic_node = CriticNode(model=models[random.randint(0, len(models) - 1)])
-        self.critic_node._init_prompt(task=task)
-        
-        histories = []
-        self.execution_paths = [] # Store all execution paths for potential learning
+        # Execute task within shared isolated workspace context
+        with isolated_workspace(task_id) as workspace_path:
+            self.logger.info(f"Using shared isolated workspace: {workspace_path}")
+            
+            # Initialize critic 
+            self.critic_node = CriticNode(model=models[random.randint(0, len(models) - 1)])
+            self.critic_node._init_prompt(task=task)
+            
+            histories = []
+            self.execution_paths = [] # Store all execution paths for potential learning
+                    
+            for i, model in enumerate(tqdm(models, desc="Processing models")):
+                self.logger.info(f"Starting execution path {i+1}/{len(models)} with model: {model}")
                 
-        for i, model in enumerate(tqdm(models, desc="Processing models")):
-            self.logger.info(f"Starting execution path {i+1}/{len(models)} with model: {model}")
-            
-            history = self._forward(task, model)
-            histories.append(history)
-            
-            # Store the complete execution context for this path
-            execution_path = {
-                'model': model,
-                'history': history,
-                'plan_node': self.plan_node,
-                'dev_node': self.dev_node,
-                'index': i
-            }
-            self.execution_paths.append(execution_path)
-            self.logger.info(f"Completed execution path {i+1}/{len(models)} with model: {model}")
+                history = self._forward(task, model, task_id)
+                histories.append(history)
+                
+                # Store the complete execution context for this path
+                execution_path = {
+                    'model': model,
+                    'history': history,
+                    'plan_node': self.plan_node,
+                    'dev_node': self.dev_node,
+                    'index': i
+                }
+                self.execution_paths.append(execution_path)
+                self.logger.info(f"Completed execution path {i+1}/{len(models)} with model: {model}")
+                
+                # Clear workspace files after each model execution (except the last one)
+                if i < len(models) - 1:
+                    self._clear_workspace_files(workspace_path)
+                    self.logger.debug(f"Cleared workspace files for next model")
 
         self.logger.info("All execution paths completed, starting critic evaluation")
         final_answer, reason, best_id = self.critic_node(histories=histories)
-        self.critic_node.save_logs_to_file()  # save critic node prompt and history to log file
         
         self.logger.info("Critic evaluation completed")
         self.logger.debug("Critic reason: %s...", reason[:200] if len(reason) > 500 else reason)
         self.logger.info(f"Best member index: {best_id} (model: {models[best_id]})")
         
+        # Log critic result
+        critic_logger = get_task_logger(task_id, self.critic_node.model)
+        critic_logger.log_critic_result(final_answer, reason, best_id)
+        
         # Store the best path information for learning
         self.best_id = best_id
         
-        self.logger.info(f"Task evolution completed successfully")
+        self.logger.info(f"Task evolution completed successfully (task_id: {task_id})")
         return final_answer
 
     def learn(self) -> None: # TODO contrastive learning, leveraging failed trajectories
@@ -326,6 +370,33 @@ Example format:
                 self.dev_memory.add_episodic(content)
         except Exception as e:
             self.logger.error(f"Failed to save dev episodic memory: {e}")
+
+    def _clear_workspace_files(self, workspace_path: str) -> None:
+        """
+        Clear all files in the workspace directory while keeping the directory itself.
+        
+        Args:
+            workspace_path: Path to the workspace directory
+        """
+        try:
+            from pathlib import Path
+            import shutil
+            
+            workspace = Path(workspace_path)
+            if workspace.exists() and workspace.is_dir():
+                # Remove all files and subdirectories
+                for item in workspace.iterdir():
+                    if item.is_file():
+                        item.unlink()
+                    elif item.is_dir():
+                        shutil.rmtree(item)
+                
+                self.logger.debug(f"Cleared all files from workspace: {workspace_path}")
+            else:
+                self.logger.warning(f"Workspace directory does not exist: {workspace_path}")
+                
+        except Exception as e:
+            self.logger.error(f"Failed to clear workspace files {workspace_path}: {e}")
 
     def clear_episodic(self) -> None:
         """Clear all episodic memories."""

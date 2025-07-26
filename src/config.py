@@ -146,6 +146,10 @@ class Config:
         return self.get('nodes.critic_length', 5)
     
     @property
+    def max_code_output_length(self) -> int:
+        return self.get('nodes.max_code_output_length', 1000)
+    
+    @property
     def workspace_dir(self) -> str:
         return self.get('environment.workspace_dir', 'workspace')
     
@@ -183,7 +187,7 @@ class Config:
     
     @property
     def api_timeout(self) -> int:
-        return self.get('timeout.api_timeout', 30)
+        return self.get('timeout.api_timeout', 600)
     
     @property
     def max_retries(self) -> int:

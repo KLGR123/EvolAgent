@@ -1,5 +1,8 @@
+import os
 import sys
 import time
+import signal
+import atexit
 from typing import Literal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -8,6 +11,10 @@ from src.utils.loader import get_task_from_gaia
 from src.pipelines import EvolvePipeline
 from src.config import config
 from src.utils.logger import get_logger, TaskLogger
+from src.utils.workspace_manager import cleanup_all_workspaces
+
+# Global flag to prevent multiple cleanup attempts
+_cleanup_in_progress = False
 
 
 TASK_ID_LIST = [
@@ -23,7 +30,7 @@ TASK_ID_LIST = [
     # "4fc2f1ae-8625-45b5-ab34-ad4433bc21f8",
     # "56137764-b4e0-45b8-9c52-1866420c3df5",
     # "5d0080cb-90d7-4712-bc33-848150e917d3",
-    "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
+    # "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
     # "676e5e31-a554-4acc-9286-b60d90a92d26",
     # "6b078778-0b90-464d-83f6-59511c811b01",
     # "7619a514-5fa8-43ef-9143-83b66a43d7a4",
@@ -72,7 +79,9 @@ TASK_ID_LIST = [
     # "e8cb5b03-41e0-4086-99e5-f6806cd97211",
     # "9318445f-fe6a-4e1b-acbf-c68228c9906a",
     # "72e110e7-464c-453c-a309-90a95aed6538",
-    # "a7feb290-76bb-4cb7-8800-7edaf7954f2f"
+    "a7feb290-76bb-4cb7-8800-7edaf7954f2f",
+    # "d0633230-7067-47a9-9dbf-ee11e0a2cdd6",
+    # "c526d8d6-5987-4da9-b24c-83466fa172f3"
 ]
 
 
@@ -92,10 +101,11 @@ def main(task_id: str,
         
         start_time = time.time()
         
-        # Use configured models instead of hardcoded list
+        # Use configured models instead of hardcoded list with task_id for workspace isolation
         answer = pipeline(
             task=task_info["question"], 
-            models=config.default_models
+            models=config.default_models,
+            task_id=task_id
         )
         
         end_time = time.time()
@@ -132,10 +142,36 @@ def main(task_id: str,
         return result
 
 
+def cleanup_handler(signum=None, frame=None):
+    """Handle cleanup on program termination."""
+    global _cleanup_in_progress
+    
+    # Avoid multiple cleanup attempts
+    if _cleanup_in_progress:
+        return
+    
+    _cleanup_in_progress = True
+    logger = get_logger(__name__)
+    logger.info("Received termination signal, cleaning up workspaces...")
+    
+    try:
+        cleanup_all_workspaces()
+        logger.info("Cleanup completed, exiting...")
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
+    finally:
+        os._exit(1)  # Force exit
+
+
 if __name__ == "__main__":
     logger = get_logger(__name__)
     logger.info("Starting EvolAgent main execution")
     logger.info(f"Configuration loaded: max_parallel_tasks={config.max_parallel_tasks}")
+
+    # Register cleanup handlers for graceful shutdown
+    signal.signal(signal.SIGINT, cleanup_handler)  # Ctrl+C
+    signal.signal(signal.SIGTERM, cleanup_handler)  # Termination
+    atexit.register(cleanup_all_workspaces)  # Normal exit
 
     pipeline = EvolvePipeline()
     
@@ -145,30 +181,56 @@ if __name__ == "__main__":
     
     logger.info(f"Processing {len(TASK_ID_LIST)} tasks with {max_workers} parallel workers")
     
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    executor = None
+    try:
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        
         # Submit all tasks to the executor
         future_to_task_id = {
             executor.submit(main, task_id, pipeline, "validation"): task_id 
             for task_id in TASK_ID_LIST
         }
         
-        # Collect results as they complete
-        for future in as_completed(future_to_task_id):
+        # Collect results as they complete with timeout for interruption
+        for future in as_completed(future_to_task_id, timeout=None):
             task_id = future_to_task_id[future]
             try:
-                result = future.result()
+                result = future.result(timeout=1.0)  # Short timeout to allow interruption
                 results.append(result)
                 logger.info(f"Completed task {task_id}: {result.get('is_correct', 'N/A')}")
             except Exception as exc:
                 logger.error(f"Task {task_id} generated an exception: {exc}")
+        
+        # Summary statistics
+        if results:
+            total_tasks = len(results)
+            correct_tasks = sum(1 for r in results if r.get('is_correct', False))
+            success_rate = correct_tasks / total_tasks * 100
+            logger.info(f"Final Summary: {correct_tasks}/{total_tasks} tasks completed successfully ({success_rate:.1f}%)")
+        
+            logger.info("Check Episodic Memories!")
+            # pipeline.clear_episodic()
+            logger.info("EvolAgent execution completed")
     
-    # Summary statistics
-    if results:
-        total_tasks = len(results)
-        correct_tasks = sum(1 for r in results if r.get('is_correct', False))
-        success_rate = correct_tasks / total_tasks * 100
-        logger.info(f"Final Summary: {correct_tasks}/{total_tasks} tasks completed successfully ({success_rate:.1f}%)")
-    
-        logger.info("Check Episodic Memories!")
-        # pipeline.clear_episodic()
-        logger.info("EvolAgent execution completed")
+    except KeyboardInterrupt:
+        logger.info("Execution interrupted by user")
+        if executor:
+            logger.info("Shutting down executor...")
+            executor.shutdown(wait=False)  # Don't wait for completion
+        cleanup_all_workspaces()
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Unexpected error during execution: {e}")
+        if executor:
+            executor.shutdown(wait=False)
+        cleanup_all_workspaces()
+        raise
+    finally:
+        # Final cleanup to ensure all temporary workspaces are removed
+        if executor:
+            try:
+                executor.shutdown(wait=True)
+            except:
+                pass
+        cleanup_all_workspaces()
+        logger.info("Workspace cleanup completed")

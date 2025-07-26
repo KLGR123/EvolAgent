@@ -28,6 +28,7 @@ class DevNode(BaseNode):
 
         self.plan = plan
         self.procedural: Template = self.memory.get_procedural()
+        self.history: List[Dict[str, str]] = []
 
         try:
             self.semantic: str = self.memory.get_semantic(query=self.plan)
@@ -56,7 +57,9 @@ class DevNode(BaseNode):
             self.logger.debug(f"{self.role} received history from {h['role']}")
             self.add_history(h=h)
 
-        prompt = Template(self.init_prompt).safe_substitute(history=self.export_history(past_n=self.past_n))
+        prompt = Template(self.init_prompt).safe_substitute(
+            history=self.export_history(past_n=self.past_n)
+        )
         response = self.forward(prompt=prompt)
         h = self.parse_response(response)
         self.add_history(h=h)

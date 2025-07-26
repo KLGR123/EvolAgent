@@ -141,10 +141,12 @@ class BaseNode:
             parsed_json = json_repair.loads(json_content)
             self.logger.debug("JSON parsed successfully using json_repair")
             
-            try:
-                assert parsed_json["role"] == self.role
-            except Exception as e:
-                self.logger.warning(f"{parsed_json["role"]} is not equal to {self.role}, setting to {self.role} manually")
+            # Check if 'role' field exists and matches expected role
+            if "role" not in parsed_json:
+                self.logger.warning(f"Missing 'role' field in response, setting to {self.role}")
+                parsed_json["role"] = self.role
+            elif parsed_json["role"] != self.role:
+                self.logger.warning(f"Role mismatch: got '{parsed_json['role']}', expected '{self.role}', correcting it")
                 parsed_json["role"] = self.role
 
             return parsed_json
@@ -202,26 +204,6 @@ class BaseNode:
         return Template(self.init_prompt).safe_substitute(
             history=self.export_history()
         )
-
-    def save_logs_to_file(self) -> None:
-        """
-        Save the prompt and history to the log file, overwriting the existing file.
-        The file is saved in the logs directory, named {node_name}.md
-        """
-
-        try:
-            logs_dir = config.log_folder_path
-            if not os.path.exists(logs_dir):
-                os.makedirs(logs_dir)
-
-            prompt_file = os.path.join(logs_dir, f"{self.role}.md")
-            with open(prompt_file, 'w', encoding='utf-8') as f:
-                f.write(self.export_prompt())
-                
-            self.logger.debug(f"Saved logs for {self.role} node to {prompt_file}")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to save logs for {self.role} node: {str(e)}")
 
     def __repr__(self):
         return f"Node(role={self.role}, model={self.model})"

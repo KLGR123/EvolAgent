@@ -4,8 +4,8 @@ from ..memory import Memory
 
 class BasePipeline:
     def __init__(self):
-        self.plan_memory = Memory("plan")
-        self.dev_memory = Memory("dev")
+        self.plan_memory = Memory("planner")
+        self.dev_memory = Memory("developer")
 
     def _forward(self, task: str, model: str = "o4-mini") -> Tuple[str, str]:
         return "", ""

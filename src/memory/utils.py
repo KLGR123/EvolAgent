@@ -60,7 +60,7 @@ class DenseEmbedModel:
                     f"{self.base_url}/embeddings",
                     json=payload,
                     headers=headers,
-                    timeout=30
+                    timeout=60
                 )
                 response.raise_for_status()
                 result = response.json()

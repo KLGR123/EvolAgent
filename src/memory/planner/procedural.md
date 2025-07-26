@@ -176,4 +176,5 @@ $history
 ```
 
 ---
-Remember: To end the task, simply set plan to <END>.
+**Reminder 1**: To end the task, simply set plan to <END>.
+**Reminder 2**: When writing the plan, there is no need to emphasize the established fact of "accomplishing something by writing Python code." NEVER instruct your colleagues to "write Python code directly in the workspace"! DO NOT micromanage the developer's work, such as specifying which packages to use or other technical details!

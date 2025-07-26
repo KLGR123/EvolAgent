@@ -147,6 +147,31 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
         The string of the execution result.
     """
     
+    # Import workspace_manager here to avoid circular imports
+    try:
+        from .workspace_manager import workspace_manager
+        
+        # Replace workspace/ paths with task-specific workspace paths
+        current_workspace = workspace_manager.get_current_workspace()
+        current_task_id = workspace_manager.get_current_task_id()
+        
+        if current_task_id and current_workspace:
+            # Replace workspace/ with workspace_{task_id}/
+            task_workspace_name = f"workspace_{current_task_id}"
+            
+            # Use string replacement instead of regex to avoid escape issues
+            # Replace various forms of workspace paths
+            code = code.replace('workspace/', f'{task_workspace_name}/')
+            code = code.replace('workspace\\', f'{task_workspace_name}\\')  # Windows paths
+            code = code.replace('"workspace"', f'"{task_workspace_name}"')
+            code = code.replace("'workspace'", f"'{task_workspace_name}'")
+            
+            print(f"[WORKSPACE] Using task-specific workspace: {task_workspace_name}")
+        
+    except ImportError:
+        # If workspace_manager is not available, continue with original code
+        pass
+    
     output_buffer = io.StringIO()
     error_buffer = io.StringIO()
     
