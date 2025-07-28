@@ -67,10 +67,11 @@ class DevNode(BaseNode):
         code = deepcopy(h["code"])
         is_end = (code == "<END>" or "<END>" in code)
         
-        # Record all plan-code pairs during development, not just at the end
+        # Record all plan-code pairs during development with the current plan
+        # Use deepcopy to ensure we capture the plan at this moment, not a reference
         if code and code != "<END>":
             self.plan_code_trajectory.append({
-                "plan": self.plan,
+                "plan": deepcopy(self.plan),  # Capture current plan state
                 "code": code,
             })
 

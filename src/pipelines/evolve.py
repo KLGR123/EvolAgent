@@ -10,7 +10,7 @@ from ..config import config
 from ..utils.logger import log_execution_time, ComponentLoggers
 from ..utils.workspace_manager import isolated_workspace
 from ..utils.task_logger import get_task_logger
-from ..utils.html_logger import get_html_task_logger
+from ..utils.html_logger import get_html_task_logger, HTMLTaskLogger
 
 
 class EvolvePipeline(BasePipeline):
@@ -76,6 +76,7 @@ class EvolvePipeline(BasePipeline):
         task: str, 
         model: str = "o4-mini",
         task_id: str = None,
+        model_index: int = 0,
     ) -> str:
         """
         Forward the task, sample one trajectory using reusable nodes.
@@ -84,9 +85,9 @@ class EvolvePipeline(BasePipeline):
         self.task = task
         self.logger.info(f"Starting forward pass for model: {model}")
 
-        # Get task loggers for this model
-        task_logger = get_task_logger(task_id, model) if task_id else None
-        html_logger = get_html_task_logger(task_id, model, task_logger.get_base_dir() if task_logger else None) if task_id else None
+        # Get task loggers for this model with unique index
+        task_logger = get_task_logger(task_id, model, model_index) if task_id else None
+        html_logger = get_html_task_logger(task_id, model, task_logger.get_base_dir() if task_logger else None, model_index) if task_id else None
 
         # Get or create reusable nodes for this model
         self.plan_node, self.dev_node, self.test_node = self._get_or_create_nodes(model)
@@ -256,7 +257,7 @@ class EvolvePipeline(BasePipeline):
             for i, model in enumerate(tqdm(models, desc="Processing models")):
                 self.logger.info(f"Starting execution path {i+1}/{len(models)} with model: {model}")
                 
-                history = self._forward(task, model, task_id)
+                history = self._forward(task, model, task_id, i)
                 histories.append(history)
                 
                 # Store the complete execution context for this path
@@ -282,13 +283,13 @@ class EvolvePipeline(BasePipeline):
         self.logger.debug("Critic reason: %s...", reason[:200] if len(reason) > 500 else reason)
         self.logger.info(f"Best member index: {best_id} (model: {models[best_id]})")
         
-        # Log critic result  
-        critic_logger = get_task_logger(task_id, self.critic_node.model)
-        critic_logger.log_critic_result(final_answer, reason, best_id)
+        # Log critic result with separate loggers to avoid contaminating model logs
+        critic_task_logger = get_task_logger(task_id, f"critic_{self.critic_node.model}")
+        critic_task_logger.log_critic_result(final_answer, reason, best_id)
         
-        # Also log to HTML logger (this will save to the task_id root directory)
-        critic_html_logger = get_html_task_logger(task_id, self.critic_node.model, critic_logger.get_base_dir())
-        critic_html_logger.log_critic_result(final_answer, reason, best_id)
+        # Save critic result to task root directory without contaminating any model's conversation history
+        critic_html_logger = HTMLTaskLogger(task_id, f"critic_{self.critic_node.model}")
+        critic_html_logger.save_critic_result_to_task_root(final_answer, reason, best_id)
         
         # Store the best path information for learning
         self.best_id = best_id
@@ -392,9 +393,11 @@ Example format:
             history = self.best_plan_node.export_history()
             content = f"### {title}\n\n**TASK**: {self.task}\n\n```\n{history}\n```"
             self.plan_memory.add_episodic(content)
-            self.logger.debug(f"Plan episodic memory saved: {title}")
+            self.logger.info(f"Plan episodic memory saved successfully: {title}")
         except Exception as e:
             self.logger.error(f"Failed to save plan episodic memory: {e}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _save_dev_episodic(self) -> None:
         """
@@ -405,22 +408,35 @@ Example format:
             plan_code_trajectory = self.best_dev_node.export_plan_code_trajectory()
             self.logger.info(f"Processing {len(plan_code_trajectory)} plan-code pairs for episodic memory")
             
-            for trajectory_item in plan_code_trajectory:
-                # Handle both dict and tuple formats for backward compatibility
-                if isinstance(trajectory_item, dict):
-                    plan = trajectory_item["plan"]
-                    code = trajectory_item["code"]
-                else:
-                    plan, code = trajectory_item
-                
-                title = self._summarize_task(plan)
-                use_cases = self._summarize_use_cases(plan=plan, code=code)
-                
-                # Ensure proper template variable substitution
-                content = f"### {title}\n\n**Description**: {plan}\n\n**Use Cases**:\n{use_cases}\n\n```\n{code}\n```"
-                
-                self.logger.debug(f"Dev episodic memory content created: {title}")
-                self.dev_memory.add_episodic(content)
+            successful_saves = 0
+            failed_saves = 0
+            
+            for i, trajectory_item in enumerate(plan_code_trajectory):
+                try:
+                    # Handle both dict and tuple formats for backward compatibility
+                    if isinstance(trajectory_item, dict):
+                        plan = trajectory_item["plan"]
+                        code = trajectory_item["code"]
+                    else:
+                        plan, code = trajectory_item
+                    
+                    # Create more specific title to avoid conflicts
+                    title = f"Development Step {i+1}: {self._summarize_task(plan)}"
+                    use_cases = self._summarize_use_cases(plan=plan, code=code)
+                    
+                    # Ensure proper template variable substitution
+                    content = f"### {title}\n\n**Description**: {plan}\n\n**Use Cases**:\n{use_cases}\n\n```\n{code}\n```"
+                    
+                    self.logger.debug(f"Dev episodic memory content created: {title}")
+                    self.dev_memory.add_episodic(content)
+                    successful_saves += 1
+                    
+                except Exception as e:
+                    failed_saves += 1
+                    self.logger.error(f"Failed to save dev episodic memory item {i+1}: {e}")
+                    continue  # Continue with next item even if this one fails
+            
+            self.logger.info(f"Dev episodic memory save completed: {successful_saves} successful, {failed_saves} failed")
                 
         except Exception as e:
             self.logger.error(f"Failed to save dev episodic memory: {e}")

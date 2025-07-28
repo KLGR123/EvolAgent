@@ -707,31 +707,8 @@ class HTMLTaskLogger:
             code_output=code_output
         )
     
-    def log_critic_result(self, final_answer: str, reason: str, best_model_index: int) -> None:
-        """Log critic final decision and reasoning."""
-        content = f"""**Final Answer:**
-{final_answer}
-
-**Reasoning Process:**
-{reason}
-
-**Task Summary:**
-- Task completion time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-- Total execution time: {(datetime.now() - self.start_time).total_seconds():.2f} seconds
-- Selected best model index: {best_model_index}"""
-        
-        self.add_conversation(
-            role="critic",
-            title="🏆 Critic Final Decision",
-            content=content,
-            metadata={
-                "final_answer": final_answer,
-                "reason": reason,
-                "best_model_index": best_model_index,
-                "execution_time": (datetime.now() - self.start_time).total_seconds()
-            }
-        )
-        
+    def save_critic_result_to_task_root(self, final_answer: str, reason: str, best_model_index: int) -> None:
+        """Save critic result directly to task root directory without affecting model conversations."""
         # Save critic result to task_id root directory
         critic_data = {
             "task_id": self.task_id,
@@ -799,6 +776,34 @@ class HTMLTaskLogger:
                 f.write(critic_html)
         except Exception as e:
             print(f"Error writing critic HTML file: {e}")
+
+    def log_critic_result(self, final_answer: str, reason: str, best_model_index: int) -> None:
+        """Log critic final decision and reasoning."""
+        content = f"""**Final Answer:**
+{final_answer}
+
+**Reasoning Process:**
+{reason}
+
+**Task Summary:**
+- Task completion time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- Total execution time: {(datetime.now() - self.start_time).total_seconds():.2f} seconds
+- Selected best model index: {best_model_index}"""
+        
+        self.add_conversation(
+            role="critic",
+            title="🏆 Critic Final Decision",
+            content=content,
+            metadata={
+                "final_answer": final_answer,
+                "reason": reason,
+                "best_model_index": best_model_index,
+                "execution_time": (datetime.now() - self.start_time).total_seconds()
+            }
+        )
+        
+        # Also save to task root directory
+        self.save_critic_result_to_task_root(final_answer, reason, best_model_index)
     
     def log_task_summary(self, task: str, models: List[str], total_plans: int) -> None:
         """Create a task summary with overview information."""
@@ -830,33 +835,56 @@ class HTMLTaskLoggerManager:
     """Manages HTMLTaskLogger instances for different task_id and model combinations."""
     
     def __init__(self):
-        self.loggers: Dict[str, Dict[str, HTMLTaskLogger]] = {}
+        self.loggers: Dict[str, HTMLTaskLogger] = {}  # Use single dict with composite key
+        self.model_counters: Dict[str, Dict[str, int]] = {}  # Track model usage per task
     
-    def get_logger(self, task_id: str, model: str, base_dir: Optional[Path] = None) -> HTMLTaskLogger:
+    def get_logger(self, task_id: str, model: str, base_dir: Optional[Path] = None, 
+                   model_index: Optional[int] = None) -> HTMLTaskLogger:
         """Get or create an HTMLTaskLogger for the specified task_id and model."""
-        if task_id not in self.loggers:
-            self.loggers[task_id] = {}
-        
         # If base_dir is provided, always create a new logger to ensure correct directory
         if base_dir is not None:
             return HTMLTaskLogger(task_id, model, base_dir)
         
-        # Otherwise use the cached logger
-        if model not in self.loggers[task_id]:
-            self.loggers[task_id][model] = HTMLTaskLogger(task_id, model, base_dir)
+        # Initialize counters for this task if needed
+        if task_id not in self.model_counters:
+            self.model_counters[task_id] = {}
         
-        return self.loggers[task_id][model]
+        # Generate unique key based on task_id, model, and occurrence index
+        if model_index is not None:
+            # Use provided index (from pipeline)
+            unique_key = f"{task_id}_{model}_{model_index}"
+        else:
+            # Auto-increment counter for this model in this task
+            if model not in self.model_counters[task_id]:
+                self.model_counters[task_id][model] = 0
+            else:
+                self.model_counters[task_id][model] += 1
+            
+            unique_key = f"{task_id}_{model}_{self.model_counters[task_id][model]}"
+        
+        # Create logger if it doesn't exist
+        if unique_key not in self.loggers:
+            self.loggers[unique_key] = HTMLTaskLogger(task_id, model, base_dir)
+        
+        return self.loggers[unique_key]
     
     def cleanup_task(self, task_id: str) -> None:
         """Clean up loggers for a completed task."""
-        if task_id in self.loggers:
-            del self.loggers[task_id]
+        # Remove all loggers for this task
+        keys_to_remove = [key for key in self.loggers.keys() if key.startswith(f"{task_id}_")]
+        for key in keys_to_remove:
+            del self.loggers[key]
+        
+        # Clean up counters
+        if task_id in self.model_counters:
+            del self.model_counters[task_id]
 
 
 # Global HTML logger manager instance
 html_task_logger_manager = HTMLTaskLoggerManager()
 
 
-def get_html_task_logger(task_id: str, model: str, base_dir: Optional[Path] = None) -> HTMLTaskLogger:
+def get_html_task_logger(task_id: str, model: str, base_dir: Optional[Path] = None, 
+                        model_index: Optional[int] = None) -> HTMLTaskLogger:
     """Convenient function to get an HTML task logger."""
-    return html_task_logger_manager.get_logger(task_id, model, base_dir) 
+    return html_task_logger_manager.get_logger(task_id, model, base_dir, model_index) 

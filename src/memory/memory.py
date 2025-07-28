@@ -34,7 +34,7 @@ class Memory:
         self.client = Memory._shared_client
         if self.role in ["planner", "developer"]:
             self.semantic_retriever = Retriever(client=self.client, role=role, type="semantic")
-        if self.role in ["developer"]:
+        if self.role in ["planner", "developer"]:  # Both planner and developer need episodic memory
             self.episodic_retriever = Retriever(client=self.client, role=role, type="episodic")
         
         self.logger.debug(f"Initialized Memory for {role}")

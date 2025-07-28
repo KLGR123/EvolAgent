@@ -354,26 +354,43 @@ class TaskLoggerManager:
     """
     
     def __init__(self):
-        self.loggers: Dict[str, Dict[str, TaskLogger]] = {}
+        self.loggers: Dict[str, TaskLogger] = {}  # Use single dict with composite key
+        self.model_counters: Dict[str, Dict[str, int]] = {}  # Track model usage per task
     
-    def get_logger(self, task_id: str, model: str) -> TaskLogger:
+    def get_logger(self, task_id: str, model: str, model_index: Optional[int] = None) -> TaskLogger:
         """
         Get or create a TaskLogger for the specified task_id and model.
         
         Args:
             task_id: Task identifier
             model: Model name
+            model_index: Optional model index for duplicate models
             
         Returns:
             TaskLogger instance
         """
-        if task_id not in self.loggers:
-            self.loggers[task_id] = {}
+        # Initialize counters for this task if needed
+        if task_id not in self.model_counters:
+            self.model_counters[task_id] = {}
         
-        if model not in self.loggers[task_id]:
-            self.loggers[task_id][model] = TaskLogger(task_id, model)
+        # Generate unique key based on task_id, model, and occurrence index
+        if model_index is not None:
+            # Use provided index (from pipeline)
+            unique_key = f"{task_id}_{model}_{model_index}"
+        else:
+            # Auto-increment counter for this model in this task
+            if model not in self.model_counters[task_id]:
+                self.model_counters[task_id][model] = 0
+            else:
+                self.model_counters[task_id][model] += 1
+            
+            unique_key = f"{task_id}_{model}_{self.model_counters[task_id][model]}"
         
-        return self.loggers[task_id][model]
+        # Create logger if it doesn't exist
+        if unique_key not in self.loggers:
+            self.loggers[unique_key] = TaskLogger(task_id, model)
+        
+        return self.loggers[unique_key]
     
     def cleanup_task(self, task_id: str) -> None:
         """
@@ -382,23 +399,30 @@ class TaskLoggerManager:
         Args:
             task_id: Task identifier to clean up
         """
-        if task_id in self.loggers:
-            del self.loggers[task_id]
+        # Remove all loggers for this task
+        keys_to_remove = [key for key in self.loggers.keys() if key.startswith(f"{task_id}_")]
+        for key in keys_to_remove:
+            del self.loggers[key]
+        
+        # Clean up counters
+        if task_id in self.model_counters:
+            del self.model_counters[task_id]
 
 
 # Global logger manager instance
 task_logger_manager = TaskLoggerManager()
 
 
-def get_task_logger(task_id: str, model: str) -> TaskLogger:
+def get_task_logger(task_id: str, model: str, model_index: Optional[int] = None) -> TaskLogger:
     """
     Convenient function to get a task logger.
     
     Args:
         task_id: Task identifier
         model: Model name
+        model_index: Optional model index for duplicate models
         
     Returns:
         TaskLogger instance
     """
-    return task_logger_manager.get_logger(task_id, model) 
+    return task_logger_manager.get_logger(task_id, model, model_index) 
