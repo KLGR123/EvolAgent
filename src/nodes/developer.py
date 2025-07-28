@@ -66,7 +66,9 @@ class DevNode(BaseNode):
 
         code = deepcopy(h["code"])
         is_end = (code == "<END>" or "<END>" in code)
-        if is_end:
+        
+        # Record all plan-code pairs during development, not just at the end
+        if code and code != "<END>":
             self.plan_code_trajectory.append({
                 "plan": self.plan,
                 "code": code,

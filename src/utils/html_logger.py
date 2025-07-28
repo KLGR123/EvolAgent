@@ -55,13 +55,23 @@ class HTMLTaskLogger:
         self.conversations = []
     
     def _get_unique_model_dir_name(self, base_log_dir: Path, model_safe: str) -> str:
-        """Get a unique directory name for the model, adding suffix if needed."""
-        original_name = model_safe
-        counter = 1
+        """
+        Get a unique directory name for the model, adding suffix if needed.
         
+        Args:
+            base_log_dir: Base log directory path
+            model_safe: Safe model name for directory
+            
+        Returns:
+            Unique directory name (e.g., "o4-mini", "o4-mini_2", "o4-mini_3")
+        """
+        original_name = model_safe
+        counter = 2  # Start from 2 since first instance has no suffix
+        
+        # Check if directory already exists
         while (base_log_dir / model_safe).exists():
-            counter += 1
             model_safe = f"{original_name}_{counter}"
+            counter += 1
         
         return model_safe
     

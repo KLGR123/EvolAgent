@@ -63,6 +63,9 @@ class EvolvePipeline(BasePipeline):
         dev_node.history.clear()
         test_node.history.clear()
         
+        # Clear plan_code_trajectory for clean state
+        dev_node.plan_code_trajectory.clear()
+        
         # Reset token counters
         plan_node._last_history_token_counts = 0
         dev_node._last_history_token_counts = 0
@@ -400,14 +403,29 @@ Example format:
         """
         try:
             plan_code_trajectory = self.best_dev_node.export_plan_code_trajectory()
-            for plan, code in plan_code_trajectory:
+            self.logger.info(f"Processing {len(plan_code_trajectory)} plan-code pairs for episodic memory")
+            
+            for trajectory_item in plan_code_trajectory:
+                # Handle both dict and tuple formats for backward compatibility
+                if isinstance(trajectory_item, dict):
+                    plan = trajectory_item["plan"]
+                    code = trajectory_item["code"]
+                else:
+                    plan, code = trajectory_item
+                
                 title = self._summarize_task(plan)
                 use_cases = self._summarize_use_cases(plan=plan, code=code)
+                
+                # Ensure proper template variable substitution
                 content = f"### {title}\n\n**Description**: {plan}\n\n**Use Cases**:\n{use_cases}\n\n```\n{code}\n```"
-                self.logger.debug(f"Dev episodic memory saved: {title}")
+                
+                self.logger.debug(f"Dev episodic memory content created: {title}")
                 self.dev_memory.add_episodic(content)
+                
         except Exception as e:
             self.logger.error(f"Failed to save dev episodic memory: {e}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _clear_workspace_files(self, workspace_path: str) -> None:
         """

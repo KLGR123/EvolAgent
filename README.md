@@ -18,11 +18,9 @@ pip install -r requirements.txt
 crawl4ai-setup
 crawl4ai-doctor
 
-python log_server.py
-
 export TOKENIZERS_PARALLELISM=true
-mkdir -p "workspace"
 python main.py
+python log_server.py
 rm -rf workspace/*
 
 pip freeze > requirements.txt

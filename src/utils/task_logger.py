@@ -51,12 +51,12 @@ class TaskLogger:
             Unique directory name (e.g., "o4-mini", "o4-mini_2", "o4-mini_3")
         """
         original_name = model_safe
-        counter = 1
+        counter = 2  # Start from 2 since first instance has no suffix
         
         # Check if directory already exists
         while (base_log_dir / model_safe).exists():
-            counter += 1
             model_safe = f"{original_name}_{counter}"
+            counter += 1
         
         return model_safe
     
@@ -274,7 +274,18 @@ class TaskLogger:
 - **Total execution time:** {(datetime.now() - self.start_time).total_seconds():.2f} seconds
 - **Selected best model index:** {best_model_index}
 """
-        self._write_markdown("critic.md", content)
+        
+        # Save critic files to task root directory instead of model subdirectory
+        task_dir = Path(f"logs/log_{self.task_id}")
+        task_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Write markdown to task root directory
+        try:
+            critic_md_path = task_dir / "critic.md"
+            with open(critic_md_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except Exception as e:
+            print(f"Error writing critic markdown file {critic_md_path}: {e}")
         
         # Also save as JSON for programmatic access
         critic_data = {
@@ -286,7 +297,14 @@ class TaskLogger:
             "timestamp": datetime.now().isoformat(),
             "execution_time_seconds": (datetime.now() - self.start_time).total_seconds()
         }
-        self._write_json("critic.json", critic_data)
+        
+        # Write JSON to task root directory
+        try:
+            critic_json_path = task_dir / "critic.json"
+            with open(critic_json_path, 'w', encoding='utf-8') as f:
+                json.dump(critic_data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Error writing critic JSON file {critic_json_path}: {e}")
     
     def log_task_summary(self, task: str, models: List[str], total_plans: int) -> None:
         """
