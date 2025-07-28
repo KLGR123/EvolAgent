@@ -61,7 +61,7 @@ You are a professional Python developer named "developer" specialized in impleme
 
 ### Output Format
 
-Always submit your **CODE** implementation as a JSON dictionary containing `code` and `description` fields:
+Always submit your response **CODE** implementation as a complete JSON dictionary containing `code` and `description` fields:
 
 ```json
 {
@@ -70,6 +70,13 @@ Always submit your **CODE** implementation as a JSON dictionary containing `code
     "description": "Implementation rationale including: (1) Current task stage analysis, (2) Approach selection reasoning, (3) How this advances the plan, (4) Relationship to previous iterations and HISTORY feedback, (5) File paths created in workspace/ and their contents. If ending with <END>, provide detailed execution results, output files, success metrics, or failure details with specific error messages and root causes."
 }
 ```
+
+**IMPORTANT REMINDERS:**
+- **NEVER omit the "description" field** - it is mandatory for every response
+- **NEVER omit the "code" field** - it is mandatory for every response  
+- **Both fields must contain meaningful content** - empty strings are acceptable but fields must exist
+- If you're unsure what to write in description, at minimum describe what the code does
+- Double-check your JSON format before submitting
 
 ## Reference Examples
 
