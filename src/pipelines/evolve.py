@@ -10,6 +10,7 @@ from ..config import config
 from ..utils.logger import log_execution_time, ComponentLoggers
 from ..utils.workspace_manager import isolated_workspace
 from ..utils.task_logger import get_task_logger
+from ..utils.html_logger import get_html_task_logger
 
 
 class EvolvePipeline(BasePipeline):
@@ -80,8 +81,9 @@ class EvolvePipeline(BasePipeline):
         self.task = task
         self.logger.info(f"Starting forward pass for model: {model}")
 
-        # Get task logger for this model
+        # Get task loggers for this model
         task_logger = get_task_logger(task_id, model) if task_id else None
+        html_logger = get_html_task_logger(task_id, model, task_logger.get_base_dir() if task_logger else None) if task_id else None
 
         # Get or create reusable nodes for this model
         self.plan_node, self.dev_node, self.test_node = self._get_or_create_nodes(model)
@@ -97,6 +99,10 @@ class EvolvePipeline(BasePipeline):
         if task_logger:
             episodic_examples = getattr(self.plan_node, 'episodic', '') or ''
             task_logger.log_planner_start(task, episodic_examples)
+        
+        if html_logger:
+            episodic_examples = getattr(self.plan_node, 'episodic', '') or ''
+            html_logger.log_planner_start(task, episodic_examples)
 
         next_code = None
         plan_iteration = 0
@@ -113,6 +119,10 @@ class EvolvePipeline(BasePipeline):
             if task_logger:
                 planner_history = self.plan_node.export_history()
                 task_logger.log_planner_history(planner_history)
+                
+            if html_logger:
+                planner_history = self.plan_node.export_history()
+                html_logger.log_planner_history(planner_history)
             
             if is_end:
                 self.logger.info("Plan marked as complete with <END>")
@@ -126,6 +136,12 @@ class EvolvePipeline(BasePipeline):
             current_plan_index = None
             if task_logger:
                 current_plan_index = task_logger.log_developer_plan(
+                    next_plan["plan"], 
+                    next_plan.get("description", "")
+                )
+            
+            if html_logger:
+                current_plan_index = html_logger.log_developer_plan(
                     next_plan["plan"], 
                     next_plan.get("description", "")
                 )
@@ -157,6 +173,20 @@ class EvolvePipeline(BasePipeline):
                 next_feedback = self.test_node(h=next_code)
                 self.logger.debug("Test feedback: %s...", next_feedback['feedback'][:200])
                 
+                # Log code execution to HTML logger
+                if html_logger and current_plan_index:
+                    html_logger.log_developer_code_execution(
+                        plan_index=current_plan_index,
+                        code=next_code.get('code', ''),
+                        code_output=next_feedback.get('code_output', ''),
+                        iteration=dev_test_iteration
+                    )
+                    html_logger.log_tester_feedback(
+                        code=next_code.get('code', ''),
+                        code_output=next_feedback.get('code_output', ''),
+                        feedback=next_feedback.get('feedback', '')
+                    )
+                
                 # Double check after test feedback to prevent infinite loops
                 if dev_test_iteration > config.emergency_break_iterations:
                     self.logger.warning("Forcing termination due to excessive iterations")
@@ -171,6 +201,10 @@ class EvolvePipeline(BasePipeline):
             if task_logger and current_plan_index:
                 dev_history = self.dev_node.export_history()
                 task_logger.log_developer_history(current_plan_index, dev_history)
+                
+            if html_logger and current_plan_index:
+                dev_history = self.dev_node.export_history()
+                html_logger.log_developer_history(current_plan_index, dev_history)
         
         history = self.plan_node.export_history(past_n=config.critic_length)
         self.logger.info(f"Forward pass completed for model: {self.plan_node.model}")
@@ -245,9 +279,13 @@ class EvolvePipeline(BasePipeline):
         self.logger.debug("Critic reason: %s...", reason[:200] if len(reason) > 500 else reason)
         self.logger.info(f"Best member index: {best_id} (model: {models[best_id]})")
         
-        # Log critic result
+        # Log critic result  
         critic_logger = get_task_logger(task_id, self.critic_node.model)
         critic_logger.log_critic_result(final_answer, reason, best_id)
+        
+        # Also log to HTML logger (this will save to the task_id root directory)
+        critic_html_logger = get_html_task_logger(task_id, self.critic_node.model, critic_logger.get_base_dir())
+        critic_html_logger.log_critic_result(final_answer, reason, best_id)
         
         # Store the best path information for learning
         self.best_id = best_id

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvolAgent Log Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #f5f7fa;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* left sidebar */
+        .sidebar {
+            width: 300px;
+            background: #2c3e50;
+            color: white;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #34495e;
+            border-bottom: 1px solid #455a64;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.5em;
+            font-weight: 300;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .task-list {
+            padding: 0;
+        }
+
+        .task-item {
+            border-bottom: 1px solid #34495e;
+        }
+
+        .task-header {
+            padding: 15px 20px;
+            cursor: pointer;
+            background: #2c3e50;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .task-header:hover {
+            background: #34495e;
+        }
+
+        .task-header.active {
+            background: #3498db;
+        }
+
+        .task-id {
+            font-weight: 600;
+            font-size: 1em;
+        }
+
+        .task-stats {
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+
+        .expand-icon {
+            transition: transform 0.2s;
+        }
+
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .model-list {
+            background: #34495e;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .model-list.expanded {
+            max-height: 500px;
+        }
+
+        .model-item {
+            padding: 12px 40px;
+            cursor: pointer;
+            border-bottom: 1px solid #455a64;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .model-item:hover {
+            background: #455a64;
+        }
+
+        .model-item.active {
+            background: #2980b9;
+            font-weight: 600;
+        }
+
+        .model-name {
+            font-size: 0.9em;
+        }
+
+        .model-type {
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: #7f8c8d;
+        }
+
+        .model-type.critic {
+            background: #e67e22;
+        }
+
+        /* main content area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .content-header {
+            background: white;
+            padding: 20px;
+            border-bottom: 1px solid #e1e8ed;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .content-title {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .content-subtitle {
+            color: #7f8c8d;
+            font-size: 1em;
+        }
+
+        .content-body {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .html-viewer {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #7f8c8d;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h2 {
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .refresh-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .refresh-button:hover {
+            background: #2980b9;
+        }
+
+        /* scrollbar style */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #2c3e50;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #34495e;
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #455a64;
+        }
+
+        /* responsive design */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+            }
+            
+            .content-header {
+                padding: 15px;
+            }
+            
+            .content-title {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- left sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>📊 Log Viewer</h1>
+                <p>Select task and model to view logs</p>
+            </div>
+            <div class="task-list" id="taskList">
+                <div class="loading">
+                    <div>Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- main content area -->
+        <div class="main-content">
+            <div class="content-header">
+                <div class="content-title" id="contentTitle">EvolAgent Log Viewer</div>
+                <div class="content-subtitle" id="contentSubtitle">Please select the task and model to view logs</div>
+            </div>
+            <div class="content-body">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">📋</div>
+                    <h2>Welcome to the Log Viewer</h2>
+                    <p>Select the task ID and model from the left sidebar to view detailed HTML logs</p>
+                    <button class="refresh-button" onclick="loadTasks()">Refresh Task List</button>
+                </div>
+                <iframe class="html-viewer" id="htmlViewer" style="display: none;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tasks = [];
+        let currentTaskId = null;
+        let currentModel = null;
+
+        // initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTasks();
+        });
+
+        // load task list
+        async function loadTasks() {
+            try {
+                const response = await fetch('/api/tasks');
+                tasks = await response.json();
+                renderTaskList();
+            } catch (error) {
+                console.error('Failed to load task list:', error);
+                document.getElementById('taskList').innerHTML = `
+                    <div class="loading" style="color: #e74c3c;">
+                        Failed to load, please try again later
+                    </div>
+                `;
+            }
+        }
+
+        // render task list
+        function renderTaskList() {
+            const taskList = document.getElementById('taskList');
+            
+            if (tasks.length === 0) {
+                taskList.innerHTML = `
+                    <div class="loading">
+                        <div>No log files</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = tasks.map(task => `
+                <div class="task-item">
+                    <div class="task-header" onclick="toggleTask('${task.task_id}')">
+                        <div>
+                            <div class="task-id">Task ${task.task_id}</div>
+                            <div class="task-stats">
+                                ${task.models.length} models
+                                ${task.has_critic ? ' • Critic Result' : ''}
+                            </div>
+                        </div>
+                        <div class="expand-icon" id="icon-${task.task_id}">▶</div>
+                    </div>
+                    <div class="model-list" id="models-${task.task_id}">
+                        ${task.models.map(model => `
+                            <div class="model-item" onclick="selectModel('${task.task_id}', '${model.name}', '${model.path}')">
+                                <div class="model-name">${model.name}</div>
+                                <div class="model-type">Model</div>
+                            </div>
+                        `).join('')}
+                        ${task.has_critic ? `
+                            <div class="model-item" onclick="selectModel('${task.task_id}', 'critic', '${task.critic_path}')">
+                                <div class="model-name">Critic Result</div>
+                                <div class="model-type critic">Critic</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            taskList.innerHTML = html;
+        }
+
+        // toggle task expand/collapse
+        function toggleTask(taskId) {
+            const modelList = document.getElementById(`models-${taskId}`);
+            const icon = document.getElementById(`icon-${taskId}`);
+            
+            if (modelList.classList.contains('expanded')) {
+                modelList.classList.remove('expanded');
+                icon.classList.remove('expanded');
+            } else {
+                // collapse other tasks
+                document.querySelectorAll('.model-list').forEach(list => {
+                    list.classList.remove('expanded');
+                });
+                document.querySelectorAll('.expand-icon').forEach(icon => {
+                    icon.classList.remove('expanded');
+                });
+                
+                // expand current task
+                modelList.classList.add('expanded');
+                icon.classList.add('expanded');
+            }
+        }
+
+        // select model
+        async function selectModel(taskId, modelName, filePath) {
+            // update selected state
+            document.querySelectorAll('.model-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.model-item').classList.add('active');
+
+            // update current selection
+            currentTaskId = taskId;
+            currentModel = modelName;
+
+            // update title
+            document.getElementById('contentTitle').textContent = `Task ${taskId}`;
+            document.getElementById('contentSubtitle').textContent = `Model: ${modelName}`;
+
+            // hide empty state, show loading state
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('htmlViewer').style.display = 'none';
+            
+            // show temporary loading state
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<div>Loading HTML content...</div>';
+            loadingDiv.id = 'tempLoading';
+            document.querySelector('.content-body').appendChild(loadingDiv);
+
+            try {
+                // load HTML content
+                const response = await fetch(`/api/html/${filePath}`);
+                const data = await response.json();
+
+                if (data.content) {
+                    // create blob URL to display HTML content
+                    const blob = new Blob([data.content], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const iframe = document.getElementById('htmlViewer');
+                    iframe.src = url;
+                    iframe.style.display = 'block';
+                    
+                    // clean up old blob URL
+                    iframe.onload = function() {
+                        if (iframe.previousUrl) {
+                            URL.revokeObjectURL(iframe.previousUrl);
+                        }
+                        iframe.previousUrl = url;
+                    };
+                } else {
+                    throw new Error(data.error || 'Failed to load HTML content');
+                }
+            } catch (error) {
+                console.error('Failed to load HTML content:', error);
+                document.getElementById('contentSubtitle').textContent = `Failed to load: ${error.message}`;
+                document.getElementById('emptyState').style.display = 'flex';
+                document.getElementById('emptyState').innerHTML = `
+                    <div class="empty-state-icon">❌</div>
+                    <h2>Failed to load</h2>
+                    <p>${error.message}</p>
+                    <button class="refresh-button" onclick="selectModel('${taskId}', '${modelName}', '${filePath}')">Retry</button>
+                `;
+            } finally {
+                // remove loading state
+                const tempLoading = document.getElementById('tempLoading');
+                if (tempLoading) {
+                    tempLoading.remove();
+                }
+            }
+        }
+
+        // keyboard shortcut
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
+                event.preventDefault();
+                loadTasks();
+            }
+        });
+    </script>
+</body>
+</html> 

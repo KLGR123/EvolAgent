@@ -91,3 +91,30 @@ def get_task_from_gaia(task_id: str, split: str) -> dict:
     }
 
     return task_info
+
+
+def get_all_task_ids_by_level(split: str = "validation") -> list:
+    """
+    Get all task IDs from GAIA dataset sorted by level.
+    
+    Args:
+        split: Dataset split to use ("validation" or "test")
+        
+    Returns:
+        List of task IDs sorted by level (1, 2, 3)
+    """
+    ds = load_gaia_dataset(use_raw_dataset=True, split=split)
+    
+    # Get all tasks with their levels
+    tasks = []
+    for record in ds.to_list():
+        tasks.append({
+            'task_id': record['task_id'],
+            'level': record['level']
+        })
+    
+    # Sort by level, then by task_id for consistent ordering within each level
+    tasks.sort(key=lambda x: (x['level'], x['task_id']))
+    
+    # Return just the task IDs
+    return [task['task_id'] for task in tasks]

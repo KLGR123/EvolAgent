@@ -60,6 +60,10 @@ class TaskLogger:
         
         return model_safe
     
+    def get_base_dir(self) -> Path:
+        """Get the base directory path for this logger."""
+        return self.base_dir
+    
     def _write_markdown(self, filename: str, content: str) -> None:
         """Write content to a markdown file with error handling."""
         try:
