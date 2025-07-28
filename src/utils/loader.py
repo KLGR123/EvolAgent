@@ -1,6 +1,7 @@
 import os
 import shutil
 import datasets
+import json
 from huggingface_hub import snapshot_download
 
 
@@ -118,3 +119,47 @@ def get_all_task_ids_by_level(split: str = "validation") -> list:
     
     # Return just the task IDs
     return [task['task_id'] for task in tasks]
+
+
+def load_coldstart_dataset() -> list:
+    """
+    Get all coldstart task IDs from GAIA dataset sorted by level.
+    
+    Returns:
+        List of coldstart task IDs sorted by level (1, 2, 3)
+    """
+    with open("data/coldstart/cold_start.jsonl", "r") as f:
+        lines = f.readlines()
+        coldstart_tasks = []
+        for line in lines:
+            coldstart_tasks.append(json.loads(line))
+        return coldstart_tasks
+
+def get_task_from_coldstart(task_id: str, split: str) -> dict:
+    """
+    Get a task from the GAIA dataset.
+    """
+    ds = load_coldstart_dataset()
+    task = None
+
+    for record in ds:
+        if record['task_id'] == task_id:
+            task = record
+            break
+
+    if not task:
+        print(f"Task {task_id} not found in dataset")
+        raise ValueError(f"Task {task_id} not found in dataset")
+
+    question = task["question"]
+    task_info = {
+        "task_id": task["task_id"],
+        "question": question,
+        "true_answer": task["true_answer"],
+        # "level": task["level"],
+        # "file_name": task.get("file_name"),
+        # "steps": task.get("Annotator Metadata", {}).get("Steps"),
+        # "tools": task.get("Annotator Metadata", {}).get("Tools")
+    }
+
+    return task_info
