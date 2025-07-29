@@ -128,6 +128,10 @@ class Config:
     @property
     def max_history_tokens(self) -> int:
         return self.get('nodes.max_history_tokens', 199999)
+
+    @property
+    def max_compress_rounds(self) -> int:
+        return self.get('nodes.max_compress_rounds', 3)
     
     @property
     def plan_history_length(self) -> int:

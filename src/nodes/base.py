@@ -1,3 +1,4 @@
+from copy import deepcopy
 import os
 import re
 import json
@@ -36,13 +37,15 @@ class BaseNode:
         self.client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY"),
             base_url=os.getenv("OPENAI_BASE_URL"),
+            max_retries=3,
         )
         self.encoding = tiktoken.encoding_for_model("gpt-4o-mini")
         self.init_prompt: str = ""
         self.history: List[Dict[str, str]] = []
         self._last_history_token_counts = 0
-    
+        self.compress_index = 0
         self.logger.debug(f"Initialized {role} node with model {model}")
+
 
     def _init_counter(self) -> None:
         """
@@ -61,10 +64,11 @@ class BaseNode:
         """
 
         token_counts = len(self.encoding.encode(str(h)))
-        limit_exceeded = self._last_history_token_counts + token_counts > config.max_history_tokens
+        self._last_history_token_counts += token_counts
+        limit_exceeded = self._last_history_token_counts> config.max_history_tokens
         
         if limit_exceeded:
-            self.logger.warning(f"Token limit approaching: {self._last_history_token_counts + token_counts} > {config.max_history_tokens}")
+            self.logger.warning(f"Token limit approaching: {self._last_history_token_counts} > {config.max_history_tokens}")
         
         return limit_exceeded
     
@@ -72,22 +76,66 @@ class BaseNode:
         """
         Add the history to the node with token tracking.
         """
-
+        self.history.append(deepcopy(h))
         if self._is_token_limit_exceeded(h):
-            self._maintain_history(h)
+            self.logger.warning("Token limit exceeded - executing history maintenance")
+            self._maintain_history()
         else:
-            self.history.append(h)
             self._last_history_token_counts += len(self.encoding.encode(str(h)))
             self.logger.debug(f"Added history entry from {h['role']}, with {len(self.encoding.encode(str(h)))} tokens")
-
-    def _maintain_history(self, h: Dict[str, str]) -> None:
+    
+    def _maintain_history(self) -> None:
         """
         Maintain the history when token limit is exceeded.
         Achieved by either removing the oldest history or compressing the history.
         """
+        def load_compress_prompt(role: str) -> Template:
+            with open(f"src/memory/{role}/compress.md", "r") as f:
+                return Template(f.read())
+        
+        compress_prompt = load_compress_prompt(self.role) # 加载压缩prompt
 
-        self.logger.error(f"History token limit exceeded for {self.role} node")
-        raise ValueError("Token limit exceeded - history compression not yet implemented")
+        # 获取当前角色对应的key
+        key=("plan", "description") if self.role=="planner" else ("code", "description")
+        
+        attempts=1 # 压缩轮次
+        while self.compress_index<len(self.history) and self._last_history_token_counts > config.max_history_tokens and attempts<=config.max_compress_rounds:
+            # 解决developer和tester的 history 角色交叉
+            if self.role!="planner" and key[0] not in self.history[self.compress_index]:
+                if key[0]=="code": 
+                    key=("code_output", "feedback")
+                    compress_prompt = load_compress_prompt("tester") # 重新加载prompt
+                else:
+                    key=("code", "description")
+                    compress_prompt = load_compress_prompt("developer")
+            
+            self._last_history_token_counts -= len(self.encoding.encode(str(self.history[self.compress_index][key[1]]))) # 减去压缩前的长度
+            
+            messages=[
+                {'role': 'system', 'content': 'You are a Summarize Expert for an Agent system. Your task is to summarize the content of a conversation.'},
+                {"role": "user", "content": compress_prompt.safe_substitute(
+                    reference=self.history[self.compress_index][key[0]],
+                    target=self.history[self.compress_index][key[1]]
+                )}
+            ]
+            compressed_h = self.client.chat.completions.create(
+                model="gpt-4.1",
+                messages=messages,
+                max_tokens=1024*32,
+                timeout=300,
+                extra_headers={
+                    'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
+                }
+            )
+
+            self.history[self.compress_index][key[1]] = compressed_h.choices[0].message.content # 替换为压缩后的内容
+            self._last_history_token_counts += len(self.encoding.encode(str(compressed_h.choices[0].message.content))) # 计算压缩后的总长度
+            
+            self.compress_index+=1
+            if self.compress_index>=len(self.history): # TODO 是否需要保留最近的几个轮次不压缩？
+                self.compress_index=0 # 从头开始压缩
+                attempts+=1 # 压缩轮次+1
+        self.logger.warning(f"Length after {attempts+1} rounds of compression: {self._last_history_token_counts}")
 
     def forward(self, prompt: str) -> str:
         """

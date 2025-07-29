@@ -43,12 +43,12 @@ class TestNode(BaseNode):
         self.logger.debug(f"{self.role} received history from {h['role']}")
         code_output = interpret_code(h["code"])
 
-        max_len = config.max_code_output_length
-        if len(code_output) > max_len:
-            half = max_len // 2
-            code_output = f"{code_output[:half]}...(truncated)...{code_output[-half:]}"
-        else:
-            code_output = code_output
+        # max_len = config.max_code_output_length
+        # if len(code_output) > max_len:
+        #     half = max_len // 2
+        #     code_output = f"{code_output[:half]}...(truncated)...{code_output[-half:]}"
+        # else:
+        #     code_output = code_output
 
         prompt = Template(self.init_prompt).safe_substitute(
             history=self.export_history(past_n=self.past_n),
@@ -60,6 +60,7 @@ class TestNode(BaseNode):
 
         response = self.forward(prompt=prompt)
         h = self.parse_response(response)
+        del h["description"]
         self.add_history(h=h)
         h["code_output"] = code_output
         return h

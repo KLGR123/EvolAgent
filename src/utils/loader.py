@@ -128,7 +128,7 @@ def load_coldstart_dataset() -> list:
     Returns:
         List of coldstart task IDs sorted by level (1, 2, 3)
     """
-    with open("data/coldstart/cold_start.jsonl", "r") as f:
+    with open("data/coldstart/coldstart.jsonl", "r") as f:
         lines = f.readlines()
         coldstart_tasks = []
         for line in lines:
