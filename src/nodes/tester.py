@@ -60,7 +60,6 @@ class TestNode(BaseNode):
 
         response = self.forward(prompt=prompt)
         h = self.parse_response(response)
-        del h["description"]
         self.add_history(h=h)
         h["code_output"] = code_output
         return h
