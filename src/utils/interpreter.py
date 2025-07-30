@@ -146,6 +146,12 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
     Returns:
         The string of the execution result.
     """
+    # Set matplotlib backend to non-GUI to prevent GUI window creation in threads
+    try:
+        import matplotlib
+        matplotlib.use('Agg')  # Use Anti-Grain Geometry backend (no GUI)
+    except ImportError:
+        pass  # matplotlib not installed, skip
     
     # Import workspace_manager here to avoid circular imports
     try:

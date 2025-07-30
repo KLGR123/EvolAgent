@@ -19,6 +19,7 @@ crawl4ai-setup
 crawl4ai-doctor
 
 export TOKENIZERS_PARALLELISM=true
+python coldstart.py
 python main.py
 python log_server.py
 rm -rf workspace/*

@@ -189,7 +189,4 @@ def llm_scorer(question: str, prediction: str, true_answer: str) -> bool:
         ],
 
     )
-    if "yes" in response.choices[0].message.content.lower():
-        return True
-    else:
-        return False
+    return "yes" in response.choices[0].message.content.lower()

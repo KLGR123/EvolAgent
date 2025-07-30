@@ -6,6 +6,13 @@ import atexit
 from typing import Literal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# Set environment variable to ensure matplotlib uses non-GUI backend
+os.environ['MPLBACKEND'] = 'Agg'
+
+# Set matplotlib backend to non-GUI before any other matplotlib imports
+import matplotlib
+matplotlib.use('Agg')  # Use Anti-Grain Geometry backend (no GUI)
+
 from src.utils.scorer import question_scorer, check_close_call
 from src.utils.loader import get_task_from_gaia, get_all_task_ids_by_level
 from src.pipelines import EvolvePipeline
@@ -16,76 +23,7 @@ from src.utils.workspace_manager import cleanup_all_workspaces
 # Global flag to prevent multiple cleanup attempts
 _cleanup_in_progress = False
 
-
-# TASK_ID_LIST = [
-    # "2a649bb1-795f-4a01-b3be-9a01868dae73",
-    # "4b650a35-8529-4695-89ed-8dc7a500a498",
-    # "0512426f-4d28-49f0-be77-06d05daec096",
-    # "05407167-39ec-4d3a-a234-73a9120c325d",
-    # "17b5a6a3-bc87-42e8-b0fb-6ab0781ef2cc",
-    # "23dd907f-1261-4488-b21c-e9185af91d5e",
-    # "2b3ef98c-cc05-450b-a719-711aee40ac65",
-    # "2dfc4c37-fec1-4518-84a7-10095d30ad75",
-    # "42576abe-0deb-4869-8c63-225c2d75a95a",
-    # "4fc2f1ae-8625-45b5-ab34-ad4433bc21f8",
-    # "56137764-b4e0-45b8-9c52-1866420c3df5",
-    # "5d0080cb-90d7-4712-bc33-848150e917d3",
-    # "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
-    # "676e5e31-a554-4acc-9286-b60d90a92d26",
-    # "6b078778-0b90-464d-83f6-59511c811b01",
-    # "7619a514-5fa8-43ef-9143-83b66a43d7a4",
-    # "7b5377b0-3f38-4103-8ad2-90fe89864c04",
-    # "851e570a-e3de-4d84-bcfa-cc85578baa59",
-    # "9d191bce-651d-4746-be2d-7ef8ecadb9c2",
-    # "a0068077-79f4-461a-adfe-75c1a4148545",
-    # "a1e91b78-d3d8-4675-bb8d-62741b4b68a6",
-    # "a56f1527-3abf-41d6-91f8-7296d6336c3f",
-    # "b816bfce-3d80-4913-a07d-69b752ce6377",
-    # "c3a79cfe-8206-451f-aca8-3fec8ebe51d3",
-    # "cabe07ed-9eca-40ea-8ead-410ef5e83f91",
-    # "da52d699-e8d2-4dc5-9191-a2199e0b6a9b",
-    # "db4fd70a-2d37-40ea-873f-9433dc5e301f",
-    # "de9887f5-ead8-4727-876f-5a4078f8598c",
-    # "ded28325-3447-4c56-860f-e497d6fb3577",
-    # "ed58682d-bc52-4baa-9eb0-4eb81e1edacc",
-    # "edd4d4f2-1a58-45c4-b038-67337af4e029",
-    # "2a649bb1-795f-4a01-b3be-9a01868dae73",
-    # "3cef3a44-215e-4aed-8e3b-b1e3f08063b7",
-    # "5b2a14e8-6e59-479c-80e3-4696e8980152",
-    # "71345b0a-9c7d-4b50-b2bf-937ec5879845",
-    # "840bfca7-4f7b-481a-8794-c560c340185d",
-    # "c61d22de-5f6c-4958-a7f6-5e9707bd3466",
-    # "d1af70ea-a9a4-421a-b9cc-94b5e02f1788",
-    # "e1fc63a2-da7a-432f-be78-7c4a95598703",
-    # "e29834fd-413a-455c-a33e-c3915b07401c",
-    # "f3917a3d-1d17-4ee2-90c5-683b072218fe",
-    # "f46b4380-207e-4434-820b-f32ce04ae2a4",
-    # "08cae58d-4084-4616-b6dd-dd6534e4825b",
-    # "0bb3b44a-ede5-4db5-a520-4e844b0079c5",
-    # "114d5fd0-e2ae-4b6d-a65a-870da2d19c08",
-    # "1dcc160f-c187-48c2-b68e-319bd4354f3d",
-    # "3da89939-209c-4086-8520-7eb734e6b4ef",
-    # "46719c30-f4c3-4cad-be07-d5cb21eee6bb",
-    # "7d4a7d1d-cac6-44a8-96e8-ea9584a70825",
-    # "7dd30055-0198-452e-8c25-f73dbe27dcb8",
-    # "8131e2c0-0083-4265-9ce7-78c2d568425d",
-    # "872bfbb1-9ccf-49f6-8c5f-aa22818ccd66",
-    # "8d46b8d6-b38a-47ff-ac74-cda14cf2d19b",
-    # "935e2cff-ae78-4218-b3f5-115589b19dae",
-    # "a0c07678-e491-4bbc-8f0b-07405144218f",
-    # "c365c1c7-a3db-4d5e-a9a1-66f56eae7865",
-    # "dc22a632-937f-4e6a-b72f-ba0ff3f5ff97",
-    # "e142056d-56ab-4352-b091-b56054bd1359",
-    # "e8cb5b03-41e0-4086-99e5-f6806cd97211",
-    # "9318445f-fe6a-4e1b-acbf-c68228c9906a",
-    # "72e110e7-464c-453c-a309-90a95aed6538",
-    # "a7feb290-76bb-4cb7-8800-7edaf7954f2f",
-    # "d0633230-7067-47a9-9dbf-ee11e0a2cdd6",
-    # "c526d8d6-5987-4da9-b24c-83466fa172f3"
-# ]
-
 # TASK_ID_LIST = get_all_task_ids_by_level(split="validation")
-
 
 TASK_ID_LIST = [
     # "11af4e1a-5f45-467d-9aeb-46f4bb0bf034",
@@ -95,9 +33,9 @@ TASK_ID_LIST = [
     # "389793a7-ca17-4e82-81cb-2b3a2391b4b9",
     # "3f57289b-8c60-48be-bd80-01f8099ca449",
     # "4b650a35-8529-4695-89ed-8dc7a500a498",
-    "305ac316-eef6-4446-960a-92d80d542f82",
+    # "305ac316-eef6-4446-960a-92d80d542f82",
     # "50ec8903-b81f-4257-9450-1085afd2c319",
-    "5188369a-3bbe-43d8-8b94-11558f909a08",
+    # "5188369a-3bbe-43d8-8b94-11558f909a08",
     # "5a0c1adf-205e-4841-a666-7c3ef95def9d",
     # "5cfb274c-0207-4aa7-9575-6ac0bd95d9b2",
     # "6f37996b-2ac7-44b0-8e68-6d28256631b4",
@@ -105,10 +43,10 @@ TASK_ID_LIST = [
     # "8e867cd7-cff9-4e6c-867a-ff5ddc2550be",
     # "99c9cc74-fdc8-46c6-8f8d-3ce2d3bfeea3",
     # "a3fbeb63-0e8c-4a11-bff6-0e3b484c3e9c",
-    "b415aba4-4b68-4fc6-9b89-2c812e55a3e1",
-    "bda648d7-d618-4883-88f4-3466eabd860e",
+    # "b415aba4-4b68-4fc6-9b89-2c812e55a3e1", # wrong
+    # "bda648d7-d618-4883-88f4-3466eabd860e",
     # "c714ab3a-da30-4603-bacd-d008800188b9",
-    "cffe0e32-c9a6-4c52-9877-78ceb4aaa9fb",
+    # "cffe0e32-c9a6-4c52-9877-78ceb4aaa9fb",
     # "dc28cf18-6431-458b-83ef-64b3ce566c10",
     "ec09fa32-d03f-4bf8-84b0-1f16922c3ae4",
     # "f918266a-b3e0-4914-865d-4faa564f1aef",
@@ -116,33 +54,34 @@ TASK_ID_LIST = [
     # "50ad0280-0819-4bd9-b275-5de32d3b5bcb",
     "0ff53813-3367-4f43-bcbd-3fd725c1bf4b",
     # "076c8171-9b3b-49b9-a477-244d2a532826",
-    "08c0b6e9-1b43-4c2e-ae55-4e3fce2c2715",
-    "0a65cb96-cb6e-4a6a-8aae-c1084f613456",
-    "366e2f2b-8632-4ef2-81eb-bc3877489217",
+    # "08c0b6e9-1b43-4c2e-ae55-4e3fce2c2715",
+    # "0a65cb96-cb6e-4a6a-8aae-c1084f613456",
+    # "366e2f2b-8632-4ef2-81eb-bc3877489217",
     "14569e28-c88c-43e4-8c32-097d35b9a67d",
-    "32102e3e-d12a-4209-9163-7b3a104efe5d",
-    "33d8ea3b-6c6b-4ff1-803d-7e270dea8a57",
+    # "32102e3e-d12a-4209-9163-7b3a104efe5d",
+    # "33d8ea3b-6c6b-4ff1-803d-7e270dea8a57",
     "3627a8be-a77f-41bb-b807-7e1bd4c0ebdf",
-    "4d0aa727-86b1-406b-9b33-f870dd14a4a5",
+    # "4d0aa727-86b1-406b-9b33-f870dd14a4a5",
     "3ff6b7a9-a5bd-4412-ad92-0cd0d45c0fee",
-    "f0f46385-fc03-4599-b5d3-f56496c3e69f",
+    # "f0f46385-fc03-4599-b5d3-f56496c3e69f",
     "544b7f0c-173a-4377-8d56-57b36eb26ddf",
-    "54612da3-fd56-4941-80f4-5eb82330de25",
-    "65638e28-7f37-4fa7-b7b9-8c19bb609879",
+    # "54612da3-fd56-4941-80f4-5eb82330de25",
+    # "65638e28-7f37-4fa7-b7b9-8c19bb609879",
     "65da0822-a48a-4a68-bbad-8ed1b835a834",
-    "67e8878b-5cef-4375-804e-e6291fdbe78a",
+    # "67e8878b-5cef-4375-804e-e6291fdbe78a",
     "73c1b9fe-ee1d-4cf4-96ca-35c08f97b054",
-    "7cc4acfa-63fd-4acc-a1a1-e8e529e0a97f",
+    # "7cc4acfa-63fd-4acc-a1a1-e8e529e0a97f",
     "87c610df-bef7-4932-b950-1d83ef4e282b",
-    "9f41b083-683e-4dcf-9185-ccfeaa88fa45",
-    "a26649c6-1cb2-470a-871e-6910c64c3e53",
+    # "9f41b083-683e-4dcf-9185-ccfeaa88fa45", # wrong
+    # "a26649c6-1cb2-470a-871e-6910c64c3e53",
     "ad37a656-079a-49f9-a493-7b739c9167d1",
     "b7f857e4-d8aa-4387-af2a-0e844df5b9d8",
-    "b9763138-c053-4832-9f55-86200cb1f99c",
+    # "b9763138-c053-4832-9f55-86200cb1f99c",
     "d8152ad6-e4d5-4c12-8bb7-8d57dc10c6de",
     "dd3c7503-f62a-4bd0-9f67-1b63b94194cc",
     "e0c10771-d627-4fd7-9694-05348e54ee36",
     "e4e91f1c-1dcd-439e-9fdd-cb976f5293fd",
+    
     "e9a2c537-8232-4c3f-85b0-b52de6bcba99",
     "ded28325-3447-4c56-860f-e497d6fb3577",
     "0bb3b44a-ede5-4db5-a520-4e844b0079c5",

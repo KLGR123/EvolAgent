@@ -128,10 +128,9 @@ def load_coldstart_dataset(split) -> list:
     Returns:
         List of coldstart task IDs sorted by level (1, 2, 3)
     """
-    if split=="webshaper":
-        data_path=f"data/coldstart/webshaper.jsonl"
-    else:
-        data_path=f"data/coldstart/coldstart_{split}.jsonl"
+
+    data_path = f"data/coldstart/{split}.jsonl"
+
     with open(data_path, "r") as f:
         lines = f.readlines()
         coldstart_tasks = []
