@@ -46,7 +46,11 @@ class TestNode(BaseNode):
             raise RuntimeError(f"{self.role} node not properly initialized - init_prompt is empty. Call _init_prompt() first.")
 
         self.logger.debug(f"{self.role} received history from {h['role']}")
-        code_output = interpret_code(h["code"])
+        try:
+            code_output = interpret_code(h["code"])
+        except Exception as e:
+            self.logger.error(f"Error interpreting code: {e}")
+            code_output = f"Error interpreting code: {e}"
 
         # max_len = config.max_code_output_length
         # if len(code_output) > max_len:

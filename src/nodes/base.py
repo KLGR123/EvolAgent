@@ -155,6 +155,7 @@ class BaseNode:
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=config.max_tokens,
                 timeout=config.api_timeout,
+                temperature=config.temperature,
                 extra_headers={
                     'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
                 }

@@ -106,6 +106,10 @@ class Config:
         return self.get('memory.episodic_search_limit', 3)
     
     @property
+    def temperature(self) -> float:
+        return self.get('models.temperature', 0.5)
+
+    @property
     def score_threshold(self) -> float:
         return self.get('memory.score_threshold', 0.35)
     
