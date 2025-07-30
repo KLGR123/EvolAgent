@@ -20,6 +20,8 @@ class Memory:
     _semantic_loaded: dict[str, bool] = {}
     _semantic_lock = threading.Lock()  # Thread lock for semantic loading
     _client_lock = threading.Lock()  # Thread lock for client initialization
+    _episodic_loaded: dict[str, bool] = {}
+    _episodic_lock = threading.Lock()  # Thread lock for episodic loading
 
     def __init__(self, role: Literal["planner", "developer", "tester", "critic"]):
         """
@@ -43,7 +45,9 @@ class Memory:
             self.episodic_retriever = Retriever(client=self.client, role=role, type="episodic")
         
         self.logger.debug(f"Initialized Memory for {role}")
-        self._add_semantic()
+        if self.role in ["planner", "developer"]:
+            self._add_semantic()
+            self._add_episodic()
 
     def get_procedural(self) -> Template:
         """
@@ -188,6 +192,56 @@ class Memory:
             self.semantic_retriever.delete_all()
             # reset loading state, allowing re-loading
             Memory._semantic_loaded[self.role] = False
+
+    def _add_episodic(self) -> None:
+        """
+        Add the episodic memory with code/text separation for better retrieval.
+        """
+    
+        with Memory._episodic_lock:
+            if Memory._episodic_loaded.get(self.role, False):
+                self.logger.debug(f"Episodic content already loaded for {self.role}, skipping")
+                return
+             
+            episodic_texts = []
+            episodic_codes = []
+            episodic_ids = []
+
+            if not os.path.exists(f"src/memory/{self.role}/episodic"):
+                self.logger.debug(f"No episodic content found for {self.role}")
+                Memory._episodic_loaded[self.role] = True
+                return
+            
+            for file in os.listdir(f"src/memory/{self.role}/episodic"):
+                if file.endswith(".md"):
+                    with open(f"src/memory/{self.role}/episodic/{file}", "r") as f:
+                        md_content = f.read()
+                        content_blocks = split_content_blocks(md_content)
+                        
+                        for block_data in content_blocks:
+                            text = block_data['text'].strip()
+                            code = block_data['code']
+                            
+                            if text:  # Only add blocks with meaningful text content
+                                # Use content hash of text (not including code) as ID to avoid duplicates
+                                content_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
+                                episodic_texts.append(text)
+                                episodic_codes.append(code)
+                                episodic_ids.append(content_hash)
+            
+            if episodic_texts:
+                self.logger.info(f"Adding {len(episodic_texts)} episodic blocks to {self.role} memory")
+                self.episodic_retriever.add(
+                    texts=episodic_texts, 
+                    ids=episodic_ids, 
+                    codes=episodic_codes
+                )
+                # mark as loaded
+                Memory._episodic_loaded[self.role] = True
+            else:
+                self.logger.debug(f"No episodic content found for {self.role}")
+                # even if there is no content, mark as loaded to avoid repeated checks for empty directories
+                Memory._episodic_loaded[self.role] = True
 
     def add_episodic(self, text: str) -> None:
         """
