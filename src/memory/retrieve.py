@@ -77,10 +77,7 @@ class Retriever:
                 print(f"Collection {self.collection_name} creation failed: {e}")
         
     def add(self,  
-        texts: List[str], 
-        metadatas: Optional[List[Dict]] = None, 
-        ids: Optional[List[str]] = None, 
-        codes: Optional[List[Optional[str]]] = None,  # New parameter for code blocks
+        payloads: Optional[List[Dict]] = None, 
         hybrid: bool = True,
         max_tokens: int = 8192  # New parameter for token limit
     ) -> None:
@@ -96,55 +93,39 @@ class Retriever:
             max_tokens: Maximum tokens allowed per text chunk
         """
 
-        ids = [hashlib.md5(_.encode('utf-8')).hexdigest() for _ in texts] if ids is None else ids
-        codes = codes if codes is not None else [None] * len(texts)
-        
-        if metadatas is None:
-            metadatas = [{"text": text} for text in texts]
-        else:
-            for i, metadata in enumerate(metadatas):
-                metadata["text"] = texts[i]
-        
-        # Validate and process texts for token limits
-        processed_texts = []
-        processed_metadatas = []
-        processed_codes = []
-        processed_ids = []
-        
-        for i, (text, metadata, code, text_id) in enumerate(zip(texts, metadatas, codes, ids)):
+        ids=[hashlib.md5(_["text"].encode('utf-8')).hexdigest() for _ in payloads]
+        mask=self.check_exist(ids)
+        payloads=[payload for payload, exist in zip(payloads, mask) if not exist]
+        ids=[id for id, exist in zip(ids, mask) if not exist]
+        if not ids:
+            return
+
+        for i, payload in enumerate(payloads):
             # Check token length for the text (not including code)
-            is_within_limit, token_count = check_token_length(text, max_tokens)
+            is_within_limit, token_count = check_token_length(payload["text"], max_tokens)
             
             if not is_within_limit:
                 print(f"Warning: Text chunk {i} has {token_count} tokens, exceeding limit of {max_tokens}")
                 # Option 1: Truncate (more conservative)
-                processed_text = truncate_text_to_tokens(text, max_tokens)
+                processed_text = truncate_text_to_tokens(payload["text"], max_tokens)
                 print(f"Truncated text chunk {i} to {max_tokens} tokens")
                 
                 # Option 2: Raise error (uncomment if preferred)
                 # raise ValueError(f"Text chunk {i} exceeds token limit: {token_count} > {max_tokens}")
             else:
-                processed_text = text
-            
-            # Add code to metadata if present
-            if code is not None:
-                metadata["code"] = code
-            
-            processed_texts.append(processed_text)
-            processed_metadatas.append(metadata)
-            processed_codes.append(code)
-            processed_ids.append(text_id)
+                processed_text = payload["text"]
+            payload["text"] = processed_text
         
         # Generate embeddings only for the text descriptions (not code)
-        dense_embeddings = self.dense_model.embed(processed_texts)
+        dense_embeddings = self.dense_model.embed([payload["text"] for payload in payloads])
         points_to_add = []
 
         if hybrid:
-            sparse_embeddings = self.sparse_model.embed(processed_texts)
+            sparse_embeddings = self.sparse_model.embed([payload["text"] for payload in payloads])
             points_to_add = [
                 PointStruct(
                     id=idx,
-                    payload=meta,
+                    payload=payload,
                     vector={
                         "dense": dense_emb,
                         "sparse": SparseVector(
@@ -153,16 +134,16 @@ class Retriever:
                         ),
                     },
                 )
-                for idx, meta, dense_emb, sparse_emb in zip(processed_ids, processed_metadatas, dense_embeddings, sparse_embeddings)
+                for idx, payload, dense_emb, sparse_emb in zip(ids, payloads, dense_embeddings, sparse_embeddings)
             ]
         else:
             points_to_add = [
                 PointStruct(
                     id=idx,
-                    payload=meta,
+                    payload=payload,
                     vector={"dense": dense_emb},
                 )
-                for idx, meta, dense_emb in zip(processed_ids, processed_metadatas, dense_embeddings)
+                for idx, payload, dense_emb in zip(ids, payloads, dense_embeddings)
             ]
 
         self.client.upsert(
@@ -170,7 +151,7 @@ class Retriever:
             points=points_to_add,
             wait=True
         )
-
+        
     def _delete(self, ids: List[str]): # TODO
         """
         Delete the vectors from the collection by their IDs.
@@ -318,6 +299,21 @@ class Retriever:
             return self._search_sparse(query, limit)
         else:
             return self._search_hybrid(query, limit, score_threshold)
+
+    def check_exist(self, ids)->List[bool]:
+        """
+        Check if the ids exist in the collection.
+        """
+        points_count=self.client.count(collection_name=self.collection_name, exact=True)
+
+        responses=self.client.scroll(
+            collection_name=self.collection_name,
+            limit=points_count.count,
+            with_payload=False,
+            with_vectors=False,
+        )
+        exist_ids=set([record.id for record in responses[0]])
+        return [id in exist_ids for id in ids]
 
 
 if __name__ == "__main__":

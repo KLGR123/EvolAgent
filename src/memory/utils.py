@@ -64,6 +64,9 @@ class DenseEmbedModel:
                 )
                 response.raise_for_status()
                 result = response.json()
+                if result.get("error"):
+                    raise Exception(result["error"])
+
                 embeddings = [item["embedding"] for item in result["data"]]
 
                 if self.dimension is None and embeddings:

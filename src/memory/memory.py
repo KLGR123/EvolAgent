@@ -143,9 +143,7 @@ class Memory:
                 self.logger.debug(f"Semantic content already loaded for {self.role}, skipping")
                 return
              
-            semantic_texts = []
-            semantic_codes = []
-            semantic_ids = []
+            semantic_payloads = []
 
             if not os.path.exists(f"src/memory/{self.role}/semantic"):
                 self.logger.debug(f"No semantic content found for {self.role}")
@@ -163,18 +161,11 @@ class Memory:
                             code = block_data['code']
                             
                             if text:  # Only add blocks with meaningful text content
-                                # Use content hash of text (not including code) as ID to avoid duplicates
-                                content_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
-                                semantic_texts.append(text)
-                                semantic_codes.append(code)
-                                semantic_ids.append(content_hash)
+                                semantic_payloads.append({"text": text, "code": code})
             
-            if semantic_texts:
-                self.logger.info(f"Adding {len(semantic_texts)} semantic blocks to {self.role} memory")
+            if semantic_payloads:
                 self.semantic_retriever.add(
-                    texts=semantic_texts, 
-                    ids=semantic_ids, 
-                    codes=semantic_codes
+                    payloads=semantic_payloads, 
                 )
                 # mark as loaded
                 Memory._semantic_loaded[self.role] = True
@@ -203,9 +194,7 @@ class Memory:
                 self.logger.debug(f"Episodic content already loaded for {self.role}, skipping")
                 return
              
-            episodic_texts = []
-            episodic_codes = []
-            episodic_ids = []
+            episodic_payloads = []
 
             if not os.path.exists(f"src/memory/{self.role}/episodic"):
                 self.logger.debug(f"No episodic content found for {self.role}")
@@ -224,17 +213,11 @@ class Memory:
                             
                             if text:  # Only add blocks with meaningful text content
                                 # Use content hash of text (not including code) as ID to avoid duplicates
-                                content_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
-                                episodic_texts.append(text)
-                                episodic_codes.append(code)
-                                episodic_ids.append(content_hash)
+                                episodic_payloads.append({"text": text, "code": code})
             
-            if episodic_texts:
-                self.logger.info(f"Adding {len(episodic_texts)} episodic blocks to {self.role} memory")
+            if episodic_payloads:
                 self.episodic_retriever.add(
-                    texts=episodic_texts, 
-                    ids=episodic_ids, 
-                    codes=episodic_codes
+                    payloads=episodic_payloads, 
                 )
                 # mark as loaded
                 Memory._episodic_loaded[self.role] = True
@@ -266,29 +249,22 @@ class Memory:
         
         # If there are multiple blocks, process each separately
         if content_blocks:
-            texts = []
-            codes = []
-            ids = []
+            payloads = []
             
             for i, block_data in enumerate(content_blocks):
                 block_text = block_data['text'].strip()
                 block_code = block_data['code']
                 
                 if block_text:  # Only add blocks with meaningful text content
-                    # Create unique ID for each block within this episodic entry
-                    block_hash = hashlib.md5(f"{text}_{i}_{block_text}".encode('utf-8')).hexdigest()
-                    texts.append(block_text)
-                    codes.append(block_code)
-                    ids.append(block_hash)
+                    payloads.append({"text": block_text, "code": block_code})
             
-            if texts:
-                self.logger.info(f"Adding {len(texts)} episodic blocks to {self.role} memory")
-                self.episodic_retriever.add(texts=texts, ids=ids, codes=codes)
+            if payloads:
+                self.logger.info(f"Adding {len(payloads)} episodic blocks to {self.role} memory")
+                self.episodic_retriever.add(payloads=payloads)
         else:
             # Fallback for content that doesn't have clear structure
             self.logger.debug("Using fallback episodic storage for unstructured content")
-            content_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
-            self.episodic_retriever.add(texts=[text], ids=[content_hash], codes=[None])
+            self.episodic_retriever.add(payloads=[{"text": text, "code": None}])
 
     def clear_episodic(self) -> None:
         """
