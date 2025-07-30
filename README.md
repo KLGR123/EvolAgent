@@ -1,5 +1,8 @@
 ### EvolAgent
 
+> **GAIA Leaderboard Score**: 
+> Achieved a score of **65.12** on the [GAIA leaderboard test dataset](https://huggingface.co/spaces/gaia-benchmark/leaderboard).
+
 Agent framework with
 - Multi Agents
 - Hierarchical Cross-Task Memory

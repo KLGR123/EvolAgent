@@ -195,9 +195,13 @@ class BaseNode:
             self.logger.debug("JSON parsed successfully using json_repair")
 
             if not isinstance(parsed_json, dict):
-                self.logger.error(f"Invalid JSON format: {parsed_json}")
-                print(parsed_json)
-                raise ValueError("Invalid JSON format")
+                if isinstance(parsed_json, list):
+                    parsed_json = parsed_json[0]
+                    self.logger.debug("Parsed a list of dicts, taking the first one")
+                else:
+                    self.logger.error(f"Invalid JSON format: {parsed_json}")
+                    print(parsed_json)  # TODO: remove this
+                    raise ValueError("Invalid JSON format")
             
             # Check if 'role' field exists and matches expected role
             if "role" not in parsed_json:
