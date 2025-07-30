@@ -256,12 +256,12 @@ TASK_ID_LIST = [
 
 
 def main(task_id: str, 
-    pipeline: EvolvePipeline, 
     split: Literal["validation", "test"]
 ) -> dict:
     """
     Run the pipeline for the whole GAIA dataset with enhanced logging.
     """
+    pipeline = EvolvePipeline()
     with TaskLogger(task_id) as task_logger:
         task_logger.info(f"Starting task execution: {task_id}")
         
@@ -342,8 +342,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, cleanup_handler)  # Ctrl+C
     signal.signal(signal.SIGTERM, cleanup_handler)  # Termination
     atexit.register(cleanup_all_workspaces)  # Normal exit
-
-    pipeline = EvolvePipeline()
     
     # Use ThreadPoolExecutor for parallel task execution with configured limits
     max_workers = config.max_parallel_tasks
@@ -357,7 +355,7 @@ if __name__ == "__main__":
         
         # Submit all tasks to the executor
         future_to_task_id = {
-            executor.submit(main, task_id, pipeline, "validation"): task_id 
+            executor.submit(main, task_id, "validation"): task_id 
             for task_id in TASK_ID_LIST
         }
         

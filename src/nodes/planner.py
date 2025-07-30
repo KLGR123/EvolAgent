@@ -1,3 +1,4 @@
+import threading
 from string import Template
 from typing import Dict, Optional, Tuple
 
@@ -18,20 +19,25 @@ class PlanNode(BaseNode):
         )
         self.memory = Memory("planner")
         self.past_n = past_n
+        self._init_lock = threading.Lock()  # Instance-level lock for initialization
 
     def _init_prompt(self, task: str) -> None:
         """
         Initialize the prompt for the node.
+        Thread-safe implementation with enhanced error handling.
         """
+        with self._init_lock:
+            self.task = task
+            self.procedural: Template = self.memory.get_procedural()
 
-        self.task = task
-        self.procedural: Template = self.memory.get_procedural()
-
-        try:
-            self.episodic: str = self.memory.get_episodic(query=self.task) # TODO: augment task description
-        except Exception as e:
-            self.logger.warning(f"Failed to get episodic memory for {self.role} node: {str(e)}")
-            self.episodic = ""
+            # Get episodic memory with error handling
+            try:
+                self.episodic: str = self.memory.get_episodic(query=self.task) # TODO: augment task description
+                if self.episodic is None:
+                    self.episodic = ""
+            except Exception as e:
+                self.logger.warning(f"Failed to get episodic memory for {self.role} node: {str(e)}")
+                self.episodic = ""
 
         self.init_prompt: str = self.procedural.safe_substitute(
             episodic=self.episodic,
@@ -43,6 +49,10 @@ class PlanNode(BaseNode):
         """
         Generate the next plan.
         """
+        # Validate that init_prompt is properly initialized
+        if not hasattr(self, 'init_prompt') or not self.init_prompt or not self.init_prompt.strip():
+            raise RuntimeError(f"{self.role} node not properly initialized - init_prompt is empty. Call _init_prompt() first.")
+            
         if h:
             self.logger.debug(f"{self.role} received history from {h['role']}")
             self.add_history(h=h)

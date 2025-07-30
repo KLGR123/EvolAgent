@@ -1,3 +1,4 @@
+import hashlib
 import os
 import uuid
 from typing import List, Dict, Optional, Literal
@@ -95,7 +96,7 @@ class Retriever:
             max_tokens: Maximum tokens allowed per text chunk
         """
 
-        ids = [str(uuid.uuid4()) for _ in texts] if ids is None else ids
+        ids = [hashlib.md5(_.encode('utf-8')).hexdigest() for _ in texts] if ids is None else ids
         codes = codes if codes is not None else [None] * len(texts)
         
         if metadatas is None:

@@ -1,5 +1,6 @@
 import os
 import hashlib
+import threading
 from string import Template
 from typing import Literal, Optional
 from qdrant_client import QdrantClient
@@ -17,6 +18,8 @@ class Memory:
 
     _shared_client: Optional[QdrantClient] = None
     _semantic_loaded: dict[str, bool] = {}
+    _semantic_lock = threading.Lock()  # Thread lock for semantic loading
+    _client_lock = threading.Lock()  # Thread lock for client initialization
 
     def __init__(self, role: Literal["planner", "developer", "tester", "critic"]):
         """
@@ -26,10 +29,12 @@ class Memory:
         self.role = role
         self.logger = ComponentLoggers.get_memory_logger()
         
-        if Memory._shared_client is None:
-            qdrant_path = config.qdrant_persist_path
-            self.logger.info(f"Initializing Qdrant client at path: {qdrant_path}")
-            Memory._shared_client = QdrantClient(path=qdrant_path)
+        # Thread-safe Qdrant client initialization
+        with Memory._client_lock:
+            if Memory._shared_client is None:
+                qdrant_path = config.qdrant_persist_path
+                self.logger.info(f"Initializing Qdrant client at path: {qdrant_path}")
+                Memory._shared_client = QdrantClient(path=qdrant_path)
 
         self.client = Memory._shared_client
         if self.role in ["planner", "developer"]:
@@ -126,58 +131,63 @@ class Memory:
         """
         Add the semantic memory with code/text separation for better retrieval.
         Use content hash as ID to avoid duplicates.
+        Thread-safe implementation.
         """
     
-        if Memory._semantic_loaded.get(self.role, False):
-            self.logger.debug(f"Semantic content already loaded for {self.role}, skipping")
-            return
-            
-        semantic_texts = []
-        semantic_codes = []
-        semantic_ids = []
+        with Memory._semantic_lock:
+            if Memory._semantic_loaded.get(self.role, False):
+                self.logger.debug(f"Semantic content already loaded for {self.role}, skipping")
+                return
+             
+            semantic_texts = []
+            semantic_codes = []
+            semantic_ids = []
 
-        if not os.path.exists(f"src/memory/{self.role}/semantic"):
-            self.logger.debug(f"No semantic content found for {self.role}")
-            return
-        
-        for file in os.listdir(f"src/memory/{self.role}/semantic"):
-            if file.endswith(".md"):
-                with open(f"src/memory/{self.role}/semantic/{file}", "r") as f:
-                    md_content = f.read()
-                    content_blocks = split_content_blocks(md_content)
-                    
-                    for block_data in content_blocks:
-                        text = block_data['text'].strip()
-                        code = block_data['code']
+            if not os.path.exists(f"src/memory/{self.role}/semantic"):
+                self.logger.debug(f"No semantic content found for {self.role}")
+                Memory._semantic_loaded[self.role] = True
+                return
+            
+            for file in os.listdir(f"src/memory/{self.role}/semantic"):
+                if file.endswith(".md"):
+                    with open(f"src/memory/{self.role}/semantic/{file}", "r") as f:
+                        md_content = f.read()
+                        content_blocks = split_content_blocks(md_content)
                         
-                        if text:  # Only add blocks with meaningful text content
-                            # Use content hash of text (not including code) as ID to avoid duplicates
-                            content_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
-                            semantic_texts.append(text)
-                            semantic_codes.append(code)
-                            semantic_ids.append(content_hash)
-        
-        if semantic_texts:
-            self.logger.info(f"Adding {len(semantic_texts)} semantic blocks to {self.role} memory")
-            self.semantic_retriever.add(
-                texts=semantic_texts, 
-                ids=semantic_ids, 
-                codes=semantic_codes
-            )
-            # mark as loaded
-            Memory._semantic_loaded[self.role] = True
-        else:
-            self.logger.debug(f"No semantic content found for {self.role}")
-            # even if there is no content, mark as loaded to avoid repeated checks for empty directories
-            Memory._semantic_loaded[self.role] = True
+                        for block_data in content_blocks:
+                            text = block_data['text'].strip()
+                            code = block_data['code']
+                            
+                            if text:  # Only add blocks with meaningful text content
+                                # Use content hash of text (not including code) as ID to avoid duplicates
+                                content_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
+                                semantic_texts.append(text)
+                                semantic_codes.append(code)
+                                semantic_ids.append(content_hash)
+            
+            if semantic_texts:
+                self.logger.info(f"Adding {len(semantic_texts)} semantic blocks to {self.role} memory")
+                self.semantic_retriever.add(
+                    texts=semantic_texts, 
+                    ids=semantic_ids, 
+                    codes=semantic_codes
+                )
+                # mark as loaded
+                Memory._semantic_loaded[self.role] = True
+            else:
+                self.logger.debug(f"No semantic content found for {self.role}")
+                # even if there is no content, mark as loaded to avoid repeated checks for empty directories
+                Memory._semantic_loaded[self.role] = True
 
     def _clear_semantic(self) -> None:
         """
         Clear the semantic memory.
+        Thread-safe implementation.
         """
-        self.semantic_retriever.delete_all()
-        # reset loading state, allowing re-loading
-        Memory._semantic_loaded[self.role] = False
+        with Memory._semantic_lock:
+            self.semantic_retriever.delete_all()
+            # reset loading state, allowing re-loading
+            Memory._semantic_loaded[self.role] = False
 
     def add_episodic(self, text: str) -> None:
         """

@@ -23,9 +23,11 @@ class TestNode(BaseNode):
 
     def _init_prompt(self, plan: str) -> None:
         """
-        Initialize the prompt for the node.
+        Initialize the prompt for the node with enhanced error handling.
         """
-
+        if not plan or not plan.strip():
+            raise ValueError(f"Plan cannot be empty for {self.role} node initialization")
+            
         self.plan = plan
         self.procedural: Template = self.memory.get_procedural()
         self.history: List[Dict[str, str]] = []
@@ -35,10 +37,13 @@ class TestNode(BaseNode):
         )
         self._init_counter()
 
-    def __call__(self, h: Dict[str, str]) -> Tuple[str, str]:
+    def __call__(self, h: Dict[str, str]) -> Dict[str, str]:
         """
         Test the code.
         """
+        # Validate that init_prompt is properly initialized
+        if not hasattr(self, 'init_prompt') or not self.init_prompt or not self.init_prompt.strip():
+            raise RuntimeError(f"{self.role} node not properly initialized - init_prompt is empty. Call _init_prompt() first.")
 
         self.logger.debug(f"{self.role} received history from {h['role']}")
         code_output = interpret_code(h["code"])

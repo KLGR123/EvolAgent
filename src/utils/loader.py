@@ -121,25 +121,29 @@ def get_all_task_ids_by_level(split: str = "validation") -> list:
     return [task['task_id'] for task in tasks]
 
 
-def load_coldstart_dataset() -> list:
+def load_coldstart_dataset(split) -> list:
     """
     Get all coldstart task IDs from GAIA dataset sorted by level.
     
     Returns:
         List of coldstart task IDs sorted by level (1, 2, 3)
     """
-    with open("data/coldstart/coldstart.jsonl", "r") as f:
+    if split=="webshaper":
+        data_path=f"data/coldstart/webshaper.jsonl"
+    else:
+        data_path=f"data/coldstart/coldstart_{split}.jsonl"
+    with open(data_path, "r") as f:
         lines = f.readlines()
         coldstart_tasks = []
         for line in lines:
             coldstart_tasks.append(json.loads(line))
         return coldstart_tasks
 
-def get_task_from_coldstart(task_id: str, split: str) -> dict:
+def get_task_from_coldstart(task_id: str, split: str=None) -> dict:
     """
     Get a task from the GAIA dataset.
     """
-    ds = load_coldstart_dataset()
+    ds = load_coldstart_dataset(split)
     task = None
 
     for record in ds:

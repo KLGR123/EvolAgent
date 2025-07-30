@@ -32,12 +32,16 @@ class DevNode(BaseNode):
 
         try:
             self.semantic: str = self.memory.get_semantic(query=self.plan)
+            if self.semantic is None:
+                self.semantic = ""
         except Exception as e:
             self.logger.warning(f"Failed to get semantic memory for {self.role} node: {str(e)}")
             self.semantic = ""
 
         try:
             self.episodic: str = self.memory.get_episodic(query=self.plan)
+            if self.episodic is None:
+                self.episodic = ""
         except Exception as e:
             self.logger.warning(f"Failed to get episodic memory for {self.role} node: {str(e)}")
             self.episodic = ""
@@ -53,6 +57,10 @@ class DevNode(BaseNode):
         """
         Develop the code.
         """
+        # Validate that init_prompt is properly initialized
+        if not hasattr(self, 'init_prompt') or not self.init_prompt or not self.init_prompt.strip():
+            raise RuntimeError(f"{self.role} node not properly initialized - init_prompt is empty. Call _init_prompt() first.")
+            
         if h:
             self.logger.debug(f"{self.role} received history from {h['role']}")
             self.add_history(h=h)

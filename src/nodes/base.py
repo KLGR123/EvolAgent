@@ -247,12 +247,13 @@ class BaseNode:
                 self.logger.warning("Missing 'reason' field in critic response, setting default reason")
                 parsed_json["reason"] = "No reasoning provided"
 
-    def __call__(self, h: Dict[str, str]) -> Dict[str, str]:
+    def __call__(self, h: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         """
         One single call for the node.
         """
-        self.logger.debug(f"{self.role} received history from {h['role']}")
-        self.add_history(h=h)
+        if h:
+            self.logger.debug(f"{self.role} received history from {h['role']}")
+            self.add_history(h=h)
 
         prompt = Template(self.init_prompt).safe_substitute(history=self.export_history(past_n=self.past_n))
         response = self.forward(prompt=prompt)

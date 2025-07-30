@@ -33,10 +33,11 @@ class EvolvePipeline(BasePipeline):
 
     def _get_or_create_nodes(self, model: str) -> Tuple[PlanNode, DevNode, TestNode]:
         """
-        Get or create reusable node instances for a specific model.
+        Create new node instances for each task to ensure thread safety.
         
         Args:
             model: Model identifier
+            task_id: Task identifier for isolation
             
         Returns:
             Tuple of (plan_node, dev_node, test_node)
@@ -75,7 +76,7 @@ class EvolvePipeline(BasePipeline):
     def _forward(self, 
         task: str, 
         model: str = "o4-mini",
-        task_id: str = None,
+        task_id: Optional[str] = None,
         model_index: int = 0,
     ) -> str:
         """
@@ -158,7 +159,7 @@ class EvolvePipeline(BasePipeline):
                 self.logger.debug(f"Dev-test iteration {dev_test_iteration}")
                 
                 # Check iteration limit and add timeout feedback if exceeded
-                if dev_test_iteration > config.max_dev_test_iterations:
+                if dev_test_iteration > config.max_dev_test_iterations and next_feedback is not None:
                     self.logger.warning(f"Exceeded maximum iterations ({config.max_dev_test_iterations})")
                     self.logger.info("Adding timeout feedback message to encourage reflection")
                     

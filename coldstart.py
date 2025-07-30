@@ -7,7 +7,7 @@ from typing import Literal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from main import TASK_ID_LIST
-from src.utils.scorer import question_scorer, check_close_call
+from src.utils.scorer import llm_scorer, question_scorer, check_close_call
 from src.utils.loader import get_task_from_coldstart
 from src.pipelines import EvolvePipeline
 from src.config import config
@@ -17,33 +17,20 @@ from src.utils.workspace_manager import cleanup_all_workspaces
 # Global flag to prevent multiple cleanup attempts
 _cleanup_in_progress = False
 
-TASK_ID_LIST = [
-    "codestart_12",    
-    "codestart_11",
-    "codestart_13",   
-    "codestart_1", 
-    "codestart_2",
-    "codestart_3",
-    "codestart_4",
-    "codestart_5",
-    "codestart_6",
-    "codestart_7",
-    "codestart_8",
-    "codestart_9",
-    "codestart_10",
-]
+TASK_ID_LIST = [str(i) for i in range(50)]
+# TASK_ID_LIST =["3", "4"]
 
 def main(task_id: str, 
-    pipeline: EvolvePipeline, 
     split: Literal["validation", "test"]
 ) -> dict:
     """
     Run the pipeline for the whole GAIA dataset with enhanced logging.
     """
+    pipeline = EvolvePipeline()
     with TaskLogger(task_id) as task_logger:
         task_logger.info(f"Starting task execution: {task_id}")
         
-        task_info = get_task_from_coldstart(task_id, split)
+        task_info = get_task_from_coldstart(task_id, "webshaper")
         task_logger.info(f"Loaded task: {task_info['question'][:200]}...")
         task_logger.debug(f"Full task info: {task_info}")
         
@@ -69,7 +56,8 @@ def main(task_id: str,
             task_logger.info(f"Test result: {result}")
             return result
         
-        is_correct = question_scorer(answer, task_info["true_answer"])
+        # is_correct = question_scorer(answer, task_info["true_answer"])
+        is_correct = llm_scorer(task_info["question"],answer, task_info["true_answer"])
         is_close = check_close_call(answer, task_info["true_answer"], is_correct)
         
         if is_correct:
@@ -120,8 +108,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, cleanup_handler)  # Ctrl+C
     signal.signal(signal.SIGTERM, cleanup_handler)  # Termination
     atexit.register(cleanup_all_workspaces)  # Normal exit
-
-    pipeline = EvolvePipeline()
     
     # Use ThreadPoolExecutor for parallel task execution with configured limits
     max_workers = config.max_parallel_tasks
@@ -135,7 +121,7 @@ if __name__ == "__main__":
         
         # Submit all tasks to the executor
         future_to_task_id = {
-            executor.submit(main, task_id, pipeline, "validation"): task_id 
+            executor.submit(main, task_id, "validation"): task_id 
             for task_id in TASK_ID_LIST
         }
         

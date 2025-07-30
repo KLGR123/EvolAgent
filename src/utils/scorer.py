@@ -2,7 +2,8 @@ import re
 import string
 import warnings
 from typing import Any
-
+from dotenv import load_dotenv
+load_dotenv()
 
 def normalize_number_str(number_str: str) -> float:
     """
@@ -143,3 +144,52 @@ def check_close_call(prediction: str, true_answer: str, is_correct: bool) -> boo
                 return True
             else:
                 return False
+
+def llm_scorer(question: str, prediction: str, true_answer: str) -> bool:
+    """
+    Check if the prediction is correct through LLM.
+    """
+    import openai
+    import uuid
+    import os
+    client = openai.OpenAI(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL"),
+        max_retries=3,
+    )
+    response=client.chat.completions.create(
+        model="gpt-4.1",
+        max_tokens=2000,
+        timeout=300,
+        extra_headers={
+            'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
+        },
+        messages=[
+            {
+                "role": "system", 
+                "content": (
+                    "You are an evaluator determining if a prediction correctly answers a question.\n"
+                    "# Evaluation criteria:\n"
+                    "- Focus on semantic equivalence, not exact wording\n"
+                    "- Consider different valid phrasings of the same answer\n"
+                    "- Ignore formatting differences or extra explanations\n"
+                    "Response: Only 'YES' or 'NO' - no other text.\n"
+                ),
+            },
+            {
+                "role": "user", 
+                "content": (
+                    "Evaluate if the prediction correctly answers the question by comparing it with the true answer.\n"
+                    f"**Question:** {question}\n\n"
+                    f"**Prediction:** {prediction}\n"
+                    f"**True Answer:** {true_answer}\n"
+                    "Is the prediction correct? Return only 'YES' or 'NO' - no other text."
+                )
+            }
+        ],
+
+    )
+    if "yes" in response.choices[0].message.content.lower():
+        return True
+    else:
+        return False
