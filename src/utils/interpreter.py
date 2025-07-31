@@ -8,8 +8,13 @@ import os
 import importlib
 import ast
 import re
+import threading
+import gc
 from typing import List, Optional
 
+# 线程安全的包安装锁
+_package_install_lock = threading.Lock()
+_installed_packages = set()  # 缓存已安装的包，避免重复检查
 
 def extract_import_names(code: str) -> List[str]:
     """
@@ -40,10 +45,14 @@ def extract_import_names(code: str) -> List[str]:
 
 def is_package_installed(package_name: str) -> bool:
     """
-    Check if the package is installed.
+    Check if the package is installed with caching.
     """
+    if package_name in _installed_packages:
+        return True
+        
     try:
         importlib.import_module(package_name)
+        _installed_packages.add(package_name)
         return True
     except ImportError:
         return False
@@ -51,13 +60,20 @@ def is_package_installed(package_name: str) -> bool:
 
 def install_package(package_name: str) -> bool: # TODO conflicts dealing when not pip install package name
     """
-    Install the package.
+    Install the package with thread-safe locking.
     """
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
-        return True
-    except subprocess.CalledProcessError:
-        return False
+    with _package_install_lock:
+        # 双重检查：在获得锁后再次检查包是否已安装
+        if is_package_installed(package_name):
+            return True
+            
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package_name], 
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _installed_packages.add(package_name)
+            return True
+        except subprocess.CalledProcessError:
+            return False
 
 
 def update_requirements_txt(package_name: str, requirements_path: str = "requirements.txt") -> bool:
@@ -137,7 +153,7 @@ def get_python_builtin_modules():
 
 def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None) -> str:
     """
-    Execute Python code in the current project environment, support auto-installing missing packages.
+    Execute Python code in a thread-safe isolated environment with proper resource cleanup.
     
     Args:
         code: The Python code to execute.
@@ -147,9 +163,12 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
         The string of the execution result.
     """
     # Set matplotlib backend to non-GUI to prevent GUI window creation in threads
+    # 仅在当前线程中设置，避免全局污染
+    original_backend = None
     try:
         import matplotlib
-        matplotlib.use('Agg')  # Use Anti-Grain Geometry backend (no GUI)
+        original_backend = matplotlib.get_backend()
+        matplotlib.use('Agg', force=True)  # Use Anti-Grain Geometry backend (no GUI)
     except ImportError:
         pass  # matplotlib not installed, skip
     
@@ -194,7 +213,7 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
     # Get comprehensive built-in modules list
     builtin_modules = get_python_builtin_modules()
     
-    # check and install missing packages
+    # check and install missing packages (thread-safe)
     installed_packages = []
     for package_name in import_names:
         # Skip built-in modules and standard library
@@ -213,19 +232,22 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
     if installed_packages:
         result_parts.append(f"Automatically installed packages: {', '.join(installed_packages)}")
     
-    # Get the absolute path of the current working directory
-    current_dir = os.path.abspath('.')
-    
-    # Ensure current directory is in Python path
-    if current_dir not in sys.path:
-        sys.path.insert(0, current_dir)
-    
-    # Save original working directory and set to current directory
+    # 保存原始的 sys.path，避免全局污染
+    original_sys_path = sys.path.copy()
     original_cwd = os.getcwd()
-    os.chdir(current_dir)
     
     try:
-        # Create a clean execution environment similar to __main__
+        # Get the absolute path of the current working directory
+        current_dir = os.path.abspath('.')
+        
+        # 临时添加到 sys.path，在 finally 中恢复
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        
+        # Set working directory
+        os.chdir(current_dir)
+        
+        # Create a completely isolated execution environment
         execution_globals = {
             '__name__': '__main__',
             '__file__': '<string>',
@@ -237,18 +259,19 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
             '__cached__': None,
         }
         
-        # Add all built-in modules to the execution environment
+        # Add essential built-in functions without importing everything
+        essential_builtins = ['print', 'len', 'range', 'str', 'int', 'float', 'list', 'dict', 'set', 'tuple', 'bool', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'delattr', 'dir', 'help', 'abs', 'max', 'min', 'sum', 'any', 'all', 'sorted', 'reversed', 'enumerate', 'zip', 'map', 'filter', 'open', 'input']
         import builtins
-        for name in dir(builtins):
-            if not name.startswith('_'):
+        for name in essential_builtins:
+            if hasattr(builtins, name):
                 execution_globals[name] = getattr(builtins, name)
         
         # Pass through environment variables (important for API keys, etc.)
         execution_globals['os'] = os
         
         # Import commonly used modules into the execution environment
-        import_modules = ['sys', 'os', 're', 'json', 'datetime', 'time', 'math', 'random']
-        for module_name in import_modules:
+        essential_modules = ['sys', 'os', 're', 'json', 'datetime', 'time', 'math', 'random']
+        for module_name in essential_modules:
             try:
                 module = importlib.import_module(module_name)
                 execution_globals[module_name] = module
@@ -271,12 +294,12 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
                     # Try to parse as expression first
                     ast.parse(code, mode='eval')
                     # If successful, it's a simple expression, use eval
-                    result = eval(code, execution_globals)
+                    result = eval(code, execution_globals, {})  # 使用独立的 locals
                     if result is not None:
                         print(repr(result))
                 except SyntaxError:
                     # Not a simple expression, execute as statement
-                    exec(code, execution_globals)
+                    exec(code, execution_globals, {})  # 使用独立的 locals
                     
                     # Check if there's a 'result' variable in the execution globals
                     if 'result' in execution_globals:
@@ -292,8 +315,21 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
                 traceback.print_exc()
     
     finally:
-        # Restore original working directory
+        # 恢复原始状态，避免全局污染
+        sys.path.clear()
+        sys.path.extend(original_sys_path)
         os.chdir(original_cwd)
+        
+        # 恢复 matplotlib backend
+        if original_backend:
+            try:
+                import matplotlib
+                matplotlib.use(original_backend)
+            except:
+                pass
+        
+        # 强制垃圾回收，清理执行环境
+        gc.collect()
     
     # get the captured output
     stdout_content = output_buffer.getvalue()

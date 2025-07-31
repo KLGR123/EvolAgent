@@ -5,6 +5,7 @@ import signal
 import atexit
 import threading
 import multiprocessing
+import gc
 from typing import Literal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -21,9 +22,12 @@ from src.pipelines import EvolvePipeline
 from src.config import config
 from src.utils.logger import get_logger, TaskLogger
 from src.utils.workspace_manager import cleanup_all_workspaces
+from src.nodes.base import cleanup_openai_clients
+from src.memory.memory import Memory
 
-# Global flag to prevent multiple cleanup attempts
+# 全局清理状态标志
 _cleanup_in_progress = False
+_cleanup_lock = threading.Lock()
 
 # TASK_ID_LIST = get_all_task_ids_by_level(split="validation")
 
@@ -203,103 +207,159 @@ def main(task_id: str,
     split: Literal["validation", "test"]
 ) -> dict:
     """
-    Run the pipeline for the whole GAIA dataset with enhanced logging.
+    Run the pipeline for the whole GAIA dataset with enhanced logging and resource management.
     """
-    pipeline = EvolvePipeline()
-    with TaskLogger(task_id) as task_logger:
-        task_logger.info(f"Starting task execution: {task_id}")
-        
-        task_info = get_task_from_gaia(task_id, split)
-        task_logger.info(f"Loaded task: {task_info['question'][:200]}...")
-        task_logger.debug(f"Full task info: {task_info}")
-        
-        start_time = time.time()
-        
-        # Use configured models instead of hardcoded list with task_id for workspace isolation
-        answer = pipeline(
-            task=task_info["question"], 
-            models=config.default_models,
-            task_id=task_id
-        )
-        
-        end_time = time.time()
-        execution_time = end_time - start_time
-        task_logger.info(f"Task execution completed in {execution_time:.2f}s")
+    pipeline = None
+    try:
+        pipeline = EvolvePipeline()
+        with TaskLogger(task_id) as task_logger:
+            task_logger.info(f"Starting task execution: {task_id}")
+            
+            task_info = get_task_from_gaia(task_id, split)
+            task_logger.info(f"Loaded task: {task_info['question'][:200]}...")
+            task_logger.debug(f"Full task info: {task_info}")
+            
+            start_time = time.time()
+            
+            # Use configured models instead of hardcoded list with task_id for workspace isolation
+            answer = pipeline(
+                task=task_info["question"], 
+                models=config.default_models,
+                task_id=task_id
+            )
+            
+            end_time = time.time()
+            execution_time = end_time - start_time
+            task_logger.info(f"Task execution completed in {execution_time:.2f}s")
 
-        if split == "test":
+            if split == "test":
+                result = {
+                    "answer": answer,
+                    "task_id": task_id,
+                    "execution_time": execution_time
+                }
+                task_logger.info(f"Test result: {result}")
+                return result
+            
+            is_correct = question_scorer(answer, task_info["true_answer"])
+            is_close = check_close_call(answer, task_info["true_answer"], is_correct)
+            
+            if is_correct:
+                task_logger.info("Task answered correctly, triggering learning")
+                pipeline.learn()
+            else:
+                task_logger.info(f"Task answered incorrectly. Answer: {answer}, Expected: {task_info['true_answer']}")
+                
             result = {
                 "answer": answer,
+                "true_answer": task_info["true_answer"],
+                "is_correct": is_correct,
+                "is_close": is_close,
                 "task_id": task_id,
                 "execution_time": execution_time
             }
-            task_logger.info(f"Test result: {result}")
+            task_logger.info(f"Validation result: {result}")
             return result
-        
-        is_correct = question_scorer(answer, task_info["true_answer"])
-        is_close = check_close_call(answer, task_info["true_answer"], is_correct)
-        
-        if is_correct:
-            task_logger.info("Task answered correctly, triggering learning")
-            pipeline.learn()
-        else:
-            task_logger.info(f"Task answered incorrectly. Answer: {answer}, Expected: {task_info['true_answer']}")
             
-        result = {
-            "answer": answer,
-            "true_answer": task_info["true_answer"],
-            "is_correct": is_correct,
-            "is_close": is_close,
+    except Exception as e:
+        logger = get_logger(__name__)
+        logger.error(f"Error in main task execution for {task_id}: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return {
+            "answer": "Error occurred during task execution",
             "task_id": task_id,
-            "execution_time": execution_time
+            "is_correct": False,
+            "error": str(e)
         }
-        task_logger.info(f"Validation result: {result}")
-        return result
+    finally:
+        # 清理pipeline资源
+        if pipeline and hasattr(pipeline, '__del__'):
+            try:
+                pipeline.__del__()
+            except:
+                pass
+        # 强制垃圾回收
+        gc.collect()
 
 
-def cleanup_handler(signum=None, frame=None):
-    """Handle cleanup on program termination."""
+def comprehensive_cleanup():
+    """
+    执行全面的资源清理。
+    """
     global _cleanup_in_progress
     
-    # Avoid multiple cleanup attempts
-    if _cleanup_in_progress:
-        return
+    with _cleanup_lock:
+        if _cleanup_in_progress:
+            return
+        _cleanup_in_progress = True
     
-    _cleanup_in_progress = True
     logger = get_logger(__name__)
-    logger.info(f"Received termination signal {signum}, cleaning up resources...")
+    logger.info("Starting comprehensive resource cleanup...")
     
     try:
-        # Force cleanup of any running executors
-        import threading
-        import concurrent.futures
-        
-        # Find any ThreadPoolExecutor instances in current thread
-        for thread in threading.enumerate():
-            if hasattr(thread, '_target') and thread._target:
-                thread.join(timeout=1.0)  # Give threads a chance to finish gracefully
-        
-        # Cleanup workspaces
+        # 1. 清理工作区
         cleanup_all_workspaces()
+        logger.info("Workspaces cleaned up")
         
-        # Additional cleanup for potential subprocess resources
-        import subprocess
-        import psutil
-        import os
+        # 2. 清理OpenAI客户端连接
+        cleanup_openai_clients()
+        logger.info("OpenAI clients cleaned up")
         
+        # 3. 清理Qdrant连接
+        Memory._cleanup_shared_client()
+        logger.info("Qdrant connections cleaned up")
+        
+        # 4. 清理其他可能的资源
         try:
+            import subprocess
+            import psutil
+            
             # Clean up any child processes
             current_process = psutil.Process(os.getpid())
             children = current_process.children(recursive=True)
             for child in children:
-                logger.info(f"Terminating child process: {child.pid}")
-                child.terminate()
+                try:
+                    logger.info(f"Terminating child process: {child.pid}")
+                    child.terminate()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
             
             # Wait for children to terminate
-            psutil.wait_procs(children, timeout=3)
-        except (psutil.NoSuchProcess, ImportError):
-            # psutil might not be available, skip process cleanup
-            pass
+            if children:
+                psutil.wait_procs(children, timeout=3)
+                logger.info(f"Terminated {len(children)} child processes")
+                
+        except (ImportError, Exception) as e:
+            logger.warning(f"Process cleanup skipped: {e}")
         
+        # 5. 强制垃圾回收
+        collected = gc.collect()
+        logger.info(f"Garbage collection freed {collected} objects")
+        
+        # 6. 清理线程资源
+        active_threads = threading.active_count()
+        if active_threads > 1:  # Main thread + others
+            logger.info(f"Warning: {active_threads} threads still active")
+            for thread in threading.enumerate():
+                if thread != threading.current_thread():
+                    logger.debug(f"Active thread: {thread.name}")
+        
+        logger.info("Comprehensive cleanup completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Error during comprehensive cleanup: {e}")
+        import traceback
+        logger.error(f"Cleanup traceback: {traceback.format_exc()}")
+
+
+def cleanup_handler(signum=None, frame=None):
+    """Handle cleanup on program termination with improved resource management."""
+    logger = get_logger(__name__)
+    logger.info(f"Received termination signal {signum}, performing cleanup...")
+    
+    try:
+        comprehensive_cleanup()
         logger.info("Cleanup completed, exiting gracefully...")
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
@@ -318,7 +378,7 @@ if __name__ == "__main__":
     # Register cleanup handlers for graceful shutdown
     signal.signal(signal.SIGINT, cleanup_handler)  # Ctrl+C
     signal.signal(signal.SIGTERM, cleanup_handler)  # Termination
-    atexit.register(cleanup_all_workspaces)  # Normal exit
+    atexit.register(comprehensive_cleanup)  # Normal exit
     
     # Use ThreadPoolExecutor for parallel task execution with configured limits
     max_workers = config.max_parallel_tasks
@@ -329,7 +389,10 @@ if __name__ == "__main__":
     executor = None
     futures = []
     try:
-        executor = ThreadPoolExecutor(max_workers=max_workers)
+        executor = ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix="EvolAgent-Worker"
+        )
         
         # Submit all tasks to the executor
         future_to_task_id = {}
@@ -350,13 +413,29 @@ if __name__ == "__main__":
                 results.append(result)
                 completed_count += 1
                 logger.info(f"Completed task {completed_count}/{len(TASK_ID_LIST)} - {task_id}: {result.get('is_correct', 'N/A')}")
+                
+                # 定期强制垃圾回收以释放内存
+                if completed_count % 5 == 0:
+                    collected = gc.collect()
+                    logger.debug(f"Periodic GC: freed {collected} objects")
+                    
             except TimeoutError:
                 logger.error(f"Task {task_id} timed out after 10 minutes")
                 future.cancel()
+                results.append({
+                    "task_id": task_id,
+                    "is_correct": False,
+                    "error": "Timeout"
+                })
             except Exception as exc:
                 logger.error(f"Task {task_id} generated an exception: {exc}")
                 import traceback
                 logger.error(f"Exception traceback: {traceback.format_exc()}")
+                results.append({
+                    "task_id": task_id,
+                    "is_correct": False,
+                    "error": str(exc)
+                })
         
         # Summary statistics
         if results:
@@ -364,10 +443,15 @@ if __name__ == "__main__":
             correct_tasks = sum(1 for r in results if r.get('is_correct', False))
             success_rate = correct_tasks / total_tasks * 100
             logger.info(f"Final Summary: {correct_tasks}/{total_tasks} tasks completed successfully ({success_rate:.1f}%)")
+            
+            # 详细统计
+            error_tasks = sum(1 for r in results if 'error' in r)
+            timeout_tasks = sum(1 for r in results if r.get('error') == 'Timeout')
+            logger.info(f"Error breakdown: {error_tasks} errors ({timeout_tasks} timeouts)")
         
-            logger.info("Check Episodic Memories!")
-            # pipeline.clear_episodic()
-            logger.info("EvolAgent execution completed")
+        logger.info("Check Episodic Memories!")
+        # pipeline.clear_episodic()
+        logger.info("EvolAgent execution completed")
     
     except KeyboardInterrupt:
         logger.info("Execution interrupted by user")
@@ -380,8 +464,10 @@ if __name__ == "__main__":
         if executor:
             logger.info("Shutting down executor...")
             executor.shutdown(wait=False, cancel_futures=True)
-        cleanup_all_workspaces()
+            
+        comprehensive_cleanup()
         sys.exit(0)
+        
     except Exception as e:
         logger.error(f"Unexpected error during execution: {e}")
         import traceback
@@ -394,8 +480,10 @@ if __name__ == "__main__":
         
         if executor:
             executor.shutdown(wait=False, cancel_futures=True)
-        cleanup_all_workspaces()
+            
+        comprehensive_cleanup()
         raise
+        
     finally:
         # Final cleanup to ensure all temporary workspaces are removed
         if executor:
@@ -405,5 +493,5 @@ if __name__ == "__main__":
             except Exception as cleanup_error:
                 logger.error(f"Error during executor shutdown: {cleanup_error}")
         
-        cleanup_all_workspaces()
-        logger.info("Workspace cleanup completed")
+        comprehensive_cleanup()
+        logger.info("All cleanup completed, program ending")

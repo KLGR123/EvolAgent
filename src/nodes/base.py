@@ -5,6 +5,8 @@ import json
 import uuid
 import tiktoken
 import json_repair
+import threading
+import weakref
 from openai import OpenAI
 from string import Template
 from typing import Any, Dict, List, Literal, Optional
@@ -14,6 +16,41 @@ from ..config import config
 from ..utils.logger import get_logger
 
 load_dotenv()
+
+# 全局OpenAI客户端池，线程安全
+_client_pool = {}
+_client_pool_lock = threading.Lock()
+
+
+def get_shared_openai_client() -> OpenAI:
+    """
+    获取共享的OpenAI客户端实例，线程安全，避免重复创建连接。
+    """
+    thread_id = threading.get_ident()
+    
+    with _client_pool_lock:
+        if thread_id not in _client_pool:
+            _client_pool[thread_id] = OpenAI(
+                api_key=os.getenv("OPENAI_API_KEY"),
+                base_url=os.getenv("OPENAI_BASE_URL"),
+                max_retries=3,
+            )
+        return _client_pool[thread_id]
+
+
+def cleanup_openai_clients():
+    """
+    清理OpenAI客户端池，释放连接资源。
+    """
+    with _client_pool_lock:
+        for client in _client_pool.values():
+            try:
+                # 关闭HTTP连接
+                if hasattr(client, '_client') and hasattr(client._client, 'close'):
+                    client._client.close()
+            except:
+                pass
+        _client_pool.clear()
 
 
 class BaseNode:
@@ -34,16 +71,24 @@ class BaseNode:
         self.model: str = model
         self.logger = get_logger(f"evolagent.node.{role}")
 
-        self.client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("OPENAI_BASE_URL"),
-            max_retries=3,
-        )
-        self.encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+        # 使用共享的OpenAI客户端以减少连接数
+        self.client = get_shared_openai_client()
+        
+        # 使用线程安全的tokenizer
+        try:
+            self.encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+        except Exception:
+            # 备用编码器
+            self.encoding = tiktoken.get_encoding("cl100k_base")
+            
         self.init_prompt: str = ""
         self.history: List[Dict[str, str]] = []
         self._last_history_token_counts = 0
         self.compress_index = 0
+        
+        # 线程安全的压缩锁
+        self._compress_lock = threading.Lock()
+        
         self.logger.debug(f"Initialized {role} node with model {model}")
 
 
@@ -65,7 +110,7 @@ class BaseNode:
 
         token_counts = len(self.encoding.encode(str(h)))
         self._last_history_token_counts += token_counts
-        limit_exceeded = self._last_history_token_counts> config.max_history_tokens
+        limit_exceeded = self._last_history_token_counts > config.max_history_tokens
         
         if limit_exceeded:
             self.logger.warning(f"Token limit approaching: {self._last_history_token_counts} > {config.max_history_tokens}")
@@ -74,73 +119,99 @@ class BaseNode:
     
     def add_history(self, h: Dict[str, str]) -> None:
         """
-        Add the history to the node with token tracking.
+        Add the history to the node with token tracking and thread-safe compression.
         """
-        self.history.append(deepcopy(h))
-        if self._is_token_limit_exceeded(h):
+        # 深拷贝以避免外部修改影响内部状态
+        history_copy = deepcopy(h)
+        self.history.append(history_copy)
+        
+        if self._is_token_limit_exceeded(history_copy):
             self.logger.warning("Token limit exceeded - executing history maintenance")
             self._maintain_history()
         else:
-            self._last_history_token_counts += len(self.encoding.encode(str(h)))
-            self.logger.debug(f"Added history entry from {h['role']}, with {len(self.encoding.encode(str(h)))} tokens")
+            self._last_history_token_counts += len(self.encoding.encode(str(history_copy)))
+            self.logger.debug(f"Added history entry from {history_copy['role']}, with {len(self.encoding.encode(str(history_copy)))} tokens")
 
     def _maintain_history(self) -> None:
         """
         Maintain the history when token limit is exceeded.
         Achieved by either removing the oldest history or compressing the history.
+        Thread-safe implementation.
         """
-
-        def load_compress_prompt(role: str) -> Template:
-            with open(f"src/memory/{role}/compress.md", "r") as f:
-                return Template(f.read())
-        
-        compress_prompt = load_compress_prompt(self.role)
-        key = ("plan", "description") if self.role == "planner" else ("code", "description")
-        
-        attempts = 1
-        while (
-            self.compress_index < len(self.history)
-            and self._last_history_token_counts > config.max_history_tokens
-            and attempts <= config.max_compress_rounds
-        ):
-            # fix the history role cross between developer and tester
-            if self.role!="planner" and key[0] not in self.history[self.compress_index]:
-                if key[0]=="code": 
-                    key=("code_output", "feedback")
-                    compress_prompt = load_compress_prompt("tester")
-                else:
-                    key=("code", "description")
-                    compress_prompt = load_compress_prompt("developer")
+        with self._compress_lock:  # 确保压缩操作的线程安全
+            def load_compress_prompt(role: str) -> Template:
+                try:
+                    with open(f"src/memory/{role}/compress.md", "r") as f:
+                        return Template(f.read())
+                except FileNotFoundError:
+                    # 如果找不到压缩模板，返回简单的默认模板
+                    return Template("Summarize the following content concisely: $target")
             
-            self._last_history_token_counts -= len(self.encoding.encode(str(self.history[self.compress_index][key[1]]))) # subtract the length of the history to be compressed
+            compress_prompt = load_compress_prompt(self.role)
+            key = ("plan", "description") if self.role == "planner" else ("code", "description")
             
-            messages=[
-                {'role': 'system', 'content': 'You are a Summarize Expert for an Agent system. Your task is to summarize the content of a conversation.'},
-                {"role": "user", "content": compress_prompt.safe_substitute(
-                    reference=self.history[self.compress_index][key[0]],
-                    target=self.history[self.compress_index][key[1]]
-                )}
-            ]
+            attempts = 1
+            while (
+                self.compress_index < len(self.history)
+                and self._last_history_token_counts > config.max_history_tokens
+                and attempts <= config.max_compress_rounds
+            ):
+                try:
+                    # fix the history role cross between developer and tester
+                    if self.role != "planner" and key[0] not in self.history[self.compress_index]:
+                        if key[0] == "code": 
+                            key = ("code_output", "feedback")
+                            compress_prompt = load_compress_prompt("tester")
+                        else:
+                            key = ("code", "description")
+                            compress_prompt = load_compress_prompt("developer")
+                    
+                    # 检查历史项是否包含所需的键
+                    if key[1] not in self.history[self.compress_index]:
+                        self.logger.warning(f"History item {self.compress_index} missing key {key[1]}, skipping compression")
+                        self.compress_index += 1
+                        continue
+                    
+                    self._last_history_token_counts -= len(self.encoding.encode(str(self.history[self.compress_index][key[1]]))) # subtract the length of the history to be compressed
+                    
+                    messages = [
+                        {'role': 'system', 'content': 'You are a Summarize Expert for an Agent system. Your task is to summarize the content of a conversation.'},
+                        {"role": "user", "content": compress_prompt.safe_substitute(
+                            reference=self.history[self.compress_index].get(key[0], ""),
+                            target=self.history[self.compress_index][key[1]]
+                        )}
+                    ]
 
-            compressed_h = self.client.chat.completions.create(
-                model="gpt-4.1",
-                messages=messages,
-                max_tokens=1024*32,
-                timeout=300,
-                extra_headers={
-                    'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
-                }
-            )
+                    # 使用较短的超时时间避免长时间等待
+                    compressed_h = self.client.chat.completions.create(
+                        model="gpt-4o-mini",  # 使用更快的模型进行压缩
+                        messages=messages,
+                        max_tokens=1024,  # 减少压缩后的长度
+                        timeout=60,  # 减少超时时间
+                        extra_headers={
+                            'x-ms-client-request-id': "evolagent-compress-"+str(uuid.uuid4()),
+                        }
+                    )
 
-            self.history[self.compress_index][key[1]] = compressed_h.choices[0].message.content
-            self._last_history_token_counts += len(self.encoding.encode(str(compressed_h.choices[0].message.content)))
-            
-            self.compress_index += 1
-            if self.compress_index >= len(self.history):
-                self.compress_index = 0 # compress from the beginning
-                attempts += 1
+                    compressed_content = compressed_h.choices[0].message.content or "Compression failed"
+                    self.history[self.compress_index][key[1]] = compressed_content
+                    self._last_history_token_counts += len(self.encoding.encode(str(compressed_content)))
+                    
+                    self.compress_index += 1
+                    if self.compress_index >= len(self.history):
+                        self.compress_index = 0 # compress from the beginning
+                        attempts += 1
+                        
+                except Exception as e:
+                    self.logger.error(f"Compression failed for history item {self.compress_index}: {e}")
+                    # 如果压缩失败，移除最老的历史项
+                    if self.history:
+                        removed_item = self.history.pop(0)
+                        self._last_history_token_counts -= len(self.encoding.encode(str(removed_item)))
+                        self.logger.info(f"Removed oldest history item due to compression failure")
+                    break
 
-        self.logger.warning(f"Length after {attempts+1} rounds of compression: {self._last_history_token_counts}")
+            self.logger.warning(f"Length after {attempts} rounds of compression: {self._last_history_token_counts}")
 
     def forward(self, prompt: str) -> str:
         """
@@ -306,6 +377,17 @@ class BaseNode:
         return Template(self.init_prompt).safe_substitute(
             history=self.export_history()
         )
+
+    def clear(self):
+        """
+        清理节点状态，释放内存。
+        """
+        self.history.clear()
+        self._last_history_token_counts = 0
+        self.compress_index = 0
+        
+        # 不直接关闭client，因为它是共享的
+        # self.client 将在全局清理函数中处理
 
     def __repr__(self):
         return f"Node(role={self.role}, model={self.model})"
