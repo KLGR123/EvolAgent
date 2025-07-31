@@ -3,6 +3,8 @@ import sys
 import time
 import signal
 import atexit
+import threading
+import multiprocessing
 from typing import Literal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -75,65 +77,65 @@ TASK_DONE = [
 ]
 
 TASK_ID_LIST = [
-    # "3627a8be-a77f-41bb-b807-7e1bd4c0ebdf",
-    # "3ff6b7a9-a5bd-4412-ad92-0cd0d45c0fee", # correct already, rerun
-    # "73c1b9fe-ee1d-4cf4-96ca-35c08f97b054",
-    # "ad37a656-079a-49f9-a493-7b739c9167d1",
-    # "b7f857e4-d8aa-4387-af2a-0e844df5b9d8",
-    # "d8152ad6-e4d5-4c12-8bb7-8d57dc10c6de",
-    # "dd3c7503-f62a-4bd0-9f67-1b63b94194cc",
-    # "e0c10771-d627-4fd7-9694-05348e54ee36",
-    # "e4e91f1c-1dcd-439e-9fdd-cb976f5293fd",
-    # "e9a2c537-8232-4c3f-85b0-b52de6bcba99",
-    # "ded28325-3447-4c56-860f-e497d6fb3577",
-    # "0bb3b44a-ede5-4db5-a520-4e844b0079c5",
-    # "56db2318-640f-477a-a82f-bc93ad13e882",
-    # "e961a717-6b25-4175-8a68-874d28190ee4",
-    # "42576abe-0deb-4869-8c63-225c2d75a95a",
-    # "4fc2f1ae-8625-45b5-ab34-ad4433bc21f8",
-    # "5d0080cb-90d7-4712-bc33-848150e917d3",
-    # "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
-    # "9d191bce-651d-4746-be2d-7ef8ecadb9c2",
-    # "a0068077-79f4-461a-adfe-75c1a4148545",
-    # "a1e91b78-d3d8-4675-bb8d-62741b4b68a6",
-    # "b816bfce-3d80-4913-a07d-69b752ce6377",
-    # "cabe07ed-9eca-40ea-8ead-410ef5e83f91",
-    # "3cef3a44-215e-4aed-8e3b-b1e3f08063b7",
-    # "840bfca7-4f7b-481a-8794-c560c340185d",
-    # "e1fc63a2-da7a-432f-be78-7c4a95598703",
-    # "c365c1c7-a3db-4d5e-a9a1-66f56eae7865",
-    # "b4cc024b-3f5e-480e-b96a-6656493255b5",
-    # "05407167-39ec-4d3a-a234-73a9120c325d",
-    # "17b5a6a3-bc87-42e8-b0fb-6ab0781ef2cc",
-    # "2dfc4c37-fec1-4518-84a7-10095d30ad75",
-    # "56137764-b4e0-45b8-9c52-1866420c3df5",
-    # "6b078778-0b90-464d-83f6-59511c811b01",
-    # "7619a514-5fa8-43ef-9143-83b66a43d7a4",
-    # "7b5377b0-3f38-4103-8ad2-90fe89864c04",
-    # "7dd30055-0198-452e-8c25-f73dbe27dcb8",
-    # "a56f1527-3abf-41d6-91f8-7296d6336c3f",
-    # "ed58682d-bc52-4baa-9eb0-4eb81e1edacc",
-    # "edd4d4f2-1a58-45c4-b038-67337af4e029",
-    # "2a649bb1-795f-4a01-b3be-9a01868dae73",
-    # "71345b0a-9c7d-4b50-b2bf-937ec5879845",
-    # "d1af70ea-a9a4-421a-b9cc-94b5e02f1788",
-    # "e29834fd-413a-455c-a33e-c3915b07401c",
-    # "f3917a3d-1d17-4ee2-90c5-683b072218fe",
-    # "f46b4380-207e-4434-820b-f32ce04ae2a4",
-    # "04a04a9b-226c-43fd-b319-d5e89743676f",
-    # "08f3a05f-5947-4089-a4c4-d4bcfaa6b7a0",
-    # "cca70ce6-1952-45d2-acd4-80c903b0bc49",
-    # "d700d50d-c707-4dca-90dc-4528cddd0c80",
-    # "08cae58d-4084-4616-b6dd-dd6534e4825b",
-    # "e8cb5b03-41e0-4086-99e5-f6806cd97211",
-    # "0512426f-4d28-49f0-be77-06d05daec096",
-    # "676e5e31-a554-4acc-9286-b60d90a92d26",
-    # "851e570a-e3de-4d84-bcfa-cc85578baa59",
-    # "da52d699-e8d2-4dc5-9191-a2199e0b6a9b",
-    # "de9887f5-ead8-4727-876f-5a4078f8598c",
-    # "5b2a14e8-6e59-479c-80e3-4696e8980152",
-    # "0bdb7c40-671d-4ad1-9ce3-986b159c0ddc",
-    # "ebbc1f13-d24d-40df-9068-adcf735b4240",
+    "3627a8be-a77f-41bb-b807-7e1bd4c0ebdf",
+    "3ff6b7a9-a5bd-4412-ad92-0cd0d45c0fee", # correct already, rerun
+    "73c1b9fe-ee1d-4cf4-96ca-35c08f97b054",
+    "ad37a656-079a-49f9-a493-7b739c9167d1",
+    "b7f857e4-d8aa-4387-af2a-0e844df5b9d8",
+    "d8152ad6-e4d5-4c12-8bb7-8d57dc10c6de",
+    "dd3c7503-f62a-4bd0-9f67-1b63b94194cc",
+    "e0c10771-d627-4fd7-9694-05348e54ee36",
+    "e4e91f1c-1dcd-439e-9fdd-cb976f5293fd",
+    "e9a2c537-8232-4c3f-85b0-b52de6bcba99",
+    "ded28325-3447-4c56-860f-e497d6fb3577",
+    "0bb3b44a-ede5-4db5-a520-4e844b0079c5",
+    "56db2318-640f-477a-a82f-bc93ad13e882",
+    "e961a717-6b25-4175-8a68-874d28190ee4",
+    "42576abe-0deb-4869-8c63-225c2d75a95a",
+    "4fc2f1ae-8625-45b5-ab34-ad4433bc21f8",
+    "5d0080cb-90d7-4712-bc33-848150e917d3",
+    "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
+    "9d191bce-651d-4746-be2d-7ef8ecadb9c2",
+    "a0068077-79f4-461a-adfe-75c1a4148545",
+    "a1e91b78-d3d8-4675-bb8d-62741b4b68a6",
+    "b816bfce-3d80-4913-a07d-69b752ce6377",
+    "cabe07ed-9eca-40ea-8ead-410ef5e83f91",
+    "3cef3a44-215e-4aed-8e3b-b1e3f08063b7",
+    "840bfca7-4f7b-481a-8794-c560c340185d",
+    "e1fc63a2-da7a-432f-be78-7c4a95598703",
+    "c365c1c7-a3db-4d5e-a9a1-66f56eae7865",
+    "b4cc024b-3f5e-480e-b96a-6656493255b5",
+    "05407167-39ec-4d3a-a234-73a9120c325d",
+    "17b5a6a3-bc87-42e8-b0fb-6ab0781ef2cc",
+    "2dfc4c37-fec1-4518-84a7-10095d30ad75",
+    "56137764-b4e0-45b8-9c52-1866420c3df5",
+    "6b078778-0b90-464d-83f6-59511c811b01",
+    "7619a514-5fa8-43ef-9143-83b66a43d7a4",
+    "7b5377b0-3f38-4103-8ad2-90fe89864c04",
+    "7dd30055-0198-452e-8c25-f73dbe27dcb8",
+    "a56f1527-3abf-41d6-91f8-7296d6336c3f",
+    "ed58682d-bc52-4baa-9eb0-4eb81e1edacc",
+    "edd4d4f2-1a58-45c4-b038-67337af4e029",
+    "2a649bb1-795f-4a01-b3be-9a01868dae73",
+    "71345b0a-9c7d-4b50-b2bf-937ec5879845",
+    "d1af70ea-a9a4-421a-b9cc-94b5e02f1788",
+    "e29834fd-413a-455c-a33e-c3915b07401c",
+    "f3917a3d-1d17-4ee2-90c5-683b072218fe",
+    "f46b4380-207e-4434-820b-f32ce04ae2a4",
+    "04a04a9b-226c-43fd-b319-d5e89743676f",
+    "08f3a05f-5947-4089-a4c4-d4bcfaa6b7a0",
+    "cca70ce6-1952-45d2-acd4-80c903b0bc49",
+    "d700d50d-c707-4dca-90dc-4528cddd0c80",
+    "08cae58d-4084-4616-b6dd-dd6534e4825b",
+    "e8cb5b03-41e0-4086-99e5-f6806cd97211",
+    "0512426f-4d28-49f0-be77-06d05daec096",
+    "676e5e31-a554-4acc-9286-b60d90a92d26",
+    "851e570a-e3de-4d84-bcfa-cc85578baa59",
+    "da52d699-e8d2-4dc5-9191-a2199e0b6a9b",
+    "de9887f5-ead8-4727-876f-5a4078f8598c",
+    "5b2a14e8-6e59-479c-80e3-4696e8980152",
+    "0bdb7c40-671d-4ad1-9ce3-986b159c0ddc",
+    "ebbc1f13-d24d-40df-9068-adcf735b4240",
 
     "9e1fc53b-46ff-49a1-9d05-9e6faac34cc5",
     "a0c07678-e491-4bbc-8f0b-07405144218f",
@@ -264,15 +266,48 @@ def cleanup_handler(signum=None, frame=None):
     
     _cleanup_in_progress = True
     logger = get_logger(__name__)
-    logger.info("Received termination signal, cleaning up workspaces...")
+    logger.info(f"Received termination signal {signum}, cleaning up resources...")
     
     try:
+        # Force cleanup of any running executors
+        import threading
+        import concurrent.futures
+        
+        # Find any ThreadPoolExecutor instances in current thread
+        for thread in threading.enumerate():
+            if hasattr(thread, '_target') and thread._target:
+                thread.join(timeout=1.0)  # Give threads a chance to finish gracefully
+        
+        # Cleanup workspaces
         cleanup_all_workspaces()
-        logger.info("Cleanup completed, exiting...")
+        
+        # Additional cleanup for potential subprocess resources
+        import subprocess
+        import psutil
+        import os
+        
+        try:
+            # Clean up any child processes
+            current_process = psutil.Process(os.getpid())
+            children = current_process.children(recursive=True)
+            for child in children:
+                logger.info(f"Terminating child process: {child.pid}")
+                child.terminate()
+            
+            # Wait for children to terminate
+            psutil.wait_procs(children, timeout=3)
+        except (psutil.NoSuchProcess, ImportError):
+            # psutil might not be available, skip process cleanup
+            pass
+        
+        logger.info("Cleanup completed, exiting gracefully...")
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
+        import traceback
+        logger.error(f"Cleanup traceback: {traceback.format_exc()}")
     finally:
-        os._exit(1)  # Force exit
+        # Use sys.exit instead of os._exit to allow proper cleanup
+        sys.exit(1)
 
 
 if __name__ == "__main__":
@@ -292,24 +327,36 @@ if __name__ == "__main__":
     logger.info(f"Processing {len(TASK_ID_LIST)} tasks with {max_workers} parallel workers")
     
     executor = None
+    futures = []
     try:
         executor = ThreadPoolExecutor(max_workers=max_workers)
         
         # Submit all tasks to the executor
-        future_to_task_id = {
-            executor.submit(main, task_id, "validation"): task_id 
-            for task_id in TASK_ID_LIST
-        }
+        future_to_task_id = {}
+        for task_id in TASK_ID_LIST:
+            future = executor.submit(main, task_id, "validation")
+            future_to_task_id[future] = task_id
+            futures.append(future)
         
-        # Collect results as they complete with timeout for interruption
+        logger.info(f"Submitted {len(futures)} tasks to executor")
+        
+        # Collect results as they complete with proper timeout handling
+        completed_count = 0
         for future in as_completed(future_to_task_id, timeout=None):
             task_id = future_to_task_id[future]
             try:
-                result = future.result(timeout=1.0)  # Short timeout to allow interruption
+                # Use longer timeout to avoid premature cancellation
+                result = future.result(timeout=600)  # 10 minutes per task
                 results.append(result)
-                logger.info(f"Completed task {task_id}: {result.get('is_correct', 'N/A')}")
+                completed_count += 1
+                logger.info(f"Completed task {completed_count}/{len(TASK_ID_LIST)} - {task_id}: {result.get('is_correct', 'N/A')}")
+            except TimeoutError:
+                logger.error(f"Task {task_id} timed out after 10 minutes")
+                future.cancel()
             except Exception as exc:
                 logger.error(f"Task {task_id} generated an exception: {exc}")
+                import traceback
+                logger.error(f"Exception traceback: {traceback.format_exc()}")
         
         # Summary statistics
         if results:
@@ -324,23 +371,39 @@ if __name__ == "__main__":
     
     except KeyboardInterrupt:
         logger.info("Execution interrupted by user")
+        # Cancel all pending futures
+        for future in futures:
+            if not future.done():
+                logger.info(f"Cancelling task: {future_to_task_id.get(future, 'unknown')}")
+                future.cancel()
+        
         if executor:
             logger.info("Shutting down executor...")
-            executor.shutdown(wait=False)  # Don't wait for completion
+            executor.shutdown(wait=False, cancel_futures=True)
         cleanup_all_workspaces()
         sys.exit(0)
     except Exception as e:
         logger.error(f"Unexpected error during execution: {e}")
+        import traceback
+        logger.error(f"Exception traceback: {traceback.format_exc()}")
+        
+        # Cancel all pending futures on error
+        for future in futures:
+            if not future.done():
+                future.cancel()
+        
         if executor:
-            executor.shutdown(wait=False)
+            executor.shutdown(wait=False, cancel_futures=True)
         cleanup_all_workspaces()
         raise
     finally:
         # Final cleanup to ensure all temporary workspaces are removed
         if executor:
             try:
-                executor.shutdown(wait=True)
-            except:
-                pass
+                logger.info("Final executor shutdown...")
+                executor.shutdown(wait=True, cancel_futures=True)
+            except Exception as cleanup_error:
+                logger.error(f"Error during executor shutdown: {cleanup_error}")
+        
         cleanup_all_workspaces()
         logger.info("Workspace cleanup completed")

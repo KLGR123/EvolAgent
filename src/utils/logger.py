@@ -134,21 +134,13 @@ def log_execution_time(logger: Optional[logging.Logger] = None):
         def wrapper(*args, **kwargs):
             start_time = time.time()
             func_logger = logger or get_logger(func.__module__)
-            
-            try:
-                result = func(*args, **kwargs)
-                execution_time = time.time() - start_time
-                func_logger.info(
-                    f"Function {func.__name__} completed successfully in {execution_time:.2f}s"
-                )
-                return result
-            except Exception as e:
-                execution_time = time.time() - start_time
-                func_logger.error(
-                    f"Function {func.__name__} failed after {execution_time:.2f}s: {str(e)}"
-                )
-                raise
-                
+
+            result = func(*args, **kwargs)
+            execution_time = time.time() - start_time
+            func_logger.info(
+                f"Function {func.__name__} completed successfully in {execution_time:.2f}s"
+            )
+            return result         
         return wrapper
     return decorator
 
