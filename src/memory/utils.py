@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+import threading
 import time
 import tiktoken
 from dotenv import load_dotenv
@@ -35,13 +36,29 @@ class SearchResult:
 
 
 class DenseEmbedModel:
+    _instance = None
+    _lock = threading.Lock()
+    _initialized = False
+    
+    def __new__(cls, model_name: str = "text-embedding-3-large"):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super(DenseEmbedModel, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self, model_name: str = "text-embedding-3-large"):
-        self.base_url = os.getenv("OPENAI_BASE_URL")
-        if self.base_url:
-            self.base_url = self.base_url.rstrip('/')
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        self.model_name = model_name
-        self.dimension = None
+        # Only initialize once, even if __init__ is called multiple times
+        if not self._initialized:
+            with self._lock:
+                if not self._initialized:
+                    self.base_url = os.getenv("OPENAI_BASE_URL")
+                    if self.base_url:
+                        self.base_url = self.base_url.rstrip('/')
+                    self.api_key = os.getenv("OPENAI_API_KEY")
+                    self.model_name = model_name
+                    self.dimension = None
+                    self._initialized = True
         
     def embed(self, texts: Union[str, List[str]], max_retries: int = 3, retry_delay: float = 1.0) -> List[List[float]]:
         texts = [texts] if isinstance(texts, str) else texts
@@ -90,17 +107,36 @@ class DenseEmbedModel:
 
 
 class SparseEmbedModel:  
+    _instance = None
+    _lock = threading.Lock()
+    _model = None
+    _model_name = None
+    
+    def __new__(cls, model_name: str = config.default_sparse_model):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super(SparseEmbedModel, cls).__new__(cls)
+        return cls._instance
+    
     def __init__(self, model_name: str = config.default_sparse_model):
-        try:
-            self.model = SparseTextEmbedding(model_name=model_name)
-        except Exception as e:
-            raise Exception(f"Sparse embedding model {model_name} initialization failed: {e}")
+        # Only initialize the model once, even if __init__ is called multiple times
+        if self._model is None or self._model_name != model_name:
+            with self._lock:
+                if self._model is None or self._model_name != model_name:
+                    try:
+                        self._model = SparseTextEmbedding(model_name=model_name)
+                        self._model_name = model_name
+                    except Exception as e:
+                        raise Exception(f"Sparse embedding model {model_name} initialization failed: {e}")
         
     def embed(self, documents: Union[str, List[str]]) -> List[SparseEmbedding]:
         try:
+            if self._model is None:
+                raise Exception("Sparse embedding model not initialized")
             if isinstance(documents, str):
                 documents = [documents]
-            sparse_embeddings = list(self.model.embed(documents))
+            sparse_embeddings = list(self._model.embed(documents))
             return sparse_embeddings
         except Exception as e:
             print(f"Sparse embedding failed: {e}")
