@@ -157,13 +157,14 @@ class TaskLogger:
         except Exception as e:
             print(f"Error updating planner history log: {e}")
     
-    def log_developer_plan(self, plan: str, plan_description: str = "") -> int:
+    def log_developer_plan(self, plan: str, plan_description: str = "", episodic_examples: str = "") -> int:
         """
         Log a new developer plan and return the plan index.
         
         Args:
             plan: The plan content
             plan_description: Optional plan description
+            episodic_examples: Optional episodic memory examples
             
         Returns:
             Plan index for this iteration
@@ -186,6 +187,11 @@ class TaskLogger:
 ## Plan Description
 ```
 {plan_description if plan_description else 'No description provided'}
+```
+
+## Retrieved Episodic Memory Examples
+```
+{episodic_examples if episodic_examples else 'No Episodic Memory Examples Retrieved'}
 ```
 
 ## Development History

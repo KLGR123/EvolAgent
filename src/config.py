@@ -120,6 +120,10 @@ class Config:
     @property
     def embedding_dimension(self) -> int:
         return self.get('models.embedding_dimension', 3072)
+
+    @property
+    def default_sparse_model(self) -> str:
+        return self.get('models.default_sparse_model', 'prithivida/Splade_PP_en_v1')
     
     @property
     def default_models(self) -> list:
@@ -216,6 +220,67 @@ class Config:
     @property
     def max_tokens(self) -> int:
         return self.get('models.max_tokens', 32000)
+
+    # Compression Configuration Properties
+    @property
+    def compression_max_attempts(self) -> int:
+        return self.get('compression.max_attempts', 3)
+    
+    @property
+    def compression_min_savings(self) -> int:
+        return self.get('compression.min_savings', 50)
+    
+    @property
+    def compression_min_length(self) -> int:
+        return self.get('compression.min_length', 200)
+    
+    @property
+    def compression_min_output_tokens(self) -> int:
+        return self.get('compression.min_output_tokens', 50)
+    
+    @property
+    def compression_max_output_tokens(self) -> int:
+        return self.get('compression.max_output_tokens', 2048)
+    
+    @property
+    def compression_target_ratio(self) -> int:
+        return self.get('compression.target_ratio', 3)
+    
+    @property
+    def compression_reference_max_length(self) -> int:
+        return self.get('compression.reference_max_length', 1000)
+    
+    @property
+    def compression_model(self) -> str:
+        return self.get('compression.model', 'gpt-4o-mini')
+    
+    @property
+    def compression_temperature(self) -> float:
+        return self.get('compression.temperature', 0.2)
+    
+    @property
+    def compression_timeout(self) -> int:
+        return self.get('compression.timeout', 60)
+    
+    @property
+    def removal_target_ratio(self) -> float:
+        return self.get('compression.removal_target_ratio', 0.8)
+    
+    @property
+    def removal_max_items(self) -> int:
+        return self.get('compression.removal_max_items', 10)
+    
+    @property
+    def code_compression_enabled(self) -> bool:
+        return self.get('compression.code_compression_enabled', True)
+    
+    @property
+    def code_target_reduction(self) -> float:
+        return self.get('compression.code_target_reduction', 0.5)
+    
+    @property
+    def output_max_length(self) -> int:
+        return self.get('compression.output_max_length', 500)
 
 # Global configuration instance
 config = Config()

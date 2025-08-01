@@ -4,15 +4,15 @@
 # Pipeline Configuration
 pipeline:
   max_dev_test_iterations: 80  # Maximum iterations for dev-test loop
-  max_parallel_tasks: 3        # Maximum parallel task execution (reduced to prevent resource contention)
+  max_parallel_tasks: 1        # Maximum parallel task execution (reduced to prevent resource contention)
   emergency_break_iterations: 85  # Emergency break point (max_dev_test_iterations + 5)
 
 # Memory and RAG Configuration
 memory:
   max_tokens_per_chunk: 8192   # Maximum tokens allowed per text chunk
   search_method: "hybrid"     # Search method for semantic search
-  semantic_search_limit: 4     # Number of semantic search results to return
-  episodic_search_limit: 4     # Number of episodic search results to return
+  semantic_search_limit: 3     # Number of semantic search results to return
+  episodic_search_limit: 3     # Number of episodic search results to return
   score_threshold: 0.15        # Minimum confidence score for search results
   hybrid_search_multiplier: 2  # Multiplier for hybrid search prefetch limit
 
@@ -25,10 +25,12 @@ models:
   # Model lists for multi-path sampling
   default_models:
     # - "gemini2.5propreview"
-    - "claude-3-7-sonnet-v1"
-    - "o4-mini"
+    # - "claude-3-7-sonnet-v1"
+    # - "o4-mini"
     - "anthropic.claude-sonnet-4-20250514-v1:0"
-  temperature: 0.2
+    - "anthropic.claude-sonnet-4-20250514-v1:0"
+    - "anthropic.claude-sonnet-4-20250514-v1:0"
+  temperature: 0.5
   max_tokens: 32000
 
 # Node Configuration
@@ -38,7 +40,32 @@ nodes:
   test_history_length: 8       # History length for test node
   critic_length: 6
   max_history_tokens: 184320  # 180k tokens
-  max_compress_rounds: 5 # Maximum number of compression loops
+  max_compress_rounds: 3 # Maximum number of compression loops
+
+# History Compression Configuration
+compression:
+  # Compression behavior
+  max_attempts: 3              # Maximum compression attempts per cycle
+  min_savings: 50              # Minimum token savings to apply compression
+  min_length: 200              # Minimum content length to consider for compression
+  min_output_tokens: 50        # Minimum tokens in compressed output
+  max_output_tokens: 2048      # Maximum tokens in compressed output
+  target_ratio: 3              # Target compression ratio (original/compressed)
+  reference_max_length: 1000   # Maximum reference content length for context
+  
+  # LLM settings for compression
+  model: "gpt-4.1"         # Model to use for compression
+  temperature: 0.1             # Temperature for compression (lower = more consistent)
+  timeout: 60                  # Timeout for compression API calls
+  
+  # Fallback removal settings
+  removal_target_ratio: 0.8    # Target ratio of max_tokens after removal (80%)
+  removal_max_items: 10        # Maximum items to remove in one cycle
+  
+  # Code compression settings
+  code_compression_enabled: true     # Enable specialized code compression
+  code_target_reduction: 0.5         # Target reduction ratio for code (50%)
+  output_max_length: 500              # Maximum length for compressed code output
 
 # Environment Configuration
 environment:

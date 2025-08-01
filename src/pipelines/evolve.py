@@ -153,18 +153,23 @@ class EvolvePipeline(BasePipeline):
                 test_node._init_prompt(plan=next_plan["plan"])
                 self.logger.debug("Dev and test nodes initialized for current plan")
 
+                # Get episodic examples from developer node after initialization
+                episodic_examples = getattr(dev_node, 'episodic', '')
+
                 # Log developer plan start
                 current_plan_index = None
                 if task_logger:
                     current_plan_index = task_logger.log_developer_plan(
                         next_plan["plan"], 
-                        next_plan.get("description", "")
+                        next_plan.get("description", ""),
+                        episodic_examples
                     )
                 
                 if html_logger:
                     current_plan_index = html_logger.log_developer_plan(
                         next_plan["plan"], 
-                        next_plan.get("description", "")
+                        next_plan.get("description", ""),
+                        episodic_examples
                     )
 
                 next_feedback = None
@@ -228,6 +233,7 @@ class EvolvePipeline(BasePipeline):
                     html_logger.log_developer_history(current_plan_index, dev_history)
             
             history = plan_node.export_history(past_n=config.critic_length)
+            plan_code_trajectory = dev_node.export_plan_code_trajectory()
             self.logger.info(f"Forward pass completed for model: {plan_node.model}")
             
             # Store nodes for potential learning (使用弱引用避免内存泄漏)
@@ -235,7 +241,7 @@ class EvolvePipeline(BasePipeline):
             self.dev_node = dev_node
             self.test_node = test_node
             
-            return history
+            return history, plan_code_trajectory
             
         except Exception as e:
             self.logger.error(f"Error in forward pass for model {model}: {e}")
@@ -291,13 +297,14 @@ class EvolvePipeline(BasePipeline):
                 for i, model in enumerate(tqdm(models, desc="Processing models")):
                     self.logger.info(f"Starting execution path {i+1}/{len(models)} with model: {model}")
                     
-                    history = self._forward(task, model, task_id, i)
+                    history, plan_code_trajectory = self._forward(task, model, task_id, i)
                     histories.append(history)
                     
                     # 只存储必要的信息，避免内存泄漏
                     execution_result = {
                         'model': model,
                         'history': history,
+                        'plan_code_trajectory': plan_code_trajectory,
                         'index': i
                     }
                     execution_results.append(execution_result)
@@ -319,13 +326,15 @@ class EvolvePipeline(BasePipeline):
                 self.logger.debug("Critic reason: %s...", reason[:200] if len(reason) > 500 else reason)
                 self.logger.info(f"Best member index: {best_id} (model: {models[best_id]})")
                 
-                # Log critic result with separate loggers to avoid contaminating model logs
-                critic_task_logger = get_task_logger(task_id, f"critic_{critic_node.model}")
-                critic_task_logger.log_critic_result(final_answer, reason, best_id)
-                
-                # Save critic result to task root directory without contaminating any model's conversation history
-                critic_html_logger = HTMLTaskLogger(task_id, f"critic_{critic_node.model}")
-                critic_html_logger.save_critic_result_to_task_root(final_answer, reason, best_id)
+                # Save critic result directly to task root directory without creating model subdirectories
+                from ..utils.html_logger import HTMLTaskLogger
+                HTMLTaskLogger.save_critic_result_static(
+                    task_id=task_id,
+                    critic_model=critic_node.model,
+                    final_answer=final_answer,
+                    reason=reason,
+                    best_model_index=best_id
+                )
                 
                 # Store the best path information for learning
                 self.best_id = best_id
@@ -345,18 +354,18 @@ class EvolvePipeline(BasePipeline):
         Learn from the past experiences, save the successful experiences to the long-term memory.
         Only saves the best path as determined by the critic node.
         """ 
-        if hasattr(self, 'best_id') and hasattr(self, 'best_plan_node') and hasattr(self, 'best_dev_node'):
+        if hasattr(self, 'best_id'):
             self.logger.info(f"Learning from best path (index {self.best_id})")
+
+            self.best_history = self.execution_results[self.best_id]['history']
+            self.best_model = self.execution_results[self.best_id]['model']
+
             self._save_plan_episodic()
             self._save_dev_episodic()
 
             self.logger.info("Successfully saved the best path experiences to the long-term memory")
             
-            # 清理学习后的引用
-            if hasattr(self, 'best_plan_node'):
-                del self.best_plan_node
-            if hasattr(self, 'best_dev_node'):
-                del self.best_dev_node
+            # Clean up execution_results after saving episodic memories
             if hasattr(self, 'execution_results'):
                 del self.execution_results
                 
@@ -436,21 +445,14 @@ Example format:
 
     def _save_plan_episodic(self) -> None:
         """Save plan episodic memory with task summary and execution history."""
-        try:
-            if not hasattr(self, 'plan_node'):
-                self.logger.warning("No plan node available for episodic saving")
-                return
-                
+        try:    
             title = self._summarize_task(self.task)
-            history = self.plan_node.export_history()
+            history = self.best_history
             content = f"### {title}\n\n**TASK**: {self.task}\n\n```\n{history}\n```"
             
-            # 使用plan_node的memory
-            if hasattr(self.plan_node, 'memory'):
-                self.plan_node.memory.add_episodic(content)
-                self.logger.info(f"Plan episodic memory saved successfully: {title}")
-            else:
-                self.logger.warning("Plan node does not have memory attribute")
+            plan_node = PlanNode(model=self.best_model)
+            plan_node.memory.add_episodic(content)
+            self.logger.info(f"Plan episodic memory saved successfully: {title}")
                 
         except Exception as e:
             self.logger.error(f"Failed to save plan episodic memory: {e}")
@@ -463,11 +465,7 @@ Example format:
         Now that we have better RAG handling, we should include code by default.
         """
         try:
-            if not hasattr(self, 'dev_node'):
-                self.logger.warning("No dev node available for episodic saving")
-                return
-                
-            plan_code_trajectory = self.dev_node.export_plan_code_trajectory()
+            plan_code_trajectory = self.execution_results[self.best_id]['plan_code_trajectory']
             self.logger.info(f"Processing {len(plan_code_trajectory)} plan-code pairs for episodic memory")
             
             successful_saves = 0
@@ -491,13 +489,9 @@ Example format:
                     
                     self.logger.debug(f"Dev episodic memory content created: {title}")
                     
-                    # 使用dev_node的memory
-                    if hasattr(self.dev_node, 'memory'):
-                        self.dev_node.memory.add_episodic(content)
-                        successful_saves += 1
-                    else:
-                        self.logger.warning("Dev node does not have memory attribute")
-                        failed_saves += 1
+                    dev_node = DevNode(model=self.best_model)
+                    dev_node.memory.add_episodic(content)
+                    successful_saves += 1
                     
                 except Exception as e:
                     failed_saves += 1
@@ -566,4 +560,4 @@ Example format:
             if hasattr(self, 'test_node'):
                 self._cleanup_nodes(self.test_node)
         except:
-            pass  # 析构函数中不应该抛出异常
+            pass

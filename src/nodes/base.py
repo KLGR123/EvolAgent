@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 
 from ..config import config
 from ..utils.logger import get_logger
+from ..utils import HistoryMaintainer
 
 load_dotenv()
 
@@ -84,13 +85,15 @@ class BaseNode:
         self.init_prompt: str = ""
         self.history: List[Dict[str, str]] = []
         self._last_history_token_counts = 0
-        self.compress_index = 0
         
-        # 线程安全的压缩锁
-        self._compress_lock = threading.Lock()
+        # Initialize history maintainer
+        self.history_maintainer = HistoryMaintainer(
+            role=self.role,
+            client=self.client,
+            encoding=self.encoding
+        )
         
         self.logger.debug(f"Initialized {role} node with model {model}")
-
 
     def _init_counter(self) -> None:
         """
@@ -103,115 +106,33 @@ class BaseNode:
         )
         self._last_history_token_counts = len(self.encoding.encode(_))
     
-    def _is_token_limit_exceeded(self, h: Dict[str, str]) -> bool:
-        """
-        Check if the history is too long using configured limits.
-        """
-
-        token_counts = len(self.encoding.encode(str(h)))
-        self._last_history_token_counts += token_counts
-        limit_exceeded = self._last_history_token_counts > config.max_history_tokens
-        
-        if limit_exceeded:
-            self.logger.warning(f"Token limit approaching: {self._last_history_token_counts} > {config.max_history_tokens}")
-        
-        return limit_exceeded
-    
     def add_history(self, h: Dict[str, str]) -> None:
         """
-        Add the history to the node with token tracking and thread-safe compression.
+        Add the history to the node with token tracking and intelligent history maintenance.
         """
         # 深拷贝以避免外部修改影响内部状态
         history_copy = deepcopy(h)
         self.history.append(history_copy)
         
-        if self._is_token_limit_exceeded(history_copy):
-            self.logger.warning("Token limit exceeded - executing history maintenance")
-            self._maintain_history()
-        else:
-            self._last_history_token_counts += len(self.encoding.encode(str(history_copy)))
-            self.logger.debug(f"Added history entry from {history_copy['role']}, with {len(self.encoding.encode(str(history_copy)))} tokens")
-
-    def _maintain_history(self) -> None:
-        """
-        Maintain the history when token limit is exceeded.
-        Achieved by either removing the oldest history or compressing the history.
-        Thread-safe implementation.
-        """
-        with self._compress_lock:  # 确保压缩操作的线程安全
-            def load_compress_prompt(role: str) -> Template:
-                try:
-                    with open(f"src/memory/{role}/compress.md", "r") as f:
-                        return Template(f.read())
-                except FileNotFoundError:
-                    # 如果找不到压缩模板，返回简单的默认模板
-                    return Template("Summarize the following content concisely: $target")
+        # Update token count
+        new_tokens = len(self.encoding.encode(str(history_copy)))
+        self._last_history_token_counts += new_tokens
+        
+        # Check if maintenance is needed
+        if self._last_history_token_counts > config.max_history_tokens:
+            self.logger.warning(f"Token limit exceeded: {self._last_history_token_counts} > {config.max_history_tokens}")
+            self.logger.info("Executing intelligent history maintenance")
             
-            compress_prompt = load_compress_prompt(self.role)
-            key = ("plan", "description") if self.role == "planner" else ("code", "description")
+            # Use history maintainer for intelligent maintenance
+            maintained_history, new_token_count = self.history_maintainer.maintain_history(
+                self.history, self._last_history_token_counts
+            )
             
-            attempts = 1
-            while (
-                self.compress_index < len(self.history)
-                and self._last_history_token_counts > config.max_history_tokens
-                and attempts <= config.max_compress_rounds
-            ):
-                try:
-                    # fix the history role cross between developer and tester
-                    if self.role != "planner" and key[0] not in self.history[self.compress_index]:
-                        if key[0] == "code": 
-                            key = ("code_output", "feedback")
-                            compress_prompt = load_compress_prompt("tester")
-                        else:
-                            key = ("code", "description")
-                            compress_prompt = load_compress_prompt("developer")
-                    
-                    # 检查历史项是否包含所需的键
-                    if key[1] not in self.history[self.compress_index]:
-                        self.logger.warning(f"History item {self.compress_index} missing key {key[1]}, skipping compression")
-                        self.compress_index += 1
-                        continue
-                    
-                    self._last_history_token_counts -= len(self.encoding.encode(str(self.history[self.compress_index][key[1]]))) # subtract the length of the history to be compressed
-                    
-                    messages = [
-                        {'role': 'system', 'content': 'You are a Summarize Expert for an Agent system. Your task is to summarize the content of a conversation.'},
-                        {"role": "user", "content": compress_prompt.safe_substitute(
-                            reference=self.history[self.compress_index].get(key[0], ""),
-                            target=self.history[self.compress_index][key[1]]
-                        )}
-                    ]
-
-                    # 使用较短的超时时间避免长时间等待
-                    compressed_h = self.client.chat.completions.create(
-                        model="gpt-4o-mini",  # 使用更快的模型进行压缩
-                        messages=messages,
-                        max_tokens=1024,  # 减少压缩后的长度
-                        timeout=60,  # 减少超时时间
-                        extra_headers={
-                            'x-ms-client-request-id': "evolagent-compress-"+str(uuid.uuid4()),
-                        }
-                    )
-
-                    compressed_content = compressed_h.choices[0].message.content or "Compression failed"
-                    self.history[self.compress_index][key[1]] = compressed_content
-                    self._last_history_token_counts += len(self.encoding.encode(str(compressed_content)))
-                    
-                    self.compress_index += 1
-                    if self.compress_index >= len(self.history):
-                        self.compress_index = 0 # compress from the beginning
-                        attempts += 1
-                        
-                except Exception as e:
-                    self.logger.error(f"Compression failed for history item {self.compress_index}: {e}")
-                    # 如果压缩失败，移除最老的历史项
-                    if self.history:
-                        removed_item = self.history.pop(0)
-                        self._last_history_token_counts -= len(self.encoding.encode(str(removed_item)))
-                        self.logger.info(f"Removed oldest history item due to compression failure")
-                    break
-
-            self.logger.warning(f"Length after {attempts} rounds of compression: {self._last_history_token_counts}")
+            # Update history and token count
+            self.history = maintained_history
+            self._last_history_token_counts = new_token_count
+            
+        self.logger.debug(f"Added history entry from {history_copy['role']}, current tokens: {self._last_history_token_counts}")
 
     def forward(self, prompt: str) -> str:
         """
@@ -384,7 +305,9 @@ class BaseNode:
         """
         self.history.clear()
         self._last_history_token_counts = 0
-        self.compress_index = 0
+        
+        # Reset history maintainer state
+        self.history_maintainer.reset_compression_state()
         
         # 不直接关闭client，因为它是共享的
         # self.client 将在全局清理函数中处理

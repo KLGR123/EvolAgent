@@ -651,14 +651,19 @@ class HTMLTaskLogger:
             # If parsing fails, return a safe fallback
             return f"Error parsing plan history: {str(e)}"
     
-    def log_developer_plan(self, plan: str, plan_description: str = "") -> int:
+    def log_developer_plan(self, plan: str, plan_description: str = "", episodic_examples: str = "") -> int:
         """Log a new developer plan and return the plan index."""
         self.developer_plan_count += 1
         plan_index = self.developer_plan_count
         
         content = f"Plan Content:\n{plan}\n\n"
         if plan_description:
-            content += f"Plan Description:\n{plan_description}"
+            content += f"Plan Description:\n{plan_description}\n\n"
+        
+        if episodic_examples:
+            content += f"Retrieved Episodic Memory Examples:\n{episodic_examples}"
+        else:
+            content += "No Episodic Memory Examples Retrieved"
         
         self.add_conversation(
             role="developer",
@@ -667,7 +672,8 @@ class HTMLTaskLogger:
             metadata={
                 "plan_index": plan_index,
                 "plan": plan,
-                "plan_description": plan_description
+                "plan_description": plan_description,
+                "episodic_examples": episodic_examples
             }
         )
         
@@ -709,22 +715,49 @@ class HTMLTaskLogger:
     
     def save_critic_result_to_task_root(self, final_answer: str, reason: str, best_model_index: int) -> None:
         """Save critic result directly to task root directory without affecting model conversations."""
-        # Save critic result to task_id root directory
+        # Use the static method to avoid creating model subdirectories
+        HTMLTaskLogger.save_critic_result_static(
+            task_id=self.task_id,
+            critic_model=self.model,
+            final_answer=final_answer,
+            reason=reason,
+            best_model_index=best_model_index,
+            start_time=self.start_time
+        )
+
+    @staticmethod
+    def save_critic_result_static(task_id: str, critic_model: str, final_answer: str, 
+                                 reason: str, best_model_index: int, start_time: datetime = None) -> None:
+        """
+        Static method to save critic result directly to task root directory without creating model subdirectories.
+        
+        Args:
+            task_id: Task identifier
+            critic_model: Model used for critic evaluation
+            final_answer: Final answer chosen by critic
+            reason: Critic's reasoning for the choice
+            best_model_index: Index of the best model chosen
+            start_time: Start time for execution time calculation (optional)
+        """
+        if start_time is None:
+            start_time = datetime.now()
+            
+        # Create task directory if it doesn't exist
+        task_dir = Path(f"logs/log_{task_id}")
+        task_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Prepare critic data
         critic_data = {
-            "task_id": self.task_id,
-            "critic_model": self.model,
+            "task_id": task_id,
+            "critic_model": critic_model,
             "final_answer": final_answer,
             "reason": reason,
             "best_model_index": best_model_index,
             "timestamp": datetime.now().isoformat(),
-            "execution_time_seconds": (datetime.now() - self.start_time).total_seconds()
+            "execution_time_seconds": (datetime.now() - start_time).total_seconds()
         }
         
-        # Save to log_{task_id} directory instead of model subdirectory
-        task_dir = Path(f"logs/log_{self.task_id}")
-        task_dir.mkdir(parents=True, exist_ok=True)
-        
-        # JSON format
+        # Save JSON format
         try:
             critic_json_path = task_dir / "critic.json"
             with open(critic_json_path, 'w', encoding='utf-8') as f:
@@ -732,43 +765,86 @@ class HTMLTaskLogger:
         except Exception as e:
             print(f"Error writing critic JSON file: {e}")
         
-        # HTML format critic report
-        critic_html = self._get_html_template().format(
-            task_id=self.task_id,
-            model=f"Critic ({self.model})",
-            start_time=self.start_time.strftime('%Y-%m-%d %H:%M:%S'),
-            content=f'''
-            <div class="conversation">
-                <div class="conversation-header">
-                    <div class="role-badge role-critic">CRITIC</div>
-                    <div class="timestamp">{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+        # Save Markdown format
+        content = f"""# Critic Result - {critic_model}
+
+**Task ID:** {task_id}  
+**Critic Model:** {critic_model}  
+**Best Model Index:** {best_model_index}  
+**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+## Final Answer
+```
+{final_answer}
+```
+
+## Reasoning
+```
+{reason}
+```
+
+## Summary
+- **Task completed at:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **Selected best model index:** {best_model_index}
+"""
+        
+        try:
+            critic_md_path = task_dir / "critic.md"
+            with open(critic_md_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except Exception as e:
+            print(f"Error writing critic markdown file: {e}")
+        
+        # Save HTML format
+        critic_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Critic Result - {task_id}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }}
+        .section {{ margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: 5px; }}
+        .section-title {{ font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #333; }}
+        .text-content {{ line-height: 1.6; white-space: pre-wrap; }}
+        .summary-stats {{ display: flex; gap: 20px; margin-top: 15px; }}
+        .stat-card {{ background: #f8f9fa; padding: 15px; border-radius: 5px; text-align: center; flex: 1; }}
+        .stat-value {{ font-size: 24px; font-weight: bold; color: #667eea; }}
+        .stat-label {{ font-size: 12px; color: #666; margin-top: 5px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Critic Final Decision</h1>
+            <p>Task ID: {task_id} | Critic Model: {critic_model}</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Final Decision Result</div>
+            <div class="text-content">
+                <strong>Best Model Index:</strong> {best_model_index}<br><br>
+                <strong>Final Answer:</strong><br>
+                {final_answer.replace(chr(10), '<br>')}<br><br>
+                <strong>Reasoning Process:</strong><br>
+                {reason.replace(chr(10), '<br>')}
+            </div>
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <div class="stat-value">{best_model_index}</div>
+                    <div class="stat-label">Best Model Index</div>
                 </div>
-                <div class="conversation-content">
-                    <div class="section">
-                        <div class="section-title">Final Decision Result</div>
-                        <div class="text-content">
-                            <strong>Best Model Index:</strong> {best_model_index}<br><br>
-                            <strong>Final Answer:</strong><br>
-                            {self._escape_html(final_answer).replace(chr(10), '<br>')}<br><br>
-                            <strong>Reasoning Process:</strong><br>
-                            {self._escape_html(reason).replace(chr(10), '<br>')}
-                        </div>
-                        <div class="summary-stats">
-                            <div class="stat-card">
-                                <div class="stat-value">{best_model_index}</div>
-                                <div class="stat-label">Best Model Index</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">{(datetime.now() - self.start_time).total_seconds():.1f}s</div>
-                                <div class="stat-label">Total Execution Time</div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-value">{(datetime.now() - start_time).total_seconds():.1f}s</div>
+                    <div class="stat-label">Total Execution Time</div>
                 </div>
             </div>
-            ''',
-            generation_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        )
+        </div>
+    </div>
+</body>
+</html>"""
         
         try:
             critic_html_path = task_dir / "critic.html"

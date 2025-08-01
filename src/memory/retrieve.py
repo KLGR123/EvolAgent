@@ -21,6 +21,7 @@ from .utils import (
     check_token_length, 
     truncate_text_to_tokens
 )
+from ..config import config
 
 
 class Retriever:
@@ -33,15 +34,10 @@ class Retriever:
         client: QdrantClient,
         role: Literal["planner", "developer", "tester", "critic"], 
         type: Literal["semantic", "episodic"],
-        model: str = "text-embedding-3-large", 
-        embed_dim: int = 3072
     ):
         self.role = role
-        self.model = model
-        self.embed_dim = embed_dim
-
         self.client = client
-        self.dense_model = DenseEmbedModel(model_name="text-embedding-3-large")
+        self.dense_model = DenseEmbedModel(model_name=config.default_embedding_model)
         self.sparse_model = SparseEmbedModel()
 
         self.collection_name = f"{role}_{type}"
@@ -58,7 +54,7 @@ class Retriever:
         else:
             vectors_config = {
                 "dense": VectorParams(
-                    size=self.embed_dim,
+                    size=config.embedding_dimension,
                     distance=Distance.COSINE
                 ),
             }

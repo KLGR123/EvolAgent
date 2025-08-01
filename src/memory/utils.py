@@ -20,6 +20,7 @@ from qdrant_client.models import (
 )
 from fastembed import SparseTextEmbedding, SparseEmbedding
 import uuid
+from ..config import config
 
 load_dotenv()
 
@@ -89,7 +90,7 @@ class DenseEmbedModel:
 
 
 class SparseEmbedModel:  
-    def __init__(self, model_name: str = "prithivida/Splade_PP_en_v1"):
+    def __init__(self, model_name: str = config.default_sparse_model):
         try:
             self.model = SparseTextEmbedding(model_name=model_name)
         except Exception as e:

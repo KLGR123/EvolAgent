@@ -36,6 +36,15 @@ def extract_import_names(code: str) -> List[str]:
                     # get the top level package name
                     top_level = node.module.split('.')[0]
                     import_names.append(top_level)
+            elif isinstance(node, ast.Call):
+                # Handle dynamic imports like __import__('module_name')
+                if (isinstance(node.func, ast.Name) and 
+                    node.func.id in ['__import__', 'importlib.import_module'] and
+                    node.args and isinstance(node.args[0], ast.Constant)):
+                    module_name = node.args[0].value
+                    if isinstance(module_name, str):
+                        top_level = module_name.split('.')[0]
+                        import_names.append(top_level)
     except SyntaxError:
         # if the code has syntax error, return an empty list
         pass
@@ -151,13 +160,14 @@ def get_python_builtin_modules():
     }
 
 
-def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None) -> str:
+def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None, timeout: Optional[int] = 5000) -> str:
     """
     Execute Python code in a thread-safe isolated environment with proper resource cleanup.
     
     Args:
         code: The Python code to execute.
         auto_install_packages: Optional list of package names, these packages will be automatically installed if they do not exist.
+        timeout: Optional timeout in seconds for code execution (default: 300 seconds).
     
     Returns:
         The string of the execution result.
@@ -210,12 +220,30 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
         import_names.extend(auto_install_packages)
         import_names = list(set(import_names))  # remove duplicates
     
+    # Get all packages from requirements.txt
+    requirements_packages = []
+    try:
+        if os.path.exists('requirements.txt'):
+            with open('requirements.txt', 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        # Extract package name (ignore version specifiers)
+                        package_name = re.split(r'[>=<~!]', line)[0].strip()
+                        requirements_packages.append(package_name)
+    except Exception as e:
+        print(f"Warning: Could not read requirements.txt: {e}")
+    
+    # Merge all package names
+    all_packages = list(set(import_names + requirements_packages))
+    
     # Get comprehensive built-in modules list
     builtin_modules = get_python_builtin_modules()
     
     # check and install missing packages (thread-safe)
     installed_packages = []
-    for package_name in import_names:
+    failed_packages = []
+    for package_name in all_packages:
         # Skip built-in modules and standard library
         if package_name in builtin_modules:
             continue
@@ -228,6 +256,10 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
                 print(f"Successfully installed and added to requirements.txt: {package_name}")
             else:
                 print(f"Installation failed: {package_name}")
+                failed_packages.append(package_name)
+    
+    if failed_packages:
+        result_parts.append(f"Warning: Failed to install packages: {', '.join(failed_packages)}")
     
     if installed_packages:
         result_parts.append(f"Automatically installed packages: {', '.join(installed_packages)}")
@@ -260,7 +292,10 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
         }
         
         # Add essential built-in functions without importing everything
-        essential_builtins = ['print', 'len', 'range', 'str', 'int', 'float', 'list', 'dict', 'set', 'tuple', 'bool', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'delattr', 'dir', 'help', 'abs', 'max', 'min', 'sum', 'any', 'all', 'sorted', 'reversed', 'enumerate', 'zip', 'map', 'filter', 'open', 'input']
+        essential_builtins = [
+            'print', 'len', 'range', 'str', 'int', 'float', 'list', 'dict', 'set', 'tuple', 'bool', 'type', 'isinstance', 'hasattr', 'getattr', 'setattr', 'delattr', 'dir', 'help', 'abs', 'max', 'min', 'sum', 'any', 'all', 'sorted', 'reversed', 'enumerate', 'zip', 'map', 'filter', 'open', 'input',
+            'chr', 'ord', 'hex', 'oct', 'bin', 'round', 'pow', 'divmod', 'complex', 'bytes', 'bytearray', 'memoryview', 'slice', 'property', 'super', 'object', 'classmethod', 'staticmethod', 'frozenset', 'vars', 'locals', 'globals', 'eval', 'exec', 'compile', 'callable', 'hash', 'id', 'repr', 'ascii', 'format', 'breakpoint'
+        ]
         import builtins
         for name in essential_builtins:
             if hasattr(builtins, name):
@@ -269,14 +304,40 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
         # Pass through environment variables (important for API keys, etc.)
         execution_globals['os'] = os
         
+        # Add exit function to execution globals
+        execution_globals['exit'] = exit
+        
+        # Pass through environment variables
+        execution_globals['os'].environ.update(os.environ)
+        
         # Import commonly used modules into the execution environment
-        essential_modules = ['sys', 'os', 're', 'json', 'datetime', 'time', 'math', 'random']
+        essential_modules = [
+            'sys', 'os', 're', 'json', 'datetime', 'time', 'math', 'random', 'urllib',
+            'pathlib', 'collections', 'itertools', 'functools', 'typing', 'copy', 'pickle',
+            'hashlib', 'base64', 'struct', 'array', 'bisect', 'heapq', 'weakref', 'gc',
+            'inspect', 'traceback', 'argparse', 'logging', 'getpass', 'platform', 'shutil',
+            'tempfile', 'glob', 'fnmatch', 'filecmp', 'tarfile', 'zipfile', 'gzip', 'bz2',
+            'csv', 'xml', 'html', 'email', 'mimetypes', 'unicodedata', 'string', 'warnings'
+        ]
         for module_name in essential_modules:
             try:
                 module = importlib.import_module(module_name)
                 execution_globals[module_name] = module
             except ImportError:
                 pass
+        
+        # Import installed third-party packages into the execution environment
+        for package_name in all_packages:
+            # Skip built-in modules and standard library
+            if package_name in builtin_modules:
+                continue
+                
+            if is_package_installed(package_name):
+                try:
+                    module = importlib.import_module(package_name)
+                    execution_globals[package_name] = module
+                except ImportError:
+                    pass
         
         # Handle input() function in non-interactive environment
         def safe_input(prompt=""):
@@ -286,24 +347,44 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
         
         execution_globals['input'] = safe_input
         
+        # Handle breakpoint() function in non-interactive environment
+        def safe_breakpoint(*args, **kwargs):
+            """Safe breakpoint function that doesn't block in non-interactive environment"""
+            print("[BREAKPOINT REQUESTED] Debugging is not available in this environment")
+            return None
+        
+        execution_globals['breakpoint'] = safe_breakpoint
+        
         # redirect stdout and stderr to capture the output
         with contextlib.redirect_stdout(output_buffer), contextlib.redirect_stderr(error_buffer):
             try:
-                # Check if the code is a simple expression first
-                try:
-                    # Try to parse as expression first
-                    ast.parse(code, mode='eval')
-                    # If successful, it's a simple expression, use eval
-                    result = eval(code, execution_globals, {})  # 使用独立的 locals
-                    if result is not None:
-                        print(repr(result))
-                except SyntaxError:
-                    # Not a simple expression, execute as statement
+                # Check if the code contains import statements
+                import_names_in_code = extract_import_names(code)
+                has_imports = len(import_names_in_code) > 0
+                
+                if has_imports:
+                    # If code contains imports, always use exec
                     exec(code, execution_globals, {})  # 使用独立的 locals
                     
                     # Check if there's a 'result' variable in the execution globals
                     if 'result' in execution_globals:
                         print(f"result = {repr(execution_globals['result'])}")
+                else:
+                    # Check if the code is a simple expression first
+                    try:
+                        # Try to parse as expression first
+                        ast.parse(code, mode='eval')
+                        # If successful, it's a simple expression, use eval
+                        result = eval(code, execution_globals, {})  # 使用独立的 locals
+                        if result is not None:
+                            print(repr(result))
+                    except SyntaxError:
+                        # Not a simple expression, execute as statement
+                        exec(code, execution_globals, {})  # 使用独立的 locals
+                        
+                        # Check if there's a 'result' variable in the execution globals
+                        if 'result' in execution_globals:
+                            print(f"result = {repr(execution_globals['result'])}")
                 
             except KeyboardInterrupt:
                 print("Code execution was interrupted by user")
@@ -313,6 +394,15 @@ def interpret_code(code: str, auto_install_packages: Optional[List[str]] = None)
                 print(f"Execution error: {type(e).__name__}: {str(e)}")
                 import traceback
                 traceback.print_exc()
+                
+                # Try to provide helpful error messages for common issues
+                if "ModuleNotFoundError" in str(type(e)):
+                    print("\nHint: If you're getting a ModuleNotFoundError, the package might need to be installed.")
+                    print("The interpreter will automatically install packages from requirements.txt and those you import.")
+                elif "PermissionError" in str(type(e)):
+                    print("\nHint: Permission error - check file/directory permissions.")
+                elif "FileNotFoundError" in str(type(e)):
+                    print("\nHint: File not found - check if the file path is correct.")
     
     finally:
         # 恢复原始状态，避免全局污染

@@ -24,7 +24,7 @@ class Memory:
     _client_lock = threading.Lock()  # Thread lock for client initialization
     _episodic_loaded: dict[str, bool] = {}
     _episodic_lock = threading.Lock()  # Thread lock for episodic loading
-    _active_retrievers = []  # 跟踪活跃的retriever实例
+    _active_retrievers = []  # Track active retriever instances
 
     def __init__(self, role: Literal["planner", "developer", "tester", "critic"]):
         """
@@ -406,8 +406,11 @@ class Memory:
         return f"Memory(role={self.role})"
         
     def __del__(self):
-        """析构函数，确保资源清理"""
+        """
+        Destructor to ensure proper cleanup.
+        """
+
         try:
             self.cleanup()
         except:
-            pass  # 析构函数中不应该抛出异常
+            pass
