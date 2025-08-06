@@ -163,7 +163,7 @@ class HistoryMaintainer:
             return None
     
     def maintain_history(self, history: List[Dict[str, Any]], 
-                        current_tokens: int) -> List[Dict[str, Any]]:
+                        current_tokens: int) -> Tuple[List[Dict[str, Any]], int]:
         """
         Maintain conversation history within token limits.
         
@@ -175,7 +175,7 @@ class HistoryMaintainer:
             current_tokens: Current token count
             
         Returns:
-            Maintained history list
+            Tuple of (maintained_history_list, new_token_count)
         """
         max_history_tokens = config.get('nodes.max_history_tokens', 184320)
         
@@ -207,7 +207,7 @@ class HistoryMaintainer:
         self.logger.info(f"History maintenance completed: {len(history)} -> {len(working_history)} entries, "
                         f"{current_tokens} -> {working_token_count} tokens")
         
-        return working_history
+        return working_history, working_token_count
     
     def _compress_history_entries(self, history: List[Dict[str, Any]], 
                                  current_tokens: int) -> Tuple[List[Dict[str, Any]], int]:

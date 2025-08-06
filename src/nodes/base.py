@@ -143,11 +143,8 @@ class BaseNode:
         self.history: List[Dict[str, str]] = []
         self._last_history_tokens = 0
         
-        self.history_maintainer = HistoryMaintainer(
-            role=self.role,
-            client=self.client,
-            encoding=self.encoding
-        )
+        self.history_maintainer = HistoryMaintainer()
+        self.history_maintainer.client = self.client
         self.logger.debug(f"Initialized {role} node with model {model}")
 
     def _init_counter(self) -> None:
