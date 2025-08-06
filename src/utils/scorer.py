@@ -160,7 +160,7 @@ def llm_scorer(question: str, prediction: str, true_answer: str) -> bool:
     response=client.chat.completions.create(
         model="gpt-4.1",
         max_tokens=2000,
-        timeout=300,
+        timeout=600,
         extra_headers={
             'x-ms-client-request-id': "agent-"+str(uuid.uuid4()),
         },

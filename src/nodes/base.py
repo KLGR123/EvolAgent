@@ -11,7 +11,7 @@ from string import Template
 from contextlib import contextmanager
 from typing import Dict, List, Optional
 
-from ..config import config
+from ..utils.config import config
 from ..utils.logger import get_logger
 from ..utils import parse_llm_response
 from .maintainer import HistoryMaintainer
@@ -176,8 +176,9 @@ class BaseNode:
         new_tokens = len(self.encoding.encode(str(history_copy)))
         self._last_history_tokens += new_tokens
         
-        if self._last_history_tokens > config.max_history_tokens:
-            self.logger.warning(f"Token limit exceeded: {self._last_history_tokens} > {config.max_history_tokens}")
+        max_history_tokens = config.get('nodes.max_history_tokens', 184320)
+        if self._last_history_tokens > max_history_tokens:
+            self.logger.warning(f"Token limit exceeded: {self._last_history_tokens} > {max_history_tokens}")
             self.logger.info("Executing history maintenance")
 
             maintained_history, new_token_count = self.history_maintainer.maintain_history(
@@ -205,9 +206,9 @@ class BaseNode:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=config.max_tokens,
-                timeout=config.api_timeout,
-                temperature=config.temperature,
+                            max_tokens=config.get('models.max_tokens', 32000),
+            timeout=config.get('timeout.api_timeout', 800),
+            temperature=config.get('models.temperature', 0.7),
                 extra_headers={
                     'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
                 },

@@ -1,17 +1,27 @@
+# EvolAgent Configuration File
+# This is the central configuration file for all system parameters
+
+# Runtime Configuration
+runtime:
+  dataset: "gaia"                    # Dataset to run: "gaia" or "coldstart" 
+  split: "validation"                # Data split: "validation" or "test"
+  max_tasks: null                    # Maximum number of tasks to run (null for all)
+  parallel_workers: 3                # Number of parallel workers for task execution
+  
 # Pipeline Configuration
 pipeline:
-  max_dev_test_iterations: 95  # Maximum iterations for dev-test loop
-  max_parallel_tasks: 3        # Maximum parallel task execution (reduced to prevent resource contention)
-  emergency_break_iterations: 100  # Emergency break point (max_dev_test_iterations + 5)
+  max_dev_test_iterations: 95        # Maximum iterations for dev-test loop
+  max_parallel_tasks: 3              # Maximum parallel task execution (reduced to prevent resource contention)
+  emergency_break_iterations: 100    # Emergency break point (max_dev_test_iterations + 5)
 
 # Memory and RAG Configuration
 memory:
-  max_tokens_per_chunk: 8192   # Maximum tokens allowed per text chunk
-  search_method: "dense"     # Search method for semantic search
-  semantic_search_limit: 4     # Number of semantic search results to return
-  episodic_search_limit: 4     # Number of episodic search results to return
-  score_threshold: 0.15         # Minimum confidence score for search results
-  hybrid_search_multiplier: 2  # Multiplier for hybrid search prefetch limit
+  max_tokens_per_chunk: 8192         # Maximum tokens allowed per text chunk
+  search_method: "dense"             # Search method for semantic search: "dense", "sparse", "hybrid"
+  semantic_search_limit: 4           # Number of semantic search results to return
+  episodic_search_limit: 4           # Number of episodic search results to return
+  score_threshold: 0.15              # Minimum confidence score for search results
+  hybrid_search_multiplier: 2        # Multiplier for hybrid search prefetch limit
 
 # Model Configuration
 models:
@@ -31,15 +41,20 @@ models:
     
   temperature: 0.7
   max_tokens: 32000
+  
+  # Task summarization settings
+  summarize_model: "o4-mini"
+  summarize_max_tokens: 500
+  summarize_temperature: 0.3
 
 # Node Configuration
 nodes:
-  plan_history_length: 8  # Default history length for plan node
-  dev_history_length: 8        # History length for dev node
-  test_history_length: 8       # History length for test node
+  plan_history_length: 8             # Default history length for plan node
+  dev_history_length: 8              # History length for dev node
+  test_history_length: 8             # History length for test node
   critic_length: 6
-  max_history_tokens: 184320  # 180k tokens
-  max_compress_rounds: 3 # Maximum number of compression loops
+  max_history_tokens: 184320         # 180k tokens
+  max_compress_rounds: 3             # Maximum number of compression loops
   
   # Required fields configuration for each node role
   required_fields:
@@ -66,52 +81,82 @@ nodes:
 # History Compression Configuration
 compression:
   # Compression behavior
-  max_attempts: 3              # Maximum compression attempts per cycle
-  min_savings: 50              # Minimum token savings to apply compression
-  min_length: 200              # Minimum content length to consider for compression
-  min_output_tokens: 50        # Minimum tokens in compressed output
-  max_output_tokens: 2048      # Maximum tokens in compressed output
-  target_ratio: 3              # Target compression ratio (original/compressed)
-  reference_max_length: 1000   # Maximum reference content length for context
+  max_attempts: 3                    # Maximum compression attempts per cycle
+  min_savings: 50                    # Minimum token savings to apply compression
+  min_length: 200                    # Minimum content length to consider for compression
+  min_output_tokens: 50              # Minimum tokens in compressed output
+  max_output_tokens: 2048            # Maximum tokens in compressed output
+  target_ratio: 3                    # Target compression ratio (original/compressed)
+  reference_max_length: 1000         # Maximum reference content length for context
   
   # LLM settings for compression
-  model: "gpt-4.1"         # Model to use for compression
-  temperature: 0.1             # Temperature for compression (lower = more consistent)
-  timeout: 60                  # Timeout for compression API calls
+  model: "gpt-4.1"                   # Model to use for compression
+  temperature: 0.1                   # Temperature for compression (lower = more consistent)
+  timeout: 600                       # Timeout for compression API calls
   
   # Fallback removal settings
-  removal_target_ratio: 0.8    # Target ratio of max_tokens after removal (80%)
-  removal_max_items: 10        # Maximum items to remove in one cycle
+  removal_target_ratio: 0.8          # Target ratio of max_tokens after removal (80%)
+  removal_max_items: 10              # Maximum items to remove in one cycle
   
   # Code compression settings
   code_compression_enabled: true     # Enable specialized code compression
   code_target_reduction: 0.5         # Target reduction ratio for code (50%)
-  output_max_length: 500              # Maximum length for compressed code output
+  output_max_length: 500             # Maximum length for compressed code output
 
 # Environment Configuration
 environment:
-  workspace_dir: "workspace"   # Directory for downloaded files
-  qdrant_persist_path: "./qdrant"  # Path for Qdrant database
+  workspace_dir: "workspace"         # Directory for downloaded files
+  qdrant_persist_path: "./qdrant"    # Path for Qdrant database
   
 # Logging Configuration
 logging:
-  level: "INFO"                # Log level (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"                      # Log level (DEBUG, INFO, WARNING, ERROR)
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   file_path: "logs/agent.log"
   folder_path: "logs"
-  max_file_size: 104857600     # 100MB
-  backup_count: 5              # Number of backup log files
-  console_output: true         # Whether to output logs to console
+  max_file_size: 104857600           # 100MB
+  backup_count: 5                    # Number of backup log files
+  console_output: true               # Whether to output logs to console
 
 # Task Configuration
 task:
-  summarize_max_tokens: 600   # Max tokens for task summarization
-  summarize_temperature: 0.2   # Temperature for task summarization
-  max_title_words: 15          # Maximum words in task title
+  summarize_max_tokens: 600          # Max tokens for task summarization
+  summarize_temperature: 0.2         # Temperature for task summarization
+  max_title_words: 15                # Maximum words in task title
+  
+  # Task summarization prompt
+  summarize_task_prompt: "Summarize the task into a title within {max_words} words: {task}"
+  
+  # Use case generation prompt
+  use_cases_prompt: |
+    Based on the following plan and code implementation, generate 6-8 practical use cases in the exact format shown below. Each use case should be a specific, real-world application scenario that demonstrates when and why someone would use this solution.
+
+    PLAN: {plan}
+
+    CODE: {code}
+
+    Generate use cases following this exact format:
+    - [Specific use case description for a particular domain/scenario]
+    - [Another specific use case for a different application area]
+    - [Continue with practical, real-world applications]
+
+    Requirements:
+    1. Each use case should start with a dash (-)
+    2. Focus on specific, practical applications
+    3. Cover diverse domains (business, research, automation, analysis, etc.)
+    4. Be concise but descriptive
+    5. Avoid generic descriptions - be specific about the application
+    6. Generate 6-8 use cases total
+
+    Example format:
+    - Financial report analysis and automated data extraction for accounting workflows
+    - Scientific research data processing and statistical analysis for academic publications
+    - E-commerce inventory management and product catalog automation
+    - Social media content monitoring and sentiment analysis for marketing teams
 
 # Timeout and Retry Configuration
 timeout:
-  api_timeout: 800              # API request timeout in seconds
-  max_retries: 3               # Maximum API retry attempts
-  retry_delay: 1.0             # Base retry delay in seconds
-  exponential_backoff: true    # Whether to use exponential backoff 
+  api_timeout: 800                   # API request timeout in seconds
+  max_retries: 3                     # Maximum API retry attempts
+  retry_delay: 1.0                   # Base retry delay in seconds
+  exponential_backoff: true          # Whether to use exponential backoff 

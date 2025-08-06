@@ -8,7 +8,7 @@ import json
 import logging
 import json_repair
 from typing import Dict, List, Any
-from ..config import config
+from .config import config
 
 
 class ResponseParseError(Exception):
@@ -19,6 +19,36 @@ class ResponseParseError(Exception):
         self.content = content
         self.original_error = original_error
         super().__init__(f"{role}: {message}")
+
+
+def get_node_required_fields(role: str) -> List[str]:
+    """
+    Get required fields for a specific role from configuration.
+    
+    Args:
+        role: Role name
+        
+    Returns:
+        List of required field names
+    """
+    required_fields_config = config.get('nodes.required_fields', {})
+    role_config = required_fields_config.get(role, {})
+    return role_config.get('required', [])
+
+
+def get_node_field_defaults(role: str) -> Dict[str, str]:
+    """
+    Get default values for fields of a specific role from configuration.
+    
+    Args:
+        role: Role name
+        
+    Returns:
+        Dictionary mapping field names to default values
+    """
+    required_fields_config = config.get('nodes.required_fields', {})
+    role_config = required_fields_config.get(role, {})
+    return role_config.get('defaults', {})
 
 
 class ResponseParser:
@@ -74,7 +104,7 @@ class ResponseParser:
         self._validate_and_fix_role_field(parsed_json, role)
         
         # Step 5: Validate and fix required fields based on configuration
-        self._validate_and_fix_required_fields(parsed_json, role)
+        self._validate_and_fix_fields(parsed_json, role)
         
         if self.logger:
             self.logger.debug(f"Successfully parsed response for {role}")
@@ -169,9 +199,10 @@ class ResponseParser:
                 )
             parsed_json["role"] = expected_role
     
-    def _validate_and_fix_required_fields(self, parsed_json: Dict[str, Any], role: str) -> None:
+    def _validate_and_fix_fields(self, parsed_json: Dict[str, Any], role: str) -> None:
         """
-        Validate and provide default values for required fields based on node role.
+        Validate required fields and apply defaults if missing.
+        
         Uses configuration-driven approach for better maintainability.
         
         Args:
@@ -179,8 +210,8 @@ class ResponseParser:
             role: Node role for field validation
         """
         
-        required_fields = config.get_node_required_fields(role)
-        default_values = config.get_node_field_defaults(role)
+        required_fields = get_node_required_fields(role)
+        default_values = get_node_field_defaults(role)
         
         if not required_fields:
             if self.logger:
@@ -188,14 +219,11 @@ class ResponseParser:
             return
         
         for field in required_fields:
-            if field not in parsed_json:
-                default_value = default_values.get(field, f"Missing {field}")
-                if self.logger:
-                    self.logger.warning(f"Missing '{field}' field in {role} response, setting default value")
+            if field not in parsed_json or not parsed_json[field] or parsed_json[field].strip() == "":
+                default_value = default_values.get(field, f"No {field} provided")
                 parsed_json[field] = default_value
-                
-        if self.logger:
-            self.logger.debug(f"Field validation completed for {role} with {len(required_fields)} required fields")
+                if self.logger:
+                    self.logger.warning(f"Missing or empty field '{field}' for role '{role}', using default: {default_value}")
     
     def get_supported_roles(self) -> List[str]:
         """
@@ -218,7 +246,7 @@ class ResponseParser:
         Returns:
             List of required field names
         """
-        return config.get_node_required_fields(role)
+        return get_node_required_fields(role)
     
     def get_role_field_defaults(self, role: str) -> Dict[str, str]:
         """
@@ -230,7 +258,7 @@ class ResponseParser:
         Returns:
             Dictionary mapping field names to default values
         """
-        return config.get_node_field_defaults(role)
+        return get_node_field_defaults(role)
 
 
 # Convenience function for quick parsing

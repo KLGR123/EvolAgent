@@ -6,8 +6,8 @@ from string import Template
 from typing import Literal, Optional
 from qdrant_client import QdrantClient
 
-from ..config import config
-from .retrieve import Retriever
+from ..utils.config import config
+from .retrieve import MemoryRetriever
 from ..utils.logger import get_logger
 from .utils import split_content_blocks
 
@@ -36,11 +36,11 @@ class Memory:
         # Thread-safe Qdrant client initialization
         with Memory._client_lock:
             if Memory._shared_client is None:
-                qdrant_path = config.qdrant_persist_path
+                qdrant_path = config.get('environment.qdrant_persist_path', './qdrant')
                 self.logger.info(f"Initializing Qdrant client at path: {qdrant_path}")
                 try:
                     Memory._shared_client = QdrantClient(path=qdrant_path)
-                    # 注册清理函数，确保程序退出时正确关闭连接
+                    # register cleanup function to ensure proper connection closure on program exit
                     atexit.register(Memory._cleanup_shared_client)
                 except Exception as e:
                     self.logger.error(f"Failed to initialize Qdrant client: {e}")
@@ -48,13 +48,13 @@ class Memory:
 
         self.client = Memory._shared_client
         
-        # 初始化retriever实例，并跟踪它们以便后续清理
+        # Initialize retriever instances and track them for cleanup
         if self.role in ["planner", "developer"]:
-            self.semantic_retriever = Retriever(client=self.client, role=role, type="semantic")
+            self.semantic_retriever = MemoryRetriever(client=self.client, role=role, memory_type="semantic")
             Memory._active_retrievers.append(self.semantic_retriever)
             
         if self.role in ["planner", "developer"]:  # Both planner and developer need episodic memory
-            self.episodic_retriever = Retriever(client=self.client, role=role, type="episodic")
+            self.episodic_retriever = MemoryRetriever(client=self.client, role=role, memory_type="episodic")
             Memory._active_retrievers.append(self.episodic_retriever)
         
         self.logger.debug(f"Initialized Memory for {role}")
@@ -65,23 +65,19 @@ class Memory:
     @classmethod
     def _cleanup_shared_client(cls):
         """
-        清理共享的Qdrant客户端连接。
+        Clean up the shared Qdrant client connection.
         """
         if cls._shared_client is not None:
             try:
-                # 清理活跃的retriever引用
                 cls._active_retrievers.clear()
                 
-                # 关闭Qdrant客户端连接
                 if hasattr(cls._shared_client, 'close'):
                     cls._shared_client.close()
                 cls._shared_client = None
                 
-                # 强制垃圾回收
                 gc.collect()
                 
             except Exception as e:
-                # 在清理过程中不抛出异常
                 pass
 
     def get_procedural(self) -> Template:
@@ -122,9 +118,9 @@ class Memory:
                     return ""
                     
                 hits = self.semantic_retriever.search(query,
-                    method=config.search_method,
-                    score_threshold=config.score_threshold, 
-                    limit=config.semantic_search_limit
+                                method=config.get('memory.search_method', 'dense'),
+            score_threshold=config.get('memory.score_threshold', 0.15),
+            limit=config.get('memory.semantic_search_limit', 4)
                 )
                 self.logger.debug(f"Found {len(hits)} semantic results")
 
@@ -172,9 +168,9 @@ class Memory:
                     return ""
                     
                 hits = self.episodic_retriever.search(query, 
-                    method=config.search_method,
-                    score_threshold=config.score_threshold, 
-                    limit=config.episodic_search_limit
+                                method=config.get('memory.search_method', 'dense'),
+            score_threshold=config.get('memory.score_threshold', 0.15),
+            limit=config.get('memory.episodic_search_limit', 4)
                 )
                 self.logger.debug(f"Found {len(hits)} episodic results")
 
@@ -230,7 +226,7 @@ class Memory:
                             self.logger.warning(f"Failed to process semantic file {file}: {e}")
                 
                 if semantic_payloads and hasattr(self, 'semantic_retriever'):
-                    self.semantic_retriever.add(
+                    self.semantic_retriever.add_memories(
                         payloads=semantic_payloads, 
                     )
                     # mark as loaded
@@ -243,7 +239,7 @@ class Memory:
                     
             except Exception as e:
                 self.logger.error(f"Error adding semantic memory for {self.role}: {e}")
-                Memory._semantic_loaded[self.role] = True  # 标记为已加载，避免重复尝试
+                Memory._semantic_loaded[self.role] = True  # mark as loaded to avoid repeated attempts
 
     def _clear_semantic(self) -> None:
         """
@@ -253,7 +249,7 @@ class Memory:
         with Memory._semantic_lock:
             try:
                 if hasattr(self, 'semantic_retriever'):
-                    self.semantic_retriever.delete_all()
+                    self.semantic_retriever.clear_all_memories()
                 # reset loading state, allowing re-loading
                 Memory._semantic_loaded[self.role] = False
             except Exception as e:
@@ -296,7 +292,7 @@ class Memory:
                             self.logger.warning(f"Failed to process episodic file {file}: {e}")
                 
                 if episodic_payloads and hasattr(self, 'episodic_retriever'):
-                    self.episodic_retriever.add(
+                    self.episodic_retriever.add_memories(
                         payloads=episodic_payloads, 
                     )
                     # mark as loaded
@@ -309,7 +305,7 @@ class Memory:
                     
             except Exception as e:
                 self.logger.error(f"Error adding episodic memory for {self.role}: {e}")
-                Memory._episodic_loaded[self.role] = True  # 标记为已加载，避免重复尝试
+                Memory._episodic_loaded[self.role] = True  # mark as loaded to avoid repeated attempts
 
     def add_episodic(self, text: str) -> None:
         """
@@ -346,11 +342,11 @@ class Memory:
                 
                 if payloads:
                     self.logger.info(f"Adding {len(payloads)} episodic blocks to {self.role} memory")
-                    self.episodic_retriever.add(payloads=payloads)
+                    self.episodic_retriever.add_memories(payloads=payloads)
             elif hasattr(self, 'episodic_retriever'):
                 # Fallback for content that doesn't have clear structure
                 self.logger.debug("Using fallback episodic storage for unstructured content")
-                self.episodic_retriever.add(payloads=[{"text": text, "code": None}])
+                self.episodic_retriever.add_memories(payloads=[{"text": text, "code": None}])
             else:
                 self.logger.warning("Episodic retriever not available for this role")
                 
@@ -366,14 +362,14 @@ class Memory:
         self.logger.info(f"Clearing episodic memory for {self.role}")
         try:
             if hasattr(self, 'episodic_retriever'):
-                self.episodic_retriever.delete_all()
+                self.episodic_retriever.clear_all_memories()
                 
             episodic_dir = f"src/memory/{self.role}/episodic"
             if os.path.exists(episodic_dir):
                 shutil.rmtree(episodic_dir)
                 os.makedirs(episodic_dir, exist_ok=True)
                 
-            # 重置加载状态
+            # Reset loading state
             with Memory._episodic_lock:
                 Memory._episodic_loaded[self.role] = False
                 
@@ -383,16 +379,14 @@ class Memory:
 
     def cleanup(self):
         """
-        清理当前Memory实例的资源。
+        Clean up the current Memory instance's resources.
         """
         try:
-            # 从活跃列表中移除retriever引用
             if hasattr(self, 'semantic_retriever') and self.semantic_retriever in Memory._active_retrievers:
                 Memory._active_retrievers.remove(self.semantic_retriever)
             if hasattr(self, 'episodic_retriever') and self.episodic_retriever in Memory._active_retrievers:
                 Memory._active_retrievers.remove(self.episodic_retriever)
                 
-            # 清理retriever实例
             if hasattr(self, 'semantic_retriever'):
                 del self.semantic_retriever
             if hasattr(self, 'episodic_retriever'):
@@ -405,11 +399,4 @@ class Memory:
         return f"Memory(role={self.role})"
         
     def __del__(self):
-        """
-        Destructor to ensure proper cleanup.
-        """
-
-        try:
-            self.cleanup()
-        except:
-            pass
+        self.cleanup()

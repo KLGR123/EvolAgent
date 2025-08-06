@@ -1,33 +1,38 @@
+"""
+Memory utilities for EvolAgent.
+
+This module provides embedding models, search result structures, and content processing
+utilities for the memory system.
+"""
+
 import os
 import re
-import requests
-import threading
 import time
 import tiktoken
+import requests
+import threading
 from dotenv import load_dotenv
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Union, Any, Tuple
-
-from qdrant_client import QdrantClient
-from qdrant_client.models import (
-    Distance, 
-    VectorParams, 
-    PointStruct, 
-    SparseVector, 
-    Prefetch, 
-    FusionQuery, 
-    Fusion, 
-    SparseVectorParams
-)
 from fastembed import SparseTextEmbedding, SparseEmbedding
-import uuid
-from ..config import config
+
+from ..utils.config import config
 
 load_dotenv()
 
 
 @dataclass
 class SearchResult:
+    """
+    Structure for storing search results from memory retrieval.
+    
+    Attributes:
+        id: Unique identifier for the result
+        score: Relevance score from the search
+        payload: Additional metadata
+        text: Main text content
+        code: Optional associated code block
+    """
     id: str
     score: float
     payload: Dict[str, Any]
@@ -35,7 +40,12 @@ class SearchResult:
     code: Optional[str] = None
 
 
-class DenseEmbedModel:
+class DenseEmbeddingModel:
+    """
+    Singleton dense embedding model using OpenAI's embedding API.
+    Provides thread-safe text embedding with automatic retries and error handling.
+    """
+    
     _instance = None
     _lock = threading.Lock()
     _initialized = False
@@ -44,10 +54,16 @@ class DenseEmbedModel:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(DenseEmbedModel, cls).__new__(cls)
+                    cls._instance = super(DenseEmbeddingModel, cls).__new__(cls)
         return cls._instance
     
     def __init__(self, model_name: str = "text-embedding-3-large"):
+        """
+        Initialize the dense embedding model.
+        
+        Args:
+            model_name: OpenAI embedding model name
+        """
         # Only initialize once, even if __init__ is called multiple times
         if not self._initialized:
             with self._lock:
@@ -61,6 +77,20 @@ class DenseEmbedModel:
                     self._initialized = True
         
     def embed(self, texts: Union[str, List[str]], max_retries: int = 3, retry_delay: float = 1.0) -> List[List[float]]:
+        """
+        Generate dense embeddings for input texts.
+        
+        Args:
+            texts: Single text or list of texts to embed
+            max_retries: Maximum number of retry attempts
+            retry_delay: Initial delay between retries (exponential backoff)
+            
+        Returns:
+            List of embedding vectors
+            
+        Raises:
+            Exception: If all retry attempts fail
+        """
         texts = [texts] if isinstance(texts, str) else texts
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -78,15 +108,17 @@ class DenseEmbedModel:
                     f"{self.base_url}/embeddings",
                     json=payload,
                     headers=headers,
-                    timeout=60
+                    timeout=600
                 )
                 response.raise_for_status()
                 result = response.json()
+                
                 if result.get("error"):
                     raise Exception(result["error"])
 
                 embeddings = [item["embedding"] for item in result["data"]]
 
+                # Cache dimension on first successful call
                 if self.dimension is None and embeddings:
                     self.dimension = len(embeddings[0])
                     
@@ -102,24 +134,38 @@ class DenseEmbedModel:
                 else:
                     raise Exception(f"Dense embedding API call failed after {max_retries + 1} attempts: {e}")
         
-        # This line of code will not be executed, but for type checking
+        # This line should never be reached, but included for type checking
         raise Exception(f"Dense embedding API call failed after {max_retries + 1} attempts: {last_exception}")
 
 
-class SparseEmbedModel:  
+class SparseEmbeddingModel:
+    """
+    Singleton sparse embedding model using FastEmbed.
+    Provides efficient sparse vector representations for text retrieval.
+    """
+    
     _instance = None
     _lock = threading.Lock()
     _model = None
     _model_name = None
     
-    def __new__(cls, model_name: str = config.default_sparse_model):
+    def __new__(cls, model_name: str = None):
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(SparseEmbedModel, cls).__new__(cls)
+                    cls._instance = super(SparseEmbeddingModel, cls).__new__(cls)
         return cls._instance
     
-    def __init__(self, model_name: str = config.default_sparse_model):
+    def __init__(self, model_name: str = None):
+        """
+        Initialize the sparse embedding model.
+        
+        Args:
+            model_name: FastEmbed sparse model name
+        """
+        if model_name is None:
+            model_name = config.get('models.default_sparse_model', 'prithivida/Splade_PP_en_v1')
+            
         # Only initialize the model once, even if __init__ is called multiple times
         if self._model is None or self._model_name != model_name:
             with self._lock:
@@ -131,13 +177,28 @@ class SparseEmbedModel:
                         raise Exception(f"Sparse embedding model {model_name} initialization failed: {e}")
         
     def embed(self, documents: Union[str, List[str]]) -> List[SparseEmbedding]:
+        """
+        Generate sparse embeddings for input documents.
+        
+        Args:
+            documents: Single document or list of documents to embed
+            
+        Returns:
+            List of sparse embeddings
+            
+        Raises:
+            Exception: If embedding generation fails
+        """
         try:
             if self._model is None:
                 raise Exception("Sparse embedding model not initialized")
+                
             if isinstance(documents, str):
                 documents = [documents]
+                
             sparse_embeddings = list(self._model.embed(documents))
             return sparse_embeddings
+            
         except Exception as e:
             print(f"Sparse embedding failed: {e}")
             raise e
@@ -145,7 +206,10 @@ class SparseEmbedModel:
 
 def split_content_blocks(content: str) -> List[Dict[str, str]]:
     """
-    Split markdown content into blocks, separating text descriptions from code blocks.
+    Split markdown content into structured blocks separating text from code.
+    
+    This function processes markdown content and extracts text descriptions
+    along with associated code blocks for better indexing and retrieval.
     
     Args:
         content: Markdown content to split
@@ -153,7 +217,7 @@ def split_content_blocks(content: str) -> List[Dict[str, str]]:
     Returns:
         List of dictionaries with 'text' and 'code' keys
     """
-
+    # Split content by markdown headers (### level)
     blocks = re.split(r'(?=^### )', content, flags=re.MULTILINE)
     result_blocks = []
     
@@ -181,21 +245,25 @@ def split_content_blocks(content: str) -> List[Dict[str, str]]:
     return result_blocks
 
 
-def check_token_length(text: str, max_tokens: int = 8192) -> Tuple[bool, int]:
+def validate_token_length(text: str, max_tokens: int = 8192) -> Tuple[bool, int]:
     """
-    Check if text exceeds token limit using tiktoken.
+    Validate if text is within token limit using tiktoken.
     
     Args:
-        text: Text to check
+        text: Text to validate
         max_tokens: Maximum allowed tokens
         
     Returns:
         Tuple of (is_within_limit, actual_token_count)
     """
-
-    encoding = tiktoken.encoding_for_model("gpt-4o-mini")
-    token_count = len(encoding.encode(text))
-    return token_count <= max_tokens, token_count
+    try:
+        encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+        token_count = len(encoding.encode(text))
+        return token_count <= max_tokens, token_count
+    except Exception as e:
+        # Fallback to character-based approximation
+        approx_tokens = len(text) // 4  # Rough approximation
+        return approx_tokens <= max_tokens, approx_tokens
 
 
 def truncate_text_to_tokens(text: str, max_tokens: int = 8192) -> str:
@@ -207,15 +275,22 @@ def truncate_text_to_tokens(text: str, max_tokens: int = 8192) -> str:
         max_tokens: Maximum allowed tokens
         
     Returns:
-        Truncated text
+        Truncated text that fits within the token limit
     """
-
-    encoding = tiktoken.encoding_for_model("gpt-4o-mini")
-    tokens = encoding.encode(text)
-    
-    if len(tokens) <= max_tokens:
-        return text
-    
-    # Truncate and decode back
-    truncated_tokens = tokens[:max_tokens]
-    return encoding.decode(truncated_tokens)
+    try:
+        encoding = tiktoken.encoding_for_model("gpt-4o-mini")
+        tokens = encoding.encode(text)
+        
+        if len(tokens) <= max_tokens:
+            return text
+        
+        # Truncate and decode back
+        truncated_tokens = tokens[:max_tokens]
+        return encoding.decode(truncated_tokens)
+        
+    except Exception as e:
+        # Fallback to character-based truncation
+        approx_char_limit = max_tokens * 4
+        if len(text) <= approx_char_limit:
+            return text
+        return text[:approx_char_limit]

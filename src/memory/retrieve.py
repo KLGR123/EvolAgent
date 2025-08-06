@@ -1,7 +1,13 @@
+"""
+Memory retrieval system for EvolAgent.
+
+This module provides the Retriever class for managing vector-based memory storage
+and retrieval using Qdrant as the backend with hybrid search capabilities.
+"""
+
 import hashlib
-import os
-import uuid
-from typing import List, Dict, Optional, Literal
+
+from typing import List, Dict, Literal
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance, 
@@ -15,112 +21,146 @@ from qdrant_client.models import (
 )
 
 from .utils import (
-    DenseEmbedModel, 
-    SparseEmbedModel, 
+    DenseEmbeddingModel, 
+    SparseEmbeddingModel, 
     SearchResult, 
-    check_token_length, 
+    validate_token_length, 
     truncate_text_to_tokens
 )
-from ..config import config
+from ..utils.config import config
 
 
-class Retriever:
+class MemoryRetriever:
     """
-    Retriever is a class that retrieves the memories from the qdrant collection.
-    It uses the dense and sparse models to retrieve the memories.
+    Vector-based memory retriever with hybrid search capabilities.
+    
+    Supports dense, sparse, and hybrid search methods for retrieving relevant
+    memories from a Qdrant collection. Handles both semantic and episodic memory types.
     """
 
     def __init__(self, 
         client: QdrantClient,
         role: Literal["planner", "developer", "tester", "critic"], 
-        type: Literal["semantic", "episodic"],
+        memory_type: Literal["semantic", "episodic"],
     ):
+        """
+        Initialize the memory retriever.
+        
+        Args:
+            client: Qdrant client instance
+            role: Agent role for memory namespacing
+            memory_type: Type of memory (semantic or episodic)
+        """
         self.role = role
+        self.memory_type = memory_type
         self.client = client
-        self.dense_model = DenseEmbedModel(model_name=config.default_embedding_model)
-        self.sparse_model = SparseEmbedModel()
+        
+        # Initialize embedding models
+        self.dense_model = DenseEmbeddingModel(
+            model_name=config.get('models.default_embedding_model', 'text-embedding-3-large')
+        )
+        self.sparse_model = SparseEmbeddingModel()
 
-        self.collection_name = f"{role}_{type}"
-        self._create_collection()
+        # Create unique collection name
+        self.collection_name = f"{role}_{memory_type}"
+        self._ensure_collection_exists()
 
-    def _create_collection(self, hybrid: bool = True) -> None:
+    def _ensure_collection_exists(self, enable_hybrid: bool = True) -> None:
         """
-        Create the collection.
+        Ensure the Qdrant collection exists with proper configuration.
+        
+        Args:
+            enable_hybrid: Whether to enable sparse vectors for hybrid search
         """
-
         if self.client.collection_exists(collection_name=self.collection_name):
-            pass
-            # print(f"Collection {self.collection_name} already exists")
-        else:
+            return
+            
+        try:
+            # Dense vector configuration
             vectors_config = {
                 "dense": VectorParams(
-                    size=config.embedding_dimension,
+                    size=config.get('models.embedding_dimension', 1536),
                     distance=Distance.COSINE
                 ),
             }
-            if hybrid:
-                sparse_vectors_config = {"sparse": SparseVectorParams()}
-            else:
-                sparse_vectors_config = None
             
-            try:
-                self.client.create_collection(
-                    collection_name=self.collection_name,
-                    vectors_config=vectors_config,
-                    sparse_vectors_config=sparse_vectors_config
-                )
-            except Exception as e:
-                print(f"Collection {self.collection_name} creation failed: {e}")
+            # Sparse vector configuration for hybrid search
+            sparse_vectors_config = {"sparse": SparseVectorParams()} if enable_hybrid else None
+            
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=vectors_config,
+                sparse_vectors_config=sparse_vectors_config
+            )
+            
+        except Exception as e:
+            print(f"Failed to create collection {self.collection_name}: {e}")
+            raise
         
-    def add(self,  
-        payloads: Optional[List[Dict]] = None, 
-        hybrid: bool = True,
-        max_tokens: int = 8192  # New parameter for token limit
+    def add_memories(self,  
+        payloads: List[Dict], 
+        enable_hybrid: bool = True,
+        max_tokens: int = None
     ) -> None:
         """
-        Add the texts to the collection with optional code blocks and token validation.
+        Add memory entries to the collection with deduplication and validation.
         
         Args:
-            texts: List of text descriptions (used for embedding and search)
-            metadatas: Optional metadata for each text
-            ids: Optional IDs for each text
-            codes: Optional code blocks associated with each text
-            hybrid: Whether to use hybrid search
-            max_tokens: Maximum tokens allowed per text chunk
+            payloads: List of memory payloads with 'text' and optional 'code' fields
+            enable_hybrid: Whether to generate sparse embeddings for hybrid search
+            max_tokens: Maximum tokens per text chunk (uses config default if None)
         """
+        if not payloads:
+            return
+            
+        if max_tokens is None:
+            max_tokens = config.get('memory.max_tokens_per_chunk', 8192)
 
-        ids=[hashlib.md5(_["text"].encode('utf-8')).hexdigest() for _ in payloads]
-        mask=self.check_exist(ids)
-        payloads=[payload for payload, exist in zip(payloads, mask) if not exist]
-        ids=[id for id, exist in zip(ids, mask) if not exist]
-        if not ids:
+        # Generate content hashes for deduplication
+        content_ids = [self._generate_content_id(payload["text"]) for payload in payloads]
+        existing_mask = self._check_existing_ids(content_ids)
+        
+        # Filter out existing entries
+        new_payloads = [
+            payload for payload, exists in zip(payloads, existing_mask) 
+            if not exists
+        ]
+        new_ids = [
+            content_id for content_id, exists in zip(content_ids, existing_mask) 
+            if not exists
+        ]
+        
+        if not new_ids:
             return
 
-        for i, payload in enumerate(payloads):
-            # Check token length for the text (not including code)
-            is_within_limit, token_count = check_token_length(payload["text"], max_tokens)
+        # Validate and process text content
+        processed_payloads = []
+        for i, payload in enumerate(new_payloads):
+            is_valid, token_count = validate_token_length(payload["text"], max_tokens)
             
-            if not is_within_limit:
+            if not is_valid:
                 print(f"Warning: Text chunk {i} has {token_count} tokens, exceeding limit of {max_tokens}")
-                # Option 1: Truncate (more conservative)
                 processed_text = truncate_text_to_tokens(payload["text"], max_tokens)
                 print(f"Truncated text chunk {i} to {max_tokens} tokens")
-                
-                # Option 2: Raise error (uncomment if preferred)
-                # raise ValueError(f"Text chunk {i} exceeds token limit: {token_count} > {max_tokens}")
             else:
                 processed_text = payload["text"]
-            payload["text"] = processed_text
+                
+            processed_payloads.append({
+                **payload,
+                "text": processed_text
+            })
         
-        # Generate embeddings only for the text descriptions (not code)
-        dense_embeddings = self.dense_model.embed([payload["text"] for payload in payloads])
+        # Generate embeddings for text content only
+        dense_embeddings = self.dense_model.embed([p["text"] for p in processed_payloads])
+        
+        # Create points for insertion
         points_to_add = []
-
-        if hybrid:
-            sparse_embeddings = self.sparse_model.embed([payload["text"] for payload in payloads])
+        
+        if enable_hybrid:
+            sparse_embeddings = self.sparse_model.embed([p["text"] for p in processed_payloads])
             points_to_add = [
                 PointStruct(
-                    id=idx,
+                    id=content_id,
                     payload=payload,
                     vector={
                         "dense": dense_emb,
@@ -130,54 +170,112 @@ class Retriever:
                         ),
                     },
                 )
-                for idx, payload, dense_emb, sparse_emb in zip(ids, payloads, dense_embeddings, sparse_embeddings)
+                for content_id, payload, dense_emb, sparse_emb in zip(
+                    new_ids, processed_payloads, dense_embeddings, sparse_embeddings
+                )
             ]
         else:
             points_to_add = [
                 PointStruct(
-                    id=idx,
+                    id=content_id,
                     payload=payload,
                     vector={"dense": dense_emb},
                 )
-                for idx, payload, dense_emb in zip(ids, payloads, dense_embeddings)
+                for content_id, payload, dense_emb in zip(
+                    new_ids, processed_payloads, dense_embeddings
+                )
             ]
 
+        # Insert into collection
         self.client.upsert(
             collection_name=self.collection_name,
             points=points_to_add,
             wait=True
         )
         
-    def _delete(self, ids: List[str]):
-        """
-        Delete the vectors from the collection by their IDs.
-        """
-
-        self.client.delete(
-            collection_name=self.collection_name,
-            points_selector=ids, 
-            wait=True,
-        )
-        print(f"Deleted {len(ids)} points from collection {self.collection_name}")
-
-    def delete_all(self) -> None:
-        """
-        Delete the collection.
-        """
-
-        if self.client.collection_exists(collection_name=self.collection_name):
-            self.client.delete_collection(collection_name=self.collection_name)
-            print(f"Collection {self.collection_name} deleted")
+    def _generate_content_id(self, text: str) -> str:
+        """Generate a unique ID based on text content."""
+        return hashlib.md5(text.encode('utf-8')).hexdigest()
         
-    def _search_dense(self, 
+    def _check_existing_ids(self, ids: List[str]) -> List[bool]:
+        """
+        Check which IDs already exist in the collection.
+        
+        Args:
+            ids: List of content IDs to check
+            
+        Returns:
+            List of booleans indicating existence
+        """
+        try:
+            points_count = self.client.count(collection_name=self.collection_name, exact=True)
+            
+            if points_count.count == 0:
+                return [False] * len(ids)
+                
+            responses = self.client.scroll(
+                collection_name=self.collection_name,
+                limit=points_count.count,
+                with_payload=False,
+                with_vectors=False,
+            )
+            
+            existing_ids = set(str(record.id) for record in responses[0])
+            return [content_id in existing_ids for content_id in ids]
+            
+        except Exception as e:
+            print(f"Error checking existing IDs: {e}")
+            return [False] * len(ids)  # Assume none exist on error
+
+    def delete_memories(self, ids: List[str]) -> None:
+        """
+        Delete specific memory entries by their IDs.
+        
+        Args:
+            ids: List of content IDs to delete
+        """
+        if not ids:
+            return
+            
+        try:
+            self.client.delete(
+                collection_name=self.collection_name,
+                points_selector=ids, 
+                wait=True,
+            )
+            print(f"Deleted {len(ids)} memories from collection {self.collection_name}")
+        except Exception as e:
+            print(f"Error deleting memories: {e}")
+
+    def clear_all_memories(self) -> None:
+        """Delete the entire collection and recreate it."""
+        try:
+            if self.client.collection_exists(collection_name=self.collection_name):
+                self.client.delete_collection(collection_name=self.collection_name)
+                print(f"Collection {self.collection_name} cleared")
+                
+            # Recreate the collection
+            self._ensure_collection_exists()
+            
+        except Exception as e:
+            print(f"Error clearing collection {self.collection_name}: {e}")
+        
+    def _search_dense_only(self, 
         query: str, 
         limit: int = 10, 
         score_threshold: float = 0.35
     ) -> List[SearchResult]:
         """
-        Search the dense model.
-        """
+        Perform dense vector search only.
         
+        Args:
+            query: Search query text
+            limit: Maximum number of results
+            score_threshold: Minimum relevance score
+            
+        Returns:
+            List of search results
+        """
         query_embedding = self.dense_model.embed(query)[0]
         search_result = self.client.query_points(
             collection_name=self.collection_name,
@@ -187,32 +285,29 @@ class Retriever:
             with_payload=True,
             score_threshold=score_threshold
         )
-        results = []
-        for hit in search_result.points:
-            payload = hit.payload or {}
-            result = SearchResult(
-                id=str(hit.id),
-                score=hit.score,
-                payload=payload,
-                text=payload.get("text", ""),
-                code=payload.get("code", None)  # Include code in search results
-            )
-            results.append(result)     
-        return results
         
-    def _search_sparse(self, 
+        return self._format_search_results(search_result.points)
+        
+    def _search_sparse_only(self, 
         query: str, 
         limit: int = 10
     ) -> List[SearchResult]:
         """
-        Search the sparse model.
+        Perform sparse vector search only.
+        
+        Args:
+            query: Search query text
+            limit: Maximum number of results
+            
+        Returns:
+            List of search results
         """
-
         sparse_embedding = list(self.sparse_model.embed(query))[0]
         query_vector = SparseVector(
             indices=sparse_embedding.indices.tolist(),
             values=sparse_embedding.values.tolist(),
         )
+        
         search_result = self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
@@ -220,40 +315,45 @@ class Retriever:
             limit=limit,
             with_payload=True,
         )
-        results = []
-        for hit in search_result.points:
-            payload = hit.payload or {}
-            result = SearchResult(
-                id=str(hit.id),
-                score=hit.score,
-                payload=payload,
-                text=payload.get("text", ""),
-                code=payload.get("code", None)  # Include code in search results
-            )
-            results.append(result)
-        return results
         
-    def _search_hybrid(self, query: str, limit: int = 10, score_threshold: float = 0.35) -> List[SearchResult]:
+        return self._format_search_results(search_result.points)
+        
+    def _search_hybrid(self, 
+        query: str, 
+        limit: int = 10, 
+        score_threshold: float = 0.35
+    ) -> List[SearchResult]:
         """
-        Search the hybrid model.
+        Perform hybrid search combining dense and sparse vectors.
+        
+        Args:
+            query: Search query text
+            limit: Maximum number of results
+            score_threshold: Minimum relevance score
+            
+        Returns:
+            List of search results
         """
-
+        # Generate both embeddings
         dense_embedding = self.dense_model.embed(query)[0]
         sparse_embedding = list(self.sparse_model.embed(query))[0]
+        
+        # Perform hybrid search with RRF fusion
         search_result = self.client.query_points(
             collection_name=self.collection_name,
             prefetch=[
-                Prefetch(query=SparseVector(
+                Prefetch(
+                    query=SparseVector(
                         indices=sparse_embedding.indices.tolist(),
                         values=sparse_embedding.values.tolist(),
                     ),
                     using="sparse",
-                    limit=limit*2,
+                    limit=limit * 2,  # Fetch more for better fusion
                 ),
                 Prefetch(
                     query=dense_embedding,
                     using="dense", 
-                    limit=limit*2,
+                    limit=limit * 2,
                 ),
             ],
             query=FusionQuery(fusion=Fusion.RRF),
@@ -261,15 +361,28 @@ class Retriever:
             with_payload=True,
             score_threshold=score_threshold
         )
+        
+        return self._format_search_results(search_result.points)
+    
+    def _format_search_results(self, points) -> List[SearchResult]:
+        """
+        Format Qdrant points into SearchResult objects.
+        
+        Args:
+            points: Qdrant search result points
+            
+        Returns:
+            List of formatted search results
+        """
         results = []
-        for hit in search_result.points:
+        for hit in points:
             payload = hit.payload or {}
             result = SearchResult(
                 id=str(hit.id),
                 score=hit.score,
                 payload=payload,
                 text=payload.get("text", ""),
-                code=payload.get("code", None)  # Include code in search results
+                code=payload.get("code", None)
             )
             results.append(result)
         return results
@@ -281,32 +394,30 @@ class Retriever:
         score_threshold: float = 0.35,
     ) -> List[SearchResult]:
         """
-        Search for documents in the collection.
+        Search for relevant memories using the specified method.
 
         Args:
-            query: The query string to search for.
-            limit: The topk  results to return.
-            method: The method to use for searching. "dense", "sparse", "hybrid"
-            score_threshold: The minimum confidence score for a result to be returned.
+            query: The search query text
+            limit: Maximum number of results to return
+            method: Search method ("dense", "sparse", or "hybrid")
+            score_threshold: Minimum relevance score for results
+            
+        Returns:
+            List of relevant search results
+            
+        Raises:
+            ValueError: If an invalid search method is specified
         """
-        if method == "dense":
-            return self._search_dense(query, limit, score_threshold)
-        elif method == "sparse":
-            return self._search_sparse(query, limit)
-        else:
-            return self._search_hybrid(query, limit, score_threshold)
-
-    def check_exist(self, ids)->List[bool]:
-        """
-        Check if the ids exist in the collection.
-        """
-        points_count=self.client.count(collection_name=self.collection_name, exact=True)
-
-        responses=self.client.scroll(
-            collection_name=self.collection_name,
-            limit=points_count.count,
-            with_payload=False,
-            with_vectors=False,
-        )
-        exist_ids=set([record.id for record in responses[0]])
-        return [id in exist_ids for id in ids]
+        try:
+            if method == "dense":
+                return self._search_dense_only(query, limit, score_threshold)
+            elif method == "sparse":
+                return self._search_sparse_only(query, limit)
+            elif method == "hybrid":
+                return self._search_hybrid(query, limit, score_threshold)
+            else:
+                raise ValueError(f"Invalid search method: {method}")
+                
+        except Exception as e:
+            print(f"Error during {method} search: {e}")
+            return []

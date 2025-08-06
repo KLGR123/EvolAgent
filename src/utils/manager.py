@@ -19,7 +19,7 @@ import threading
 from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional, Generator
-from ..config import config
+from .config import config
 from ..utils.logger import get_logger
 
 
@@ -35,7 +35,7 @@ class WorkspaceManager:
     
     def __init__(self):
         self.logger = get_logger("workspace")
-        self.base_workspace = config.workspace_dir
+        self.base_workspace = config.get('environment.workspace_dir', 'workspace')
         self.active_workspaces = {}
         self._lock = threading.Lock()
     

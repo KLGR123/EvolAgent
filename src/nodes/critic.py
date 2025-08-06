@@ -43,11 +43,9 @@ class CriticNode(BaseNode):
         if len(histories) != 3:
             raise ValueError(f"{self.role} only supports 3 trajectories. Got {len(histories)}.")
         
-        prompt = Template(self.init_prompt).safe_substitute(
-            history_0=histories[0],
-            history_1=histories[1],
-            history_2=histories[2],
-        )
+        trajectory_mapping = {f"history_{idx}": history for idx, history in enumerate(histories)}
+        prompt = Template(self.init_prompt).safe_substitute(**trajectory_mapping)
+        
         response = self.forward(prompt=prompt)
         parsed_response = self._parse_response(response)
 
