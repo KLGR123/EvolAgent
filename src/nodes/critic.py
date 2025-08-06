@@ -9,7 +9,8 @@ from ..memory import Memory
 class CriticNode(BaseNode):
     """
     CriticNode is a node that criticizes the answers from the plan and dev nodes.
-    No memory is used.
+    It is used to select the best trajectory from the plan and dev nodes.
+    No memory is used for the critic node.
     """
 
     def __init__(self, model: str = "o4-mini"):
@@ -20,7 +21,7 @@ class CriticNode(BaseNode):
     
     def _init_prompt(self, task: str) -> None:
         """
-        Initialize the prompt for the node, with the task.
+        Initialize the prompt with the task.
         """
 
         self.task = task
@@ -32,14 +33,15 @@ class CriticNode(BaseNode):
         Criticize the answers from the plan and dev nodes.
         Current the critic node only supports 3 trajectories.
         
+        Args:
+            histories: List[str], the histories from the plan and dev nodes.
+
         Returns:
             Tuple of (final_answer, reason, best_id)
         """
 
-        try: 
-            assert len(histories) == 3, "CriticNode only supports 3 trajectories."
-        except AssertionError:
-            raise ValueError(f"CriticNode only supports 3 trajectories. Got {len(histories)}.")
+        if len(histories) != 3:
+            raise ValueError(f"{self.role} only supports 3 trajectories. Got {len(histories)}.")
         
         prompt = Template(self.init_prompt).safe_substitute(
             history_0=histories[0],
@@ -47,23 +49,20 @@ class CriticNode(BaseNode):
             history_2=histories[2],
         )
         response = self.forward(prompt=prompt)
+        parsed_response = self._parse_response(response)
 
-        parsed_response = self.parse_response(response)
-        final_answer = parsed_response["final_answer"] 
-        reason = parsed_response["reason"] 
+        final_answer = parsed_response.get("final_answer", "N/A")
+        reason = parsed_response.get("reason", "N/A")
 
         try:
             best_id = int(parsed_response.get("best_id", 0))
             if best_id not in [0, 1, 2]:
+                self.logger.warning(f"Selected best member index: {best_id} is not in [0, 1, 2].")
                 best_id = random.randint(0, 2)
+
         except (ValueError, TypeError):
+            self.logger.warning(f"Selected best member index: {parsed_response.get('best_id', 'N/A')} is not valid.")
             best_id = random.randint(0, 2)
 
-        self.logger.info(f"CriticNode selected best member index: {best_id}")
+        self.logger.info(f"Selected best member index: {best_id}")
         return final_answer, reason, best_id
-
-
-if __name__ == "__main__":
-    critic = CriticNode()
-    critic._init_prompt(task="What is 10298412.121 + 123198005.12 equal to?")
-    print(critic.export_prompt())

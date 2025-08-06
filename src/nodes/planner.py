@@ -1,4 +1,3 @@
-import threading
 from string import Template
 from typing import Dict, Optional, Tuple
 
@@ -8,8 +7,8 @@ from ..memory import Memory
 
 class PlanNode(BaseNode):
     """
-    PlanNode is a node that generates the next plan.
-    It uses the procedural, semantic, episodic memories, the task and the history to generate the next plan.
+    PlanNode generates the next plan, a.k.a. subintent of the task.
+    It leverages the procedural, semantic, episodic memories, the task and the history to generate the next plan.
     """
 
     def __init__(self, model: str = "o4-mini", past_n: int = 10):
@@ -17,27 +16,23 @@ class PlanNode(BaseNode):
             role="planner",
             model=model
         )
-        self.memory = Memory("planner")
-        self.past_n = past_n
-        self._init_lock = threading.Lock()  # Instance-level lock for initialization
+        self.memory: Memory = Memory("planner")
+        self.past_n: int = past_n
 
     def _init_prompt(self, task: str) -> None:
         """
-        Initialize the prompt for the node.
-        Thread-safe implementation with enhanced error handling.
+        Initialize the prompt with the task.
         """
-        with self._init_lock:
-            self.task = task
-            self.procedural: Template = self.memory.get_procedural()
 
-            # Get episodic memory with error handling
-            try:
-                self.episodic: str = self.memory.get_episodic(query=self.task) # TODO: augment task description
-                if self.episodic is None:
-                    self.episodic = ""
-            except Exception as e:
-                self.logger.warning(f"Failed to get episodic memory for {self.role} node: {str(e)}")
-                self.episodic = ""
+        self.task = task
+        self.procedural: Template = self.memory.get_procedural()
+
+        try:
+            self.episodic: str = self.memory.get_episodic(query=self.task)
+            self.logger.debug(f"Episodic memory is loaded.")
+        except Exception as e:
+            self.logger.warning(f"Failed to get episodic memory: {str(e)}")
+            self.episodic = ""
 
         self.init_prompt: str = self.procedural.safe_substitute(
             episodic=self.episodic,
@@ -47,26 +42,25 @@ class PlanNode(BaseNode):
 
     def __call__(self, h: Optional[Dict[str, str]] = None) -> Tuple[Dict[str, str], bool]:
         """
-        Generate the next plan.
+        Generate the next plan, a.k.a. subintent of the task.
+        
+        Args:
+            h: Optional[Dict[str, str]], the history from the previous node.
+
+        Returns:
+            Tuple[Dict[str, str], bool], the history and a boolean indicating if the plan is complete.
         """
-        # Validate that init_prompt is properly initialized
-        if not hasattr(self, 'init_prompt') or not self.init_prompt or not self.init_prompt.strip():
-            raise RuntimeError(f"{self.role} node not properly initialized - init_prompt is empty. Call _init_prompt() first.")
             
         if h:
-            self.logger.debug(f"{self.role} received history from {h['role']}")
+            self.logger.debug(f"Received history from {h['role']}")
             self.add_history(h=h)
 
-        prompt = Template(self.init_prompt).safe_substitute(history=self.export_history(past_n=self.past_n))
+        prompt = Template(self.init_prompt).safe_substitute(
+            history=self.export_history(past_n=self.past_n)
+        )
         response = self.forward(prompt=prompt)
-        h = self.parse_response(response)
+        h = self._parse_response(response)
         self.add_history(h=h)
 
         is_end = (h["plan"] == "<END>" or "<END>" in h["plan"])
         return h, is_end
-
-
-if __name__ == "__main__":
-    plan_node = PlanNode()
-    plan_node._init_prompt(task="I want to learn about the history of the world")
-    print(plan_node.export_history())

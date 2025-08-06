@@ -1,13 +1,20 @@
 """
-Workspace Manager for EvolAgent
+Workspace Manager.
 
 Provides isolated workspace environments for parallel task execution
 by creating separate workspace directories for each task.
+
+Features:
+- Isolated workspace for each task
+- Thread-safe workspace management
+- Context manager for isolated workspace
+- Global workspace manager instance
+- Convenient context manager for isolated workspace
+- Get current workspace path and task ID
 """
 
 import os
 import shutil
-import tempfile
 import threading
 from pathlib import Path
 from contextlib import contextmanager
@@ -15,24 +22,22 @@ from typing import Optional, Generator
 from ..config import config
 from ..utils.logger import get_logger
 
-logger = get_logger(__name__)
 
 # Thread-local storage for current task workspace
 _local = threading.local()
 
-
 class WorkspaceManager:
     """
     Manages isolated workspace directories for parallel task execution.
-    
     Creates separate workspace directories for each task to avoid conflicts.
     Each task gets its own workspace_{task_id}/ directory.
     """
     
     def __init__(self):
-        self.base_workspace = config.workspace_dir  # Default: "workspace"
-        self.active_workspaces = {}  # Track active task workspaces
-        self._lock = threading.Lock()  # Only for tracking, not execution
+        self.logger = get_logger("workspace")
+        self.base_workspace = config.workspace_dir
+        self.active_workspaces = {}
+        self._lock = threading.Lock()
     
     def _create_task_workspace(self, task_id: str) -> str:
         """
@@ -44,12 +49,12 @@ class WorkspaceManager:
         Returns:
             Path to the task workspace directory
         """
-        # Create workspace directory with task_id
+
         workspace_dir = f"workspace_{task_id}"
         workspace_path = Path(workspace_dir)
         workspace_path.mkdir(parents=True, exist_ok=True)
         
-        logger.debug(f"Created task workspace: {workspace_path.absolute()}")
+        self.logger.debug(f"Created task workspace: {workspace_path.absolute()}")
         return str(workspace_path.absolute())
     
     def _cleanup_task_workspace(self, workspace_path: str) -> None:
@@ -62,9 +67,9 @@ class WorkspaceManager:
         try:
             if os.path.exists(workspace_path):
                 shutil.rmtree(workspace_path)
-                logger.debug(f"Cleaned up task workspace: {workspace_path}")
+                self.logger.debug(f"Cleaned up task workspace: {workspace_path}")
         except Exception as e:
-            logger.error(f"Failed to cleanup task workspace {workspace_path}: {e}")
+            self.logger.error(f"Failed to cleanup task workspace {workspace_path}: {e}")
     
     @contextmanager
     def isolated_workspace(self, task_id: str) -> Generator[str, None, None]:
@@ -79,12 +84,6 @@ class WorkspaceManager:
             
         Yields:
             Path to the isolated workspace directory
-            
-        Example:
-            with workspace_manager.isolated_workspace("task_123") as workspace:
-                # Execute task with isolated workspace
-                # Task will use workspace_task_123/ directory
-                pass
         """
         workspace_path = None
         
@@ -100,32 +99,27 @@ class WorkspaceManager:
             _local.task_id = task_id
             _local.workspace_path = workspace_path
             
-            logger.info(f"Isolated workspace ready for task {task_id}: {workspace_path}")
-            
+            self.logger.info(f"Isolated workspace ready for task {task_id}: {workspace_path}")
             yield workspace_path
             
         finally:
-            # Cleanup in finally block to ensure execution
             try:
-                # Remove from tracking
                 with self._lock:
                     if task_id in self.active_workspaces:
                         del self.active_workspaces[task_id]
                 
-                # Clear thread-local storage
                 if hasattr(_local, 'task_id'):
                     delattr(_local, 'task_id')
                 if hasattr(_local, 'workspace_path'):
                     delattr(_local, 'workspace_path')
                 
-                # Cleanup task workspace
                 if workspace_path:
                     self._cleanup_task_workspace(workspace_path)
                 
-                logger.info(f"Cleaned up isolated workspace for task {task_id}")
+                self.logger.info(f"Cleaned up isolated workspace for task {task_id}")
                 
             except Exception as cleanup_error:
-                logger.error(f"Error during workspace cleanup for task {task_id}: {cleanup_error}")
+                self.logger.error(f"Error during workspace cleanup for task {task_id}: {cleanup_error}")
     
     def get_current_workspace(self) -> Optional[str]:
         """
@@ -151,59 +145,16 @@ class WorkspaceManager:
         Should only be used in case of unexpected shutdown.
         """
         with self._lock:
-            logger.warning("Performing emergency cleanup of all workspaces")
+            self.logger.warning("Performing emergency cleanup of all workspaces")
             
             for task_id, workspace_path in list(self.active_workspaces.items()):
                 try:
                     self._cleanup_task_workspace(workspace_path)
-                    logger.info(f"Emergency cleanup completed for task {task_id}")
+                    self.logger.info(f"Emergency cleanup completed for task {task_id}")
                 except Exception as e:
-                    logger.error(f"Emergency cleanup failed for task {task_id}: {e}")
+                    self.logger.error(f"Emergency cleanup failed for task {task_id}: {e}")
             
             self.active_workspaces.clear()
 
 
-# Global workspace manager instance
-workspace_manager = WorkspaceManager()
-
-
-@contextmanager
-def isolated_workspace(task_id: str) -> Generator[str, None, None]:
-    """
-    Convenient context manager for isolated workspace.
-    
-    Args:
-        task_id: Unique identifier for the task
-        
-    Yields:
-        Path to the isolated workspace directory
-    """
-    with workspace_manager.isolated_workspace(task_id) as workspace:
-        yield workspace
-
-
-def get_current_workspace() -> Optional[str]:
-    """
-    Get the current thread's isolated workspace path.
-    
-    Returns:
-        Path to current workspace or None if not in isolated context
-    """
-    return workspace_manager.get_current_workspace()
-
-
-def get_current_task_id() -> Optional[str]:
-    """
-    Get the current thread's task ID.
-    
-    Returns:
-        Current task ID or None if not in isolated context
-    """
-    return workspace_manager.get_current_task_id()
-
-
-def cleanup_all_workspaces() -> None:
-    """
-    Emergency cleanup of all active workspaces.
-    """
-    workspace_manager.cleanup_all() 
+workspace_manager = WorkspaceManager()   

@@ -138,9 +138,9 @@ def load_coldstart_dataset(split) -> list:
             coldstart_tasks.append(json.loads(line))
         return coldstart_tasks
 
-def get_task_from_coldstart(task_id: str, split: str=None) -> dict:
+def get_task_from_coldstart(task_id: str, split: str = "taskcraft") -> dict:
     """
-    Get a task from the GAIA dataset.
+    Get a task from the coldstart dataset.
     """
     ds = load_coldstart_dataset(split)
     task = None
@@ -158,11 +158,7 @@ def get_task_from_coldstart(task_id: str, split: str=None) -> dict:
     task_info = {
         "task_id": task["task_id"],
         "question": question,
-        "true_answer": task["true_answer"],
-        # "level": task["level"],
-        # "file_name": task.get("file_name"),
-        # "steps": task.get("Annotator Metadata", {}).get("Steps"),
-        # "tools": task.get("Annotator Metadata", {}).get("Tools")
+        "true_answer": task["true_answer"]
     }
 
     return task_info

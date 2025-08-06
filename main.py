@@ -9,27 +9,18 @@ import gc
 from typing import Literal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Set environment variable to ensure matplotlib uses non-GUI backend
-os.environ['MPLBACKEND'] = 'Agg'
-
-# Set matplotlib backend to non-GUI before any other matplotlib imports
-import matplotlib
-matplotlib.use('Agg')  # Use Anti-Grain Geometry backend (no GUI)
-
 from src.utils.scorer import question_scorer, check_close_call
 from src.utils.loader import get_task_from_gaia, get_all_task_ids_by_level
 from src.pipelines import EvolvePipeline
 from src.config import config
-from src.utils.logger import get_logger, TaskLogger
-from src.utils.workspace_manager import cleanup_all_workspaces
-from src.nodes.base import cleanup_openai_clients
+from src.utils.logger import get_logger
+from src.utils.manager import workspace_manager
+from src.nodes.base import OPENAI_CLIENT_POOL
 from src.memory.memory import Memory
 
-# 全局清理状态标志
+
 _cleanup_in_progress = False
 _cleanup_lock = threading.Lock()
-
-# TASK_ID_LIST = get_all_task_ids_by_level(split="validation")
 
 TASK_DONE = [
     "11af4e1a-5f45-467d-9aeb-46f4bb0bf034",
@@ -112,6 +103,8 @@ TASK_DONE = [
     "e29834fd-413a-455c-a33e-c3915b07401c",
     "a1e91b78-d3d8-4675-bb8d-62741b4b68a6",
 ]
+
+# TASK_ID_LIST = get_all_task_ids_by_level(split="validation")
 
 TASK_ID_LIST = [
     "b415aba4-4b68-4fc6-9b89-2c812e55a3e1", # wrong
@@ -203,66 +196,65 @@ TASK_ID_LIST = [
 ]
 
 
-def single_run(task_id: str, 
-    split: Literal["validation", "test"]
-) -> dict:
+def single_run(task_id: str, split: Literal["validation", "test"]) -> dict:
     """
     Run the pipeline for the whole GAIA dataset with enhanced logging and resource management.
     """
+
     pipeline = None
     try:
         pipeline = EvolvePipeline()
-        with TaskLogger(task_id) as task_logger:
-            task_logger.info(f"Starting task execution: {task_id}")
-            
-            task_info = get_task_from_gaia(task_id, split)
-            task_logger.info(f"Loaded task: {task_info['question'][:200]}...")
-            task_logger.debug(f"Full task info: {task_info}")
-            
-            start_time = time.time()
-            
-            # Use configured models instead of hardcoded list with task_id for workspace isolation
-            answer = pipeline(
-                task=task_info["question"], 
-                models=config.default_models,
-                task_id=task_id
-            )
-            
-            end_time = time.time()
-            execution_time = end_time - start_time
-            task_logger.info(f"Task execution completed in {execution_time:.2f}s")
+        logger = get_logger("gaia.run")
+        logger.info(f"Starting task execution: {task_id}")
+        
+        task_info = get_task_from_gaia(task_id, split)
+        logger.info(f"Loaded task: {task_info['question'][:200]}...")
+        logger.debug(f"Full task info: {task_info}")
+        
+        start_time = time.time()
+        
+        # Use configured models instead of hardcoded list with task_id for workspace isolation
+        answer = pipeline(
+            task=task_info["question"], 
+            models=config.default_models,
+            task_id=task_id
+        )
+        
+        end_time = time.time()
+        execution_time = end_time - start_time
+        logger.info(f"Task execution completed in {execution_time:.2f}s")
 
-            if split == "test":
-                result = {
-                    "answer": answer,
-                    "task_id": task_id,
-                    "execution_time": execution_time
-                }
-                task_logger.info(f"Test result: {result}")
-                return result
-            
-            is_correct = question_scorer(answer, task_info["true_answer"])
-            is_close = check_close_call(answer, task_info["true_answer"], is_correct)
-            
-            if is_correct:
-                task_logger.info("Task answered correctly, triggering learning")
-                pipeline.learn()
-            else:
-                task_logger.info(f"Task answered incorrectly. Answer: {answer}, Expected: {task_info['true_answer']}")
-                
+        if split == "test":
             result = {
                 "answer": answer,
-                "true_answer": task_info["true_answer"],
-                "is_correct": is_correct,
-                "is_close": is_close,
                 "task_id": task_id,
                 "execution_time": execution_time
             }
-            task_logger.info(f"Validation result: {result}")
+            logger.info(f"Test result: {result}")
             return result
+        
+        is_correct = question_scorer(answer, task_info["true_answer"])
+        is_close = check_close_call(answer, task_info["true_answer"], is_correct)
+        
+        if is_correct:
+            logger.info("Task answered correctly, triggering learning")
+            pipeline.learn()
+        else:
+            logger.info(f"Task answered incorrectly. Answer: {answer}, Expected: {task_info['true_answer']}")
+            
+        result = {
+            "answer": answer,
+            "true_answer": task_info["true_answer"],
+            "is_correct": is_correct,
+            "is_close": is_close,
+            "task_id": task_id,
+            "execution_time": execution_time
+        }
+        logger.info(f"Validation result: {result}")
+        return result
             
     except Exception as e:
-        logger = get_logger(__name__)
+        logger = get_logger("gaia.run")
         logger.error(f"Error in single_run task execution for {task_id}: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -283,7 +275,7 @@ def single_run(task_id: str,
 
 def comprehensive_cleanup():
     """
-    执行全面的资源清理。
+    Comprehensive resource cleanup.
     """
     global _cleanup_in_progress
     
@@ -292,23 +284,23 @@ def comprehensive_cleanup():
             return
         _cleanup_in_progress = True
     
-    logger = get_logger(__name__)
+    logger = get_logger("gaia.cleanup")
     logger.info("Starting comprehensive resource cleanup...")
     
     try:
-        # 1. 清理工作区
-        cleanup_all_workspaces()
+        # 1. Clean up workspaces
+        workspace_manager.cleanup_all()
         logger.info("Workspaces cleaned up")
         
-        # 2. 清理OpenAI客户端连接
-        cleanup_openai_clients()
+        # 2. Clean up OpenAI clients
+        OPENAI_CLIENT_POOL.cleanup()
         logger.info("OpenAI clients cleaned up")
         
-        # 3. 清理Qdrant连接
+        # 3. Clean up Qdrant connections
         Memory._cleanup_shared_client()
         logger.info("Qdrant connections cleaned up")
         
-        # 4. 清理其他可能的资源
+        # 4. Clean up other possible resources
         try:
             import subprocess
             import psutil
@@ -331,13 +323,13 @@ def comprehensive_cleanup():
         except (ImportError, Exception) as e:
             logger.warning(f"Process cleanup skipped: {e}")
         
-        # 5. 强制垃圾回收
+        # 5. Force garbage collection
         collected = gc.collect()
         logger.info(f"Garbage collection freed {collected} objects")
         
-        # 6. 清理线程资源
+        # 6. Clean up thread resources
         active_threads = threading.active_count()
-        if active_threads > 1:  # Main thread + others
+        if active_threads > 1:
             logger.info(f"Warning: {active_threads} threads still active")
             for thread in threading.enumerate():
                 if thread != threading.current_thread():
@@ -353,7 +345,7 @@ def comprehensive_cleanup():
 
 def cleanup_handler(signum=None, frame=None):
     """Handle cleanup on program termination with improved resource management."""
-    logger = get_logger(__name__)
+    logger = get_logger("gaia.cleanup")
     logger.info(f"Received termination signal {signum}, performing cleanup...")
     
     try:
@@ -369,8 +361,12 @@ def cleanup_handler(signum=None, frame=None):
 
 
 if __name__ == "__main__":
-    logger = get_logger(__name__)
-    logger.info("Starting EvolAgent single_run execution")
+    os.environ['MPLBACKEND'] = 'Agg'
+    import matplotlib
+    matplotlib.use('Agg')
+
+    logger = get_logger("gaia.main")
+    logger.info("Starting Agent single_run execution")
     logger.info(f"Configuration loaded: max_parallel_tasks={config.max_parallel_tasks}")
 
     # Register cleanup handlers for graceful shutdown
@@ -389,7 +385,7 @@ if __name__ == "__main__":
     try:
         executor = ThreadPoolExecutor(
             max_workers=max_workers,
-            thread_name_prefix="EvolAgent-Worker"
+            thread_name_prefix="Agent-Worker"
         )
         
         # Submit all tasks to the executor
@@ -412,7 +408,7 @@ if __name__ == "__main__":
                 completed_count += 1
                 logger.info(f"Completed task {completed_count}/{len(TASK_ID_LIST)} - {task_id}: {result.get('is_correct', 'N/A')}")
                 
-                # 定期强制垃圾回收以释放内存
+                # Force garbage collection periodically to release memory
                 if completed_count % 5 == 0:
                     collected = gc.collect()
                     logger.debug(f"Periodic GC: freed {collected} objects")
@@ -442,14 +438,14 @@ if __name__ == "__main__":
             success_rate = correct_tasks / total_tasks * 100
             logger.info(f"Final Summary: {correct_tasks}/{total_tasks} tasks completed successfully ({success_rate:.1f}%)")
             
-            # 详细统计
+            # Detailed statistics
             error_tasks = sum(1 for r in results if 'error' in r)
             timeout_tasks = sum(1 for r in results if r.get('error') == 'Timeout')
             logger.info(f"Error breakdown: {error_tasks} errors ({timeout_tasks} timeouts)")
         
         logger.info("Check Episodic Memories!")
         # pipeline.clear_episodic()
-        logger.info("EvolAgent execution completed")
+        logger.info("Agent execution completed")
     
     except KeyboardInterrupt:
         logger.info("Execution interrupted by user")

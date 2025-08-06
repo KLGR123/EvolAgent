@@ -1,37 +1,32 @@
 from string import Template
-from typing import Dict, List, Tuple
+from typing import Dict
 
 from .base import BaseNode
-from ..utils import interpret_code
-from ..config import config
 from ..memory import Memory
+from ..utils import python_interpreter
 
 
 class TestNode(BaseNode):
     """
-    TestNode is a node that tests the code.
-    It uses the code, the plan and the history to test the code.
+    TestNode interprets the code and tests the code.
+    It leverages the procedural memories only, the plan and the history to test the code.
     """
 
-    def __init__(self, model: str = "claude-3-7-sonnet-v1", past_n: int = 4):
+    def __init__(self, model: str = "o4-mini", past_n: int = 4):
         super().__init__(
             role="tester",
             model=model
         )
-        self.memory = Memory("tester")
-        self.past_n = past_n
+        self.memory: Memory = Memory("tester")
+        self.past_n: int = past_n
 
     def _init_prompt(self, plan: str) -> None:
         """
-        Initialize the prompt for the node with enhanced error handling.
+        Initialize the prompt with the plan.
         """
-        if not plan or not plan.strip():
-            raise ValueError(f"Plan cannot be empty for {self.role} node initialization")
-            
+
         self.plan = plan
         self.procedural: Template = self.memory.get_procedural()
-        self.history: List[Dict[str, str]] = []
-
         self.init_prompt = self.procedural.safe_substitute(
             plan=self.plan,
         )
@@ -39,25 +34,17 @@ class TestNode(BaseNode):
 
     def __call__(self, h: Dict[str, str]) -> Dict[str, str]:
         """
-        Test the code.
+        Test the code based on code interpretation.
+        Pass code output to the developer node.
+
+        Args:
+            h: Dict[str, str], the history from the previous node.
+
+        Returns:
+            Dict[str, str]
         """
-        # Validate that init_prompt is properly initialized
-        if not hasattr(self, 'init_prompt') or not self.init_prompt or not self.init_prompt.strip():
-            raise RuntimeError(f"{self.role} node not properly initialized - init_prompt is empty. Call _init_prompt() first.")
 
-        self.logger.debug(f"{self.role} received history from {h['role']}")
-        try:
-            code_output = interpret_code(h["code"])
-        except Exception as e:
-            self.logger.error(f"Error interpreting code: {e}")
-            code_output = f"Error interpreting code: {e}"
-
-        # max_len = config.max_code_output_length
-        # if len(code_output) > max_len:
-        #     half = max_len // 2
-        #     code_output = f"{code_output[:half]}...(truncated)...{code_output[-half:]}"
-        # else:
-        #     code_output = code_output
+        code_output: str = python_interpreter.execute(h["code"])
 
         prompt = Template(self.init_prompt).safe_substitute(
             history=self.export_history(past_n=self.past_n),
@@ -68,7 +55,8 @@ class TestNode(BaseNode):
         self.add_history(h=h)
 
         response = self.forward(prompt=prompt)
-        h = self.parse_response(response)
+        h = self._parse_response(response)
+        
         self.add_history(h=h)
         h["code_output"] = code_output
         return h

@@ -1,14 +1,13 @@
-import os
-import json
 from pathlib import Path
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, send_from_directory
 from typing import Dict, List, Any, Optional
 
 app = Flask(__name__)
 
+
 class LogServer:
     """
-    Log server for EvolAgent
+    Log server for Agent
     """
     
     def __init__(self, logs_dir: str = "logs"):
@@ -107,7 +106,7 @@ if __name__ == '__main__':
     templates_dir = Path("templates")
     templates_dir.mkdir(exist_ok=True)
     
-    print("EvolAgent log server is starting...")
+    print("Agent log server is starting...")
     print("Visit http://localhost:5000 to view logs")
     print("Press Ctrl+C to stop the server")
     

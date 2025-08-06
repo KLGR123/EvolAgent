@@ -8,42 +8,39 @@ from ..memory import Memory
 
 class DevNode(BaseNode):
     """
-    DevNode is a node that develops the code.
-    It uses the procedural, semantic, episodic memories, the task and the history to develop the code.
+    DevNode develops the code based on the plan, a.k.a. subintent of the task.
+    It leverages the procedural, semantic, episodic memories, the task and the history to develop the code.
     """
 
-    def __init__(self, model: str = "anthropic.claude-sonnet-4-20250514-v1:0", past_n: int = 4):
+    def __init__(self, model: str = "o4-mini", past_n: int = 4):
         super().__init__(
             role="developer", 
             model=model
         )
-        self.memory = Memory("developer")
-        self.past_n = past_n
-        self.plan_code_trajectory = []
+        self.memory: Memory = Memory("developer")
+        self.past_n: int = past_n
+        self._dev_trajectory: List[Dict[str, str]] = []
 
     def _init_prompt(self, plan: str) -> None:
         """
-        Initialize the prompt for the node.
+        Initialize the prompt with the plan.
         """
 
         self.plan = plan
         self.procedural: Template = self.memory.get_procedural()
-        self.history: List[Dict[str, str]] = []
 
         try:
             self.semantic: str = self.memory.get_semantic(query=self.plan)
-            if self.semantic is None:
-                self.semantic = ""
+            self.logger.debug(f"Semantic memory is loaded.")
         except Exception as e:
-            self.logger.warning(f"Failed to get semantic memory for {self.role} node: {str(e)}")
+            self.logger.warning(f"Failed to get semantic memory: {str(e)}")
             self.semantic = ""
 
         try:
             self.episodic: str = self.memory.get_episodic(query=self.plan)
-            if self.episodic is None:
-                self.episodic = ""
+            self.logger.debug(f"Episodic memory is loaded.")
         except Exception as e:
-            self.logger.warning(f"Failed to get episodic memory for {self.role} node: {str(e)}")
+            self.logger.warning(f"Failed to get episodic memory: {str(e)}")
             self.episodic = ""
 
         self.init_prompt: str = self.procedural.safe_substitute(
@@ -55,38 +52,42 @@ class DevNode(BaseNode):
 
     def __call__(self, h: Optional[Dict[str, str]] = None) -> Tuple[Dict[str, str], bool]:
         """
-        Develop the code.
+        Develop the code based on the plan, a.k.a. subintent of the task.
+        
+        Args:
+            h: Optional[Dict[str, str]], the history from the previous node.
+
+        Returns:
+            Tuple[Dict[str, str], bool], the history and a boolean indicating if the code is complete.
         """
-        # Validate that init_prompt is properly initialized
-        if not hasattr(self, 'init_prompt') or not self.init_prompt or not self.init_prompt.strip():
-            raise RuntimeError(f"{self.role} node not properly initialized - init_prompt is empty. Call _init_prompt() first.")
-            
+
         if h:
-            self.logger.debug(f"{self.role} received history from {h['role']}")
+            self.logger.debug(f"Received history from {h['role']}")
             self.add_history(h=h)
 
         prompt = Template(self.init_prompt).safe_substitute(
             history=self.export_history(past_n=self.past_n)
         )
         response = self.forward(prompt=prompt)
-        h = self.parse_response(response)
+        h = self._parse_response(response)
         self.add_history(h=h)
-
-        code = deepcopy(h["code"])
-        is_end = (code == "<END>" or "<END>" in code)
         
-        # Record all plan-code pairs during development with the current plan
-        # Use deepcopy to ensure we capture the plan at this moment, not a reference
-        if code and code != "<END>":
-            self.plan_code_trajectory.append({
-                "plan": deepcopy(self.plan),  # Capture current plan state
+        code = deepcopy(h["code"]) if h["code"] else ""
+        is_end = (code == "<END>" or "<END>" in code)
+
+        if not is_end:
+            self.logger.debug(f"Developed code: {code}")
+            self._dev_trajectory.append({
+                "plan": deepcopy(self.plan),
                 "code": code,
             })
 
         return h, is_end
 
-    def export_plan_code_trajectory(self) -> List[Dict[str, str]]:
+    @property
+    def dev_trajectory(self) -> List[Dict[str, str]]:
         """
-        Export the plan code trajectory.
+        Export the (plan, code) trajectory for learning.
+        The trajectory is a list of dictionaries, each containing a plan and code.
         """
-        return self.plan_code_trajectory
+        return self._dev_trajectory

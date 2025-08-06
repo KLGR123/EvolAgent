@@ -162,7 +162,7 @@ def llm_scorer(question: str, prediction: str, true_answer: str) -> bool:
         max_tokens=2000,
         timeout=300,
         extra_headers={
-            'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
+            'x-ms-client-request-id': "agent-"+str(uuid.uuid4()),
         },
         messages=[
             {

@@ -148,7 +148,7 @@ class Retriever:
             wait=True
         )
         
-    def _delete(self, ids: List[str]): # TODO
+    def _delete(self, ids: List[str]):
         """
         Delete the vectors from the collection by their IDs.
         """

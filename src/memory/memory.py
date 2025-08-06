@@ -1,5 +1,4 @@
 import os
-import hashlib
 import threading
 import atexit
 import gc
@@ -10,7 +9,7 @@ from qdrant_client import QdrantClient
 from .retrieve import Retriever
 from .utils import split_content_blocks
 from ..config import config
-from ..utils.logger import ComponentLoggers
+from ..utils.logger import get_logger
 
 
 class Memory:
@@ -32,7 +31,7 @@ class Memory:
         """
 
         self.role = role
-        self.logger = ComponentLoggers.get_memory_logger()
+        self.logger = get_logger("agent.memory")
         
         # Thread-safe Qdrant client initialization
         with Memory._client_lock:

@@ -1,6 +1,5 @@
 import os
 import random
-import threading
 import weakref
 import gc
 from tqdm import tqdm
@@ -10,10 +9,10 @@ from typing import Tuple, Optional, List
 from .base import BasePipeline
 from ..nodes import CriticNode, TestNode, DevNode, PlanNode
 from ..config import config
-from ..utils.logger import log_execution_time, ComponentLoggers
-from ..utils.workspace_manager import isolated_workspace
-from ..utils.task_logger import get_task_logger
-from ..utils.html_logger import get_html_task_logger, HTMLTaskLogger
+from ..utils.logger import get_logger
+from ..utils.timer import timer
+from ..utils.manager import workspace_manager
+from ..utils.logger import get_task_logger, get_html_task_logger
 
 
 class EvolvePipeline(BasePipeline):
@@ -23,15 +22,12 @@ class EvolvePipeline(BasePipeline):
             api_key=os.getenv("OPENAI_API_KEY"),
             base_url=os.getenv("OPENAI_BASE_URL"),
         )
-        self.logger = ComponentLoggers.get_pipeline_logger()
+        self.logger = get_logger("agent.pipeline")
         
-        # 移除共享节点池，改为每次创建新实例以确保线程安全
-        self._node_creation_lock = threading.Lock()
-        
-        # 使用弱引用来跟踪活跃的节点，避免内存泄漏
+        # Weak reference to active nodes to avoid memory leaks
         self._active_nodes = weakref.WeakSet()
         
-        # Initialize configuration
+        # Initialize configuration for logging
         self.logger.info("EvolvePipeline initialized with configuration:")
         self.logger.info(f"Max dev-test iterations: {config.max_dev_test_iterations}")
         self.logger.info(f"Max parallel tasks: {config.max_parallel_tasks}")
@@ -39,7 +35,7 @@ class EvolvePipeline(BasePipeline):
 
     def _create_fresh_nodes(self, model: str) -> Tuple[PlanNode, DevNode, TestNode]:
         """
-        为每个任务创建全新的节点实例，确保完全的隔离性。
+        Create fresh nodes for each task to ensure full isolation.
         
         Args:
             model: Model identifier
@@ -47,50 +43,49 @@ class EvolvePipeline(BasePipeline):
         Returns:
             Tuple of (plan_node, dev_node, test_node)
         """
-        with self._node_creation_lock:
-            self.logger.debug(f"Creating fresh nodes for model: {model}")
-            
-            plan_node = PlanNode(model=model, past_n=config.plan_history_length)
-            dev_node = DevNode(model=model, past_n=config.dev_history_length)
-            test_node = TestNode(model=model, past_n=config.test_history_length)
-            
-            # 使用弱引用跟踪，当节点被垃圾回收时自动移除
-            self._active_nodes.add(plan_node)
-            self._active_nodes.add(dev_node)
-            self._active_nodes.add(test_node)
-            
-            self.logger.debug(f"Created fresh nodes for model: {model}")
-            return plan_node, dev_node, test_node
+        self.logger.debug(f"Creating fresh nodes for model: {model}")
+        
+        plan_node = PlanNode(model=model, past_n=config.plan_history_length)
+        dev_node = DevNode(model=model, past_n=config.dev_history_length)
+        test_node = TestNode(model=model, past_n=config.test_history_length)
+        
+        # Use weak reference to track active nodes, automatically remove when nodes are garbage collected
+        self._active_nodes.add(plan_node)
+        self._active_nodes.add(dev_node)
+        self._active_nodes.add(test_node)
+        
+        self.logger.debug(f"Created fresh nodes for model: {model}")
+        return plan_node, dev_node, test_node
 
     def _cleanup_nodes(self, *nodes):
         """
-        清理节点资源，释放内存。
+        Clean up node resources and release memory.
         """
         for node in nodes:
             if node:
                 try:
-                    # 清理节点历史
+                    # Clean up node history
                     if hasattr(node, 'history'):
                         node.history.clear()
                     
-                    # 清理特定节点的资源
-                    if hasattr(node, 'plan_code_trajectory'):
-                        node.plan_code_trajectory.clear()
+                    # Clean up specific node resources
+                    if hasattr(node, 'dev_trajectory'):
+                        node.dev_trajectory.clear()
                     
-                    # 清理内存相关资源
+                    # Clean up memory
                     if hasattr(node, 'memory'):
-                        # 不直接删除memory，但可以清理其缓存
+                        # Do not directly delete memory, but can clean up its cache
                         pass
                         
-                    # 清理OpenAI客户端可能的缓存
+                    # Clean up OpenAI client cache
                     if hasattr(node, 'client'):
-                        # OpenAI客户端通常不需要显式清理，但可以设置为None
+                        # OpenAI client usually does not need explicit cleanup, but can be set to None
                         pass
                         
                 except Exception as e:
                     self.logger.warning(f"Error cleaning up node {type(node).__name__}: {e}")
 
-    @log_execution_time()
+    @timer()
     def _forward(self, 
         task: str, 
         model: str = "o4-mini",
@@ -108,7 +103,7 @@ class EvolvePipeline(BasePipeline):
         task_logger = get_task_logger(task_id, model, model_index) if task_id else None
         html_logger = get_html_task_logger(task_id, model, task_logger.get_base_dir() if task_logger else None, model_index) if task_id else None
 
-        # 创建全新的节点实例，确保线程安全
+        # Create fresh nodes for this task to ensure thread safety
         plan_node, dev_node, test_node = self._create_fresh_nodes(model)
         
         try:
@@ -233,26 +228,26 @@ class EvolvePipeline(BasePipeline):
                     html_logger.log_developer_history(current_plan_index, dev_history)
             
             history = plan_node.export_history(past_n=config.critic_length)
-            plan_code_trajectory = dev_node.export_plan_code_trajectory()
+            dev_trajectory = dev_node.dev_trajectory
             self.logger.info(f"Forward pass completed for model: {plan_node.model}")
             
-            # Store nodes for potential learning (使用弱引用避免内存泄漏)
+            # Store nodes for potential learning (use weak reference to avoid memory leaks)
             self.plan_node = plan_node
             self.dev_node = dev_node
             self.test_node = test_node
             
-            return history, plan_code_trajectory
+            return history, dev_trajectory
             
         except Exception as e:
             self.logger.error(f"Error in forward pass for model {model}: {e}")
-            # 发生异常时确保清理资源
+            # Ensure cleanup of resources when an exception occurs
             self._cleanup_nodes(plan_node, dev_node, test_node)
             raise
         finally:
-            # 强制垃圾回收以释放内存
+            # Force garbage collection to release memory
             gc.collect()
 
-    @log_execution_time()
+    @timer()
     def __call__(self,
         task: str,
         models: Optional[List[str]] = None,
@@ -282,7 +277,7 @@ class EvolvePipeline(BasePipeline):
         self.logger.debug(f"Models: {models}")
         
         # Execute task within shared isolated workspace context
-        with isolated_workspace(task_id) as workspace_path:
+        with workspace_manager.isolated_workspace(task_id) as workspace_path:
             self.logger.info(f"Using shared isolated workspace: {workspace_path}")
             
             # Initialize critic 
@@ -290,21 +285,21 @@ class EvolvePipeline(BasePipeline):
             critic_node._init_prompt(task=task)
             
             histories = []
-            # 使用更轻量级的存储方式，避免保存完整的节点引用
+            # Use lighter storage to avoid saving full node references
             execution_results = []
                     
             try:
                 for i, model in enumerate(tqdm(models, desc="Processing models")):
                     self.logger.info(f"Starting execution path {i+1}/{len(models)} with model: {model}")
                     
-                    history, plan_code_trajectory = self._forward(task, model, task_id, i)
+                    history, dev_trajectory = self._forward(task, model, task_id, i)
                     histories.append(history)
                     
-                    # 只存储必要的信息，避免内存泄漏
+                    # Only store necessary information to avoid memory leaks
                     execution_result = {
                         'model': model,
                         'history': history,
-                        'plan_code_trajectory': plan_code_trajectory,
+                        'dev_trajectory': dev_trajectory,
                         'index': i
                     }
                     execution_results.append(execution_result)
@@ -316,7 +311,7 @@ class EvolvePipeline(BasePipeline):
                         self._clear_workspace_files(workspace_path)
                         self.logger.debug(f"Cleared workspace files for next model")
                     
-                    # 强制垃圾回收以及时释放内存
+                    # Force garbage collection to release memory
                     gc.collect()
 
                 self.logger.info("All execution paths completed, starting critic evaluation")
@@ -325,9 +320,10 @@ class EvolvePipeline(BasePipeline):
                 self.logger.info("Critic evaluation completed")
                 self.logger.debug("Critic reason: %s...", reason[:200] if len(reason) > 500 else reason)
                 self.logger.info(f"Best member index: {best_id} (model: {models[best_id]})")
-                
+                    
                 # Save critic result directly to task root directory without creating model subdirectories
-                from ..utils.html_logger import HTMLTaskLogger
+                from ..utils.logger import HTMLTaskLogger
+                
                 HTMLTaskLogger.save_critic_result_static(
                     task_id=task_id,
                     critic_model=critic_node.model,
@@ -338,15 +334,15 @@ class EvolvePipeline(BasePipeline):
                 
                 # Store the best path information for learning
                 self.best_id = best_id
-                self.execution_results = execution_results  # 使用轻量级存储
+                self.execution_results = execution_results  # Use lighter storage
                 
                 self.logger.info(f"Task evolution completed successfully (task_id: {task_id})")
                 return final_answer
                 
             finally:
-                # 清理critic节点
+                # Clean up critic node
                 self._cleanup_nodes(critic_node)
-                # 强制垃圾回收
+                # Force garbage collection
                 gc.collect()
 
     def learn(self) -> None: # TODO contrastive learning, leveraging failed trajectories
@@ -465,13 +461,13 @@ Example format:
         Now that we have better RAG handling, we should include code by default.
         """
         try:
-            plan_code_trajectory = self.execution_results[self.best_id]['plan_code_trajectory']
-            self.logger.info(f"Processing {len(plan_code_trajectory)} plan-code pairs for episodic memory")
+            dev_trajectory = self.execution_results[self.best_id]['dev_trajectory']
+            self.logger.info(f"Processing {len(dev_trajectory)} plan-code pairs for episodic memory")
             
             successful_saves = 0
             failed_saves = 0
             
-            for i, trajectory_item in enumerate(plan_code_trajectory):
+            for i, trajectory_item in enumerate(dev_trajectory):
                 try:
                     # Handle both dict and tuple formats for backward compatibility
                     if isinstance(trajectory_item, dict):
@@ -535,14 +531,14 @@ Example format:
     def clear_episodic(self) -> None:
         """Clear all episodic memories."""
         try:
-            # 创建临时节点来访问memory
+            # Create temporary nodes to access memory
             temp_plan_node = PlanNode(model="o4-mini")
             temp_dev_node = DevNode(model="o4-mini")
             
             temp_plan_node.memory.clear_episodic()
             temp_dev_node.memory.clear_episodic()
             
-            # 清理临时节点
+            # Clean up temporary nodes
             self._cleanup_nodes(temp_plan_node, temp_dev_node)
             
             self.logger.info("All episodic memories cleared")
@@ -550,9 +546,9 @@ Example format:
             self.logger.error(f"Failed to clear episodic memories: {e}")
 
     def __del__(self):
-        """清理资源的析构函数"""
+        """Destructor to clean up resources."""
         try:
-            # 清理可能残留的节点引用
+            # Clean up possible residual node references
             if hasattr(self, 'plan_node'):
                 self._cleanup_nodes(self.plan_node)
             if hasattr(self, 'dev_node'):

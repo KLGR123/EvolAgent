@@ -1,9 +1,8 @@
 """
-Configuration management module for EvolAgent.
+Configuration management module.
 Provides centralized access to all system configurations.
 """
 
-import os
 import yaml
 from typing import Dict, Any, Optional
 from pathlib import Path
@@ -179,7 +178,7 @@ class Config:
     
     @property
     def log_file_path(self) -> str:
-        return self.get('logging.file_path', 'logs/evolagent.log')
+        return self.get('logging.file_path', 'logs/agent.log')
     
     @property
     def log_folder_path(self) -> str:
@@ -281,6 +280,31 @@ class Config:
     @property
     def output_max_length(self) -> int:
         return self.get('compression.output_max_length', 500)
+    
+    # Node field validation configuration
+    def get_node_required_fields(self, role: str) -> list:
+        """
+        Get required fields for a specific node role.
+        
+        Args:
+            role: The node role (e.g., 'developer', 'planner', 'tester', 'critic')
+            
+        Returns:
+            List of required field names
+        """
+        return self.get(f'nodes.required_fields.{role}.required', [])
+    
+    def get_node_field_defaults(self, role: str) -> Dict[str, str]:
+        """
+        Get default values for fields of a specific node role.
+        
+        Args:
+            role: The node role (e.g., 'developer', 'planner', 'tester', 'critic')
+            
+        Returns:
+            Dictionary mapping field names to default values
+        """
+        return self.get(f'nodes.required_fields.{role}.defaults', {})
 
 # Global configuration instance
 config = Config()
