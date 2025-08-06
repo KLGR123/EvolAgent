@@ -53,13 +53,13 @@ class CriticNode(BaseNode):
         reason = parsed_response.get("reason", "N/A")
 
         try:
-            best_id = int(parsed_response.get("best_id", 0))
+            best_id = int(parsed_response.get("best_member_index", 0))
             if best_id not in [0, 1, 2]:
                 self.logger.warning(f"Selected best member index: {best_id} is not in [0, 1, 2].")
                 best_id = random.randint(0, 2)
 
         except (ValueError, TypeError):
-            self.logger.warning(f"Selected best member index: {parsed_response.get('best_id', 'N/A')} is not valid.")
+            self.logger.warning(f"Selected best member index: {parsed_response.get('best_member_index', 'N/A')} is not valid.")
             best_id = random.randint(0, 2)
 
         self.logger.info(f"Selected best member index: {best_id}")

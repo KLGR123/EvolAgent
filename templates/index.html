@@ -47,6 +47,59 @@
         .sidebar-header p {
             font-size: 0.9em;
             opacity: 0.8;
+            margin-bottom: 15px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 40px 10px 12px;
+            border: 1px solid #455a64;
+            border-radius: 5px;
+            background: #2c3e50;
+            color: white;
+            font-size: 0.9em;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input::placeholder {
+            color: #95a5a6;
+        }
+
+        .search-input:focus {
+            border-color: #3498db;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #95a5a6;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .search-clear:hover {
+            color: #ecf0f1;
+        }
+
+        .search-clear.show {
+            display: flex;
         }
 
         .task-list {
@@ -55,6 +108,23 @@
 
         .task-item {
             border-bottom: 1px solid #34495e;
+        }
+
+        .task-item.highlighted {
+            background: #f39c12;
+            border-color: #e67e22;
+        }
+
+        .task-item.highlighted .task-header {
+            background: #f39c12;
+        }
+
+        .task-item.highlighted .task-header:hover {
+            background: #e67e22;
+        }
+
+        .task-item.hidden {
+            display: none;
         }
 
         .task-header {
@@ -264,6 +334,10 @@
             <div class="sidebar-header">
                 <h1>📊 Log Viewer</h1>
                 <p>Select task and model to view logs</p>
+                <div class="search-container">
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search by Task ID...">
+                    <button class="search-clear" id="searchClear" onclick="clearSearch()">×</button>
+                </div>
             </div>
             <div class="task-list" id="taskList">
                 <div class="loading">
@@ -292,20 +366,53 @@
 
     <script>
         let tasks = [];
+        let filteredTasks = [];
         let currentTaskId = null;
         let currentModel = null;
+        let searchQuery = '';
 
         // initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadTasks();
+            initializeSearch();
         });
+
+        // initialize search functionality
+        function initializeSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchClear = document.getElementById('searchClear');
+            
+            searchInput.addEventListener('input', function(e) {
+                searchQuery = e.target.value.trim();
+                searchClear.classList.toggle('show', searchQuery.length > 0);
+                filterTasks();
+            });
+            
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filteredTasks.length === 1) {
+                        // If only one result, auto-expand it
+                        toggleTask(filteredTasks[0].task_id);
+                        scrollToTask(filteredTasks[0].task_id);
+                    }
+                }
+            });
+        }
 
         // load task list
         async function loadTasks() {
             try {
                 const response = await fetch('/api/tasks');
-                tasks = await response.json();
-                renderTaskList();
+                const data = await response.json();
+                
+                if (data.success) {
+                    tasks = data.data;
+                    filteredTasks = tasks;
+                    renderTaskList();
+                } else {
+                    throw new Error(data.error || 'Failed to load tasks');
+                }
             } catch (error) {
                 console.error('Failed to load task list:', error);
                 document.getElementById('taskList').innerHTML = `
@@ -314,6 +421,18 @@
                     </div>
                 `;
             }
+        }
+
+        // filter tasks based on search query
+        function filterTasks() {
+            if (!searchQuery) {
+                filteredTasks = tasks;
+            } else {
+                filteredTasks = tasks.filter(task => 
+                    task.task_id.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+            }
+            renderTaskList();
         }
 
         // render task list
@@ -329,14 +448,23 @@
                 return;
             }
 
-            const html = tasks.map(task => `
+            if (filteredTasks.length === 0) {
+                taskList.innerHTML = `
+                    <div class="loading">
+                        <div>No tasks found matching "${searchQuery}"</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = filteredTasks.map(task => `
                 <div class="task-item">
                     <div class="task-header" onclick="toggleTask('${task.task_id}')">
                         <div>
                             <div class="task-id">Task ${task.task_id}</div>
                             <div class="task-stats">
-                                ${task.models.length} models
-                                ${task.has_critic ? ' • Critic Result' : ''}
+                                ${task.metadata.total_models} models
+                                ${task.metadata.has_critic ? ' • Critic Result' : ''}
                             </div>
                         </div>
                         <div class="expand-icon" id="icon-${task.task_id}">▶</div>
@@ -348,8 +476,8 @@
                                 <div class="model-type">Model</div>
                             </div>
                         `).join('')}
-                        ${task.has_critic ? `
-                            <div class="model-item" onclick="selectModel('${task.task_id}', 'critic', '${task.critic_path}')">
+                        ${task.critic ? `
+                            <div class="model-item" onclick="selectModel('${task.task_id}', 'critic', '${task.critic.path}')">
                                 <div class="model-name">Critic Result</div>
                                 <div class="model-type critic">Critic</div>
                             </div>
@@ -359,6 +487,36 @@
             `).join('');
 
             taskList.innerHTML = html;
+        }
+
+        // clear search
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchClear = document.getElementById('searchClear');
+            
+            searchInput.value = '';
+            searchQuery = '';
+            searchClear.classList.remove('show');
+            filteredTasks = tasks;
+            renderTaskList();
+        }
+
+        // scroll to specific task
+        function scrollToTask(taskId) {
+            const taskElement = document.querySelector(`[onclick="toggleTask('${taskId}')"]`);
+            if (taskElement) {
+                taskElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // Add temporary highlight
+                const taskItem = taskElement.closest('.task-item');
+                taskItem.classList.add('highlighted');
+                setTimeout(() => {
+                    taskItem.classList.remove('highlighted');
+                }, 2000);
+            }
         }
 
         // toggle task expand/collapse
@@ -454,11 +612,28 @@
             }
         }
 
-        // keyboard shortcut
+        // keyboard shortcuts
         document.addEventListener('keydown', function(event) {
             if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
                 event.preventDefault();
                 loadTasks();
+            }
+            
+            // Focus search box with Ctrl+F or Cmd+F
+            if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+                event.preventDefault();
+                const searchInput = document.getElementById('searchInput');
+                searchInput.focus();
+                searchInput.select();
+            }
+            
+            // Clear search with Escape
+            if (event.key === 'Escape') {
+                const searchInput = document.getElementById('searchInput');
+                if (document.activeElement === searchInput) {
+                    clearSearch();
+                    searchInput.blur();
+                }
             }
         });
     </script>
