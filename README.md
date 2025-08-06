@@ -24,7 +24,7 @@ crawl4ai-doctor
 export TOKENIZERS_PARALLELISM=true
 python coldstart.py
 python main.py
-python log_server.py
+python server.py
 rm -rf workspace/*
 
 pip freeze > requirements.txt

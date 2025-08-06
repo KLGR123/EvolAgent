@@ -310,21 +310,3 @@ class Retriever:
         )
         exist_ids=set([record.id for record in responses[0]])
         return [id in exist_ids for id in ids]
-
-
-if __name__ == "__main__":
-    client = QdrantClient(path=os.getenv("QDRANT_PERSIST_PATH"))  
-    retriever = Retriever(client=client, role="planner", type="semantic", model="text-embedding-3-large")
-    texts = ["Hello, world!", "Another document", "This is a test."]
-    retriever.add(texts=texts)
-
-    results = retriever.search(query="test now", limit=5, method="hybrid")
-    print(results)
-    
-    to_delete_ids = [results[2].id]
-    retriever._delete(ids=to_delete_ids)
-    results = retriever.search(query="test now", limit=1, method="hybrid")
-    print(results)
-
-    retriever.delete_all()
-    print("Done.")

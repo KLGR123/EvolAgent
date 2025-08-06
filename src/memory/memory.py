@@ -1,15 +1,15 @@
 import os
-import threading
-import atexit
 import gc
+import atexit
+import threading
 from string import Template
 from typing import Literal, Optional
 from qdrant_client import QdrantClient
 
-from .retrieve import Retriever
-from .utils import split_content_blocks
 from ..config import config
+from .retrieve import Retriever
 from ..utils.logger import get_logger
+from .utils import split_content_blocks
 
 
 class Memory:
