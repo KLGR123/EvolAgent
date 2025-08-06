@@ -150,6 +150,9 @@ class BaseNode:
                 temperature=config.temperature,
                 extra_headers={
                     'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
+                },
+                extra_body={
+                    'erp': 'liujiarun.1'
                 }
             )
             
