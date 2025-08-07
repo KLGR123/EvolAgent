@@ -713,20 +713,21 @@ class HTMLTaskLogger:
             code_output=code_output
         )
     
-    def save_critic_result_to_task_root(self, final_answer: str, reason: str, best_model_index: int) -> None:
+    def save_critic_result_to_task_root(self, final_answer: str, true_answer: str, reason: str, best_model_index: int) -> None:
         """Save critic result directly to task root directory without affecting model conversations."""
         # Use the static method to avoid creating model subdirectories
         HTMLTaskLogger.save_critic_result_static(
             task_id=self.task_id,
             critic_model=self.model,
             final_answer=final_answer,
+            true_answer=true_answer,
             reason=reason,
             best_model_index=best_model_index,
             start_time=self.start_time
         )
 
     @staticmethod
-    def save_critic_result_static(task_id: str, critic_model: str, final_answer: str, 
+    def save_critic_result_static(task_id: str, critic_model: str, final_answer: str, true_answer: str, 
                                  reason: str, best_model_index: int, start_time: datetime = None) -> None:
         """
         Static method to save critic result directly to task root directory without creating model subdirectories.
@@ -751,6 +752,7 @@ class HTMLTaskLogger:
             "task_id": task_id,
             "critic_model": critic_model,
             "final_answer": final_answer,
+            "true_answer": true_answer,
             "reason": reason,
             "best_model_index": best_model_index,
             "timestamp": datetime.now().isoformat(),
@@ -776,6 +778,11 @@ class HTMLTaskLogger:
 ## Final Answer
 ```
 {final_answer}
+```
+
+## True Answer
+```
+{true_answer}
 ```
 
 ## Reasoning
@@ -828,6 +835,8 @@ class HTMLTaskLogger:
                 <strong>Best Model Index:</strong> {best_model_index}<br><br>
                 <strong>Final Answer:</strong><br>
                 {final_answer.replace(chr(10), '<br>')}<br><br>
+                <strong>True Answer:</strong><br>
+                {true_answer.replace(chr(10), '<br>')}<br><br>
                 <strong>Reasoning Process:</strong><br>
                 {reason.replace(chr(10), '<br>')}
             </div>
@@ -853,7 +862,7 @@ class HTMLTaskLogger:
         except Exception as e:
             print(f"Error writing critic HTML file: {e}")
 
-    def log_critic_result(self, final_answer: str, reason: str, best_model_index: int) -> None:
+    def log_critic_result(self, final_answer: str, true_answer: str, reason: str, best_model_index: int) -> None:
         """Log critic final decision and reasoning."""
         content = f"""**Final Answer:**
 {final_answer}
@@ -872,6 +881,7 @@ class HTMLTaskLogger:
             content=content,
             metadata={
                 "final_answer": final_answer,
+                "true_answer": true_answer,
                 "reason": reason,
                 "best_model_index": best_model_index,
                 "execution_time": (datetime.now() - self.start_time).total_seconds()
@@ -879,7 +889,7 @@ class HTMLTaskLogger:
         )
         
         # Also save to task root directory
-        self.save_critic_result_to_task_root(final_answer, reason, best_model_index)
+        self.save_critic_result_to_task_root(final_answer, true_answer, reason, best_model_index)
     
     def log_task_summary(self, task: str, models: List[str], total_plans: int) -> None:
         """Create a task summary with overview information."""

@@ -249,7 +249,7 @@ class TaskLogger:
         except Exception as e:
             print(f"Error updating developer history log for plan {plan_index}: {e}")
     
-    def log_critic_result(self, final_answer: str, reason: str, best_model_index: int) -> None:
+    def log_critic_result(self, final_answer: str, true_answer: str, reason: str, best_model_index: int) -> None:
         """
         Log critic final decision and reasoning.
         
@@ -268,6 +268,11 @@ class TaskLogger:
 ## Final Answer
 ```
 {final_answer}
+```
+
+## True Answer
+```
+{true_answer}
 ```
 
 ## Reasoning
@@ -298,6 +303,7 @@ class TaskLogger:
             "task_id": self.task_id,
             "critic_model": self.model,
             "final_answer": final_answer,
+            "true_answer": true_answer,
             "reason": reason,
             "best_model_index": best_model_index,
             "timestamp": datetime.now().isoformat(),

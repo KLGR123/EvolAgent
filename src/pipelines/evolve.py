@@ -255,6 +255,7 @@ class EvolvePipeline(BasePipeline):
     @log_execution_time()
     def __call__(self,
         task: str,
+        true_answer: str,
         models: Optional[List[str]] = None,
         task_id: Optional[str] = None,
     ) -> str:
@@ -332,6 +333,7 @@ class EvolvePipeline(BasePipeline):
                     task_id=task_id,
                     critic_model=critic_node.model,
                     final_answer=final_answer,
+                    true_answer=true_answer,
                     reason=reason,
                     best_model_index=best_id
                 )

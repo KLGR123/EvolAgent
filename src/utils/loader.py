@@ -57,23 +57,24 @@ def load_gaia_dataset(use_raw_dataset: bool, split: str) -> datasets.Dataset:
     return eval_ds 
 
 
-def get_task_from_gaia(task_id: str, split: str) -> dict:
+def get_task_from_gaia(task_ids: list[str] | str, split: str) -> dict:
     """
     Get a task from the GAIA dataset.
     """
     ds = load_gaia_dataset(use_raw_dataset=True, split=split)
-    task = None
-
+    tasks = []
+    if isinstance(task_ids, str):
+        task_ids = [task_ids]
     for record in ds.to_list():
-        if record['task_id'] == task_id:
-            task = record
-            break
+        if record['task_id'] in task_ids:
+            tasks.append(record) 
 
-    if not task:
-        print(f"Task {task_id} not found in dataset")
-        raise ValueError(f"Task {task_id} not found in dataset")
+    if len(tasks) != len(task_ids):
+        print(f"Task {task_ids} not found in dataset")
+        raise ValueError(f"Task {task_ids} not found in dataset")
 
-    question = task["question"]
+    for task in tasks:
+        question = task["question"]
 
     if task["file_name"]:
         if ".zip" in task["file_name"]:
@@ -88,7 +89,8 @@ def get_task_from_gaia(task_id: str, split: str) -> dict:
         "level": task["level"],
         "file_name": task.get("file_name"),
         "steps": task.get("Annotator Metadata", {}).get("Steps"),
-        "tools": task.get("Annotator Metadata", {}).get("Tools")
+        "tools": task.get("Annotator Metadata", {}).get("Tools"),
+        "split": split
     }
 
     return task_info

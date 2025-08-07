@@ -1,3 +1,5 @@
+import datetime
+import json
 import os
 import sys
 import time
@@ -29,7 +31,7 @@ from src.memory.memory import Memory
 _cleanup_in_progress = False
 _cleanup_lock = threading.Lock()
 
-TASK_ID_LIST = ["webshaper_"+str(i) for i in range(50)]
+TASK_ID_LIST = ["webshaper_"+str(i) for i in range(100) if i not in [5,6,7,8]]
 # TASK_ID_LIST =["3", "4"]
 
 def single_run(task_id: str, 
@@ -52,7 +54,8 @@ def single_run(task_id: str,
             
             # Use configured models instead of hardcoded list with task_id for workspace isolation
             answer = pipeline(
-                task=task_info["question"], 
+                task=task_info["question"],
+                true_answer=task_info["true_answer"],
                 models=config.default_models,
                 task_id=task_id
             )
@@ -73,7 +76,16 @@ def single_run(task_id: str,
             # is_correct = question_scorer(answer, task_info["true_answer"])
             is_correct = llm_scorer(task_info["question"],answer, task_info["true_answer"])
             is_close = check_close_call(answer, task_info["true_answer"], is_correct)
-            
+            with open(f"log/results.jsonl", "a") as f:
+                f.write(json.dumps({
+                    "task_id": task_info["task_id"],
+                    "answer": answer,
+                    "true_answer": task_info["true_answer"],
+                    "is_correct": is_correct,
+                    "is_close": is_close,
+                    "execution_time": execution_time,
+                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }) + "\n")           
             if is_correct:
                 task_logger.info("Task answered correctly, triggering learning")
                 pipeline.learn()

@@ -1,3 +1,5 @@
+import datetime
+import json
 import os
 import sys
 import time
@@ -204,19 +206,16 @@ TASK_ID_LIST = [
 ]
 
 
-def single_run(task_id: str, 
-    split: Literal["validation", "test"]
-) -> dict:
+def single_run(task_info: dict) -> dict:
     """
     Run the pipeline for the whole GAIA dataset with enhanced logging and resource management.
     """
     pipeline = None
     try:
         pipeline = EvolvePipeline()
-        with TaskLogger(task_id) as task_logger:
-            task_logger.info(f"Starting task execution: {task_id}")
+        with TaskLogger(task_info["task_id"]) as task_logger:
+            task_logger.info(f"Starting task execution: {task_info['task_id']}")
             
-            task_info = get_task_from_gaia(task_id, split)
             task_logger.info(f"Loaded task: {task_info['question'][:200]}...")
             task_logger.debug(f"Full task info: {task_info}")
             
@@ -224,19 +223,20 @@ def single_run(task_id: str,
             
             # Use configured models instead of hardcoded list with task_id for workspace isolation
             answer = pipeline(
-                task=task_info["question"], 
+                task=task_info["question"],
+                true_answer=task_info.get("true_answer", ""),
                 models=config.default_models,
-                task_id=task_id
+                task_id=task_info["task_id"]
             )
             
             end_time = time.time()
             execution_time = end_time - start_time
             task_logger.info(f"Task execution completed in {execution_time:.2f}s")
 
-            if split == "test":
+            if task_info["split"] == "test":
                 result = {
+                    "task_id": task_info["task_id"],
                     "answer": answer,
-                    "task_id": task_id,
                     "execution_time": execution_time
                 }
                 task_logger.info(f"Test result: {result}")
@@ -244,7 +244,16 @@ def single_run(task_id: str,
             
             is_correct = question_scorer(answer, task_info["true_answer"])
             is_close = check_close_call(answer, task_info["true_answer"], is_correct)
-            
+            with open(f"log/results.jsonl", "a") as f:
+                f.write(json.dumps({
+                    "task_id": task_info["task_id"],
+                    "answer": answer,
+                    "true_answer": task_info["true_answer"],
+                    "is_correct": is_correct,
+                    "is_close": is_close,
+                    "execution_time": execution_time,
+                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }) + "\n")
             if is_correct:
                 task_logger.info("Task answered correctly, triggering learning")
                 pipeline.learn()
@@ -252,11 +261,11 @@ def single_run(task_id: str,
                 task_logger.info(f"Task answered incorrectly. Answer: {answer}, Expected: {task_info['true_answer']}")
                 
             result = {
-                "answer": answer,
+                "task_id": task_info["task_id"],
+                "prediction": answer,
                 "true_answer": task_info["true_answer"],
                 "is_correct": is_correct,
                 "is_close": is_close,
-                "task_id": task_id,
                 "execution_time": execution_time
             }
             task_logger.info(f"Validation result: {result}")
@@ -264,13 +273,16 @@ def single_run(task_id: str,
             
     except Exception as e:
         logger = get_logger(__name__)
-        logger.error(f"Error in single_run task execution for {task_id}: {e}")
+        logger.error(f"Error in single_run task execution for {task_info['task_id']}: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         return {
-            "answer": "Error occurred during task execution",
-            "task_id": task_id,
+            "task_id": task_info["task_id"],
+            "prediction": "Error occurred during task execution",
+            "true_answer": task_info["true_answer"],
             "is_correct": False,
+            "is_close": False,
+            "execution_time": execution_time,
             "error": str(e)
         }
     finally:
@@ -396,24 +408,26 @@ if __name__ == "__main__":
         )
         
         # Submit all tasks to the executor
-        future_to_task_id = {}
-        for task_id in TASK_ID_LIST:
-            future = executor.submit(single_run, task_id, "validation")
-            future_to_task_id[future] = task_id
+        future_to_task_info = {}
+        task_infos = get_task_from_gaia(TASK_ID_LIST, "validation")
+        for task_info in task_infos:
+            future = executor.submit(single_run, task_info)
+            future_to_task_info[future] = task_info
             futures.append(future)
         
         logger.info(f"Submitted {len(futures)} tasks to executor")
         
         # Collect results as they complete with proper timeout handling
         completed_count = 0
-        for future in as_completed(future_to_task_id, timeout=None):
-            task_id = future_to_task_id[future]
+        for future in as_completed(future_to_task_info, timeout=None):
+            task_info = future_to_task_info[future]
+            result = None
             try:
                 # Use longer timeout to avoid premature cancellation
                 result = future.result(timeout=600)  # 10 minutes per task
                 results.append(result)
                 completed_count += 1
-                logger.info(f"Completed task {completed_count}/{len(TASK_ID_LIST)} - {task_id}: {result.get('is_correct', 'N/A')}")
+                logger.info(f"Completed task {completed_count}/{len(TASK_ID_LIST)} - {task_info['task_id']}: {result.get('is_correct', 'N/A')}")
                 
                 # 定期强制垃圾回收以释放内存
                 if completed_count % 5 == 0:
@@ -421,23 +435,32 @@ if __name__ == "__main__":
                     logger.debug(f"Periodic GC: freed {collected} objects")
                     
             except TimeoutError:
-                logger.error(f"Task {task_id} timed out after 10 minutes")
+                logger.error(f"Task {task_info['task_id']} timed out after 10 minutes")
                 future.cancel()
-                results.append({
-                    "task_id": task_id,
+                result = {
+                    "task_id": task_info["task_id"],
+                    "prediction": "",
+                    "true_answer": task_info["true_answer"],
                     "is_correct": False,
+                    "is_close": False,
                     "error": "Timeout"
-                })
+                }
+                results.append(result)
             except Exception as exc:
-                logger.error(f"Task {task_id} generated an exception: {exc}")
+                logger.error(f"Task {task_info['task_id']} generated an exception: {exc}")
                 import traceback
                 logger.error(f"Exception traceback: {traceback.format_exc()}")
-                results.append({
-                    "task_id": task_id,
+                result = {
+                    "task_id": task_info["task_id"],
+                    "prediction": "",
+                    "true_answer": task_info["true_answer"],
                     "is_correct": False,
+                    "is_close": False,
                     "error": str(exc)
-                })
-        
+                }
+                results.append(result)
+            with open("logs/results.jsonl", "a") as f:
+                f.write(json.dumps(result, ensure_ascii=False) + "\n")
         # Summary statistics
         if results:
             total_tasks = len(results)
@@ -459,7 +482,7 @@ if __name__ == "__main__":
         # Cancel all pending futures
         for future in futures:
             if not future.done():
-                logger.info(f"Cancelling task: {future_to_task_id.get(future, 'unknown')}")
+                logger.info(f"Cancelling task: {future_to_task_info.get(future, 'unknown')}")
                 future.cancel()
         
         if executor:
