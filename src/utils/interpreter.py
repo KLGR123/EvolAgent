@@ -452,29 +452,25 @@ class PythonInterpreter:
         error_buffer = io.StringIO()
         execution_globals = env.create_globals()
         
+        # Pre-import modules that are mentioned in the code
+        import_names = self.code_parser.extract_imports(code)
+        for module_name in import_names:
+            try:
+                if module_name not in execution_globals:
+                    module = importlib.import_module(module_name)
+                    execution_globals[module_name] = module
+            except ImportError:
+                # Module might not be installed, but exec will handle the error
+                pass
+        
         with contextlib.redirect_stdout(output_buffer), contextlib.redirect_stderr(error_buffer):
             try:
-                # determine code type and execute
-                import_names = self.code_parser.extract_imports(code)
-                has_imports = len(import_names) > 0
+                # Always use exec for consistency and to handle all import scenarios
+                exec(code, execution_globals, execution_globals)
                 
-                if has_imports:
-                    # contains import statements, use exec
-                    exec(code, execution_globals, {})
-                    if 'result' in execution_globals:
-                        print(f"result = {repr(execution_globals['result'])}")
-                else:
-                    # try to execute as expression
-                    try:
-                        ast.parse(code, mode='eval')
-                        result = eval(code, execution_globals, {})
-                        if result is not None:
-                            print(repr(result))
-                    except SyntaxError:
-                        # not an expression, execute as statement
-                        exec(code, execution_globals, {})
-                        if 'result' in execution_globals:
-                            print(f"result = {repr(execution_globals['result'])}")
+                # Check if there's a result variable to display
+                if 'result' in execution_globals:
+                    print(f"result = {repr(execution_globals['result'])}")
             
             except KeyboardInterrupt:
                 print("Code execution was interrupted by user")

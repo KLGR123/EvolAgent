@@ -476,6 +476,11 @@ class HTMLTaskLogger(BaseTaskLogger):
         
         self.add_conversation("developer", title, "Code execution result:", code, code_output)
     
+    def log_developer_history(self, plan_index: int, history: str) -> None:
+        """Log developer execution history."""
+        title = f"Developer History - Plan {plan_index:02d}"
+        self.add_conversation("developer", title, history)
+    
     def log_tester_feedback(self, code: str, code_output: str, feedback: str) -> None:
         """Log tester feedback."""
         self.add_conversation("tester", "Code Testing", feedback, code, code_output)
