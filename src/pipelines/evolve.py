@@ -52,7 +52,7 @@ class EvolvePipeline(BasePipeline):
         """Log pipeline initialization configuration."""
         self.logger.info("EvolvePipeline initialized with configuration:")
         self.logger.info(f"Max dev-test iterations: {config.get('pipeline.max_dev_test_iterations', 50)}")
-        self.logger.info(f"Max parallel tasks: {config.get('pipeline.max_parallel_tasks', 3)}")
+        self.logger.info(f"Max parallel tasks: {config.get('runtime.parallel_workers', 3)}")
         self.logger.info(f"Default models: {config.get('models.default_models', ['o4-mini'])}")
 
     def _create_agent_nodes(self, model: str) -> Tuple[PlanNode, DevNode, TestNode]:

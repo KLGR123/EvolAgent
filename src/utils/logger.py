@@ -260,40 +260,100 @@ class HTMLTaskLogger(BaseTaskLogger):
         return html.escape(text)
     
     def _highlight_python_code(self, code: str) -> str:
-        """Apply basic Python syntax highlighting."""
+        """Apply enhanced Python syntax highlighting."""
         if not code.strip():
             return code
             
-        # Simple syntax highlighting (can be enhanced with pygments if needed)
+        # Enhanced syntax highlighting
         highlighted = self._escape_html(code)
         
-        # Highlight keywords
-        keywords = ['def', 'class', 'import', 'from', 'if', 'else', 'elif', 'for', 'while', 'try', 'except', 'return', 'print']
+        # Highlight Python keywords
+        keywords = [
+            'def', 'class', 'import', 'from', 'if', 'else', 'elif', 'for', 'while', 
+            'try', 'except', 'finally', 'return', 'yield', 'break', 'continue',
+            'and', 'or', 'not', 'in', 'is', 'None', 'True', 'False', 'with', 'as',
+            'pass', 'lambda', 'global', 'nonlocal', 'raise', 'assert', 'del'
+        ]
+        
+        # Apply keyword highlighting with word boundaries
+        import re
         for keyword in keywords:
-            highlighted = highlighted.replace(
-                f' {keyword} ', 
-                f' <span class="keyword">{keyword}</span> '
-            )
-            highlighted = highlighted.replace(
-                f'\n{keyword} ', 
-                f'\n<span class="keyword">{keyword}</span> '
-            )
+            pattern = r'\b' + re.escape(keyword) + r'\b'
+            highlighted = re.sub(pattern, f'<span class="keyword">{keyword}</span>', highlighted)
+        
+        # Highlight function definitions
+        highlighted = re.sub(r'\bdef\s+(\w+)', r'<span class="keyword">def</span> <span class="function">\1</span>', highlighted)
+        highlighted = re.sub(r'\bclass\s+(\w+)', r'<span class="keyword">class</span> <span class="function">\1</span>', highlighted)
+        
+        # Highlight strings
+        highlighted = re.sub(r'(["\'])((?:\\.|(?!\1)[^\\])*?)\1', r'<span class="string">\1\2\1</span>', highlighted)
+        highlighted = re.sub(r'(["\']){3}(.*?)\1{3}', r'<span class="string">\1\1\1\2\1\1\1</span>', highlighted, flags=re.DOTALL)
+        
+        # Highlight numbers
+        highlighted = re.sub(r'\b(\d+\.?\d*)\b', r'<span class="number">\1</span>', highlighted)
+        
+        # Highlight comments
+        highlighted = re.sub(r'(#.*?)(?=\n|$)', r'<span class="comment">\1</span>', highlighted)
         
         return highlighted
     
     def _format_code_output(self, output: str) -> str:
         """Format code execution output for display."""
         if not output.strip():
-            return "No output"
+            return '<span class="output-empty">No output</span>'
         
         # Escape HTML and preserve formatting
         formatted = self._escape_html(output)
         
-        # Highlight error messages
-        if "Error" in formatted or "Exception" in formatted:
-            formatted = f'<span class="error">{formatted}</span>'
-        
         return formatted
+    
+    def _detect_output_type(self, output: str) -> str:
+        """Detect the type of output to apply appropriate styling."""
+        if not output.strip():
+            return "output-empty"
+        
+        output_lower = output.lower()
+        if any(error in output_lower for error in ['error', 'exception', 'traceback', 'failed']):
+            return "output-error"
+        elif any(warning in output_lower for warning in ['warning', 'warn', 'deprecated']):
+            return "output-warning"
+        elif any(success in output_lower for success in ['success', 'completed', 'passed', 'ok']):
+            return "output-success"
+        else:
+            return ""
+    
+    def _format_content_text(self, content: str) -> str:
+        """Format content text with proper paragraphs and line breaks."""
+        if not content:
+            return ""
+        
+        # Escape HTML first
+        escaped = self._escape_html(content)
+        
+        # Split into paragraphs and format
+        paragraphs = escaped.split('\n\n')
+        formatted_paragraphs = []
+        
+        for para in paragraphs:
+            if para.strip():
+                # Replace single line breaks with <br> within paragraphs
+                formatted_para = para.replace('\n', '<br>')
+                formatted_paragraphs.append(f'<p>{formatted_para}</p>')
+        
+        return '\n'.join(formatted_paragraphs)
+    
+    def _format_metadata(self, metadata: Dict[str, Any]) -> str:
+        """Format metadata dictionary for display."""
+        if not metadata:
+            return ""
+        
+        formatted_items = []
+        for key, value in metadata.items():
+            escaped_key = self._escape_html(str(key))
+            escaped_value = self._escape_html(str(value))
+            formatted_items.append(f'<strong>{escaped_key}:</strong> {escaped_value}')
+        
+        return '<br>'.join(formatted_items)
     
     def _get_html_template(self) -> str:
         """Get the HTML template with embedded CSS."""
@@ -304,76 +364,333 @@ class HTMLTaskLogger(BaseTaskLogger):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EvolAgent Task Log - {task_id}</title>
     <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
         body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             line-height: 1.6;
             color: #333;
+            background-color: #f5f7fa;
+        }}
+        
+        .container {{
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f8f9fa;
         }}
+        
         .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: white;
+            color: #333;
             padding: 30px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin-bottom: 30px;
-            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e1e8ed;
         }}
+        
+        .header h1 {{
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+            color: #1a73e8;
+        }}
+        
+        .header .meta {{
+            font-size: 1.1em;
+            opacity: 0.9;
+            color: #5f6368;
+        }}
+        
         .conversation {{
             background: white;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
             overflow: hidden;
         }}
-        .role-header {{
-            padding: 15px 20px;
-            font-weight: bold;
-            color: white;
+        
+        .conversation-header {{
+            padding: 20px 25px;
+            border-bottom: 1px solid #e1e8ed;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }}
-        .planner {{ background-color: #28a745; }}
-        .developer {{ background-color: #007bff; }}
-        .tester {{ background-color: #ffc107; color: #333; }}
-        .critic {{ background-color: #dc3545; }}
-        .content {{
-            padding: 20px;
-        }}
-        .code {{
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 4px;
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            white-space: pre-wrap;
-            overflow-x: auto;
-        }}
-        .keyword {{ color: #0000ff; font-weight: bold; }}
-        .error {{ color: #dc3545; font-weight: bold; }}
-        .output {{
-            background-color: #f1f3f4;
-            border-left: 4px solid #28a745;
-            padding: 10px;
-            margin-top: 10px;
-            font-family: 'Courier New', monospace;
-            white-space: pre-wrap;
-        }}
-        .timestamp {{
-            color: #6c757d;
+        
+        .role-badge {{
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
             font-size: 0.9em;
-            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        
+        .role-planner {{
+            background: #e3f2fd;
+            color: #1976d2;
+        }}
+        
+        .role-developer {{
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }}
+        
+        .role-tester {{
+            background: #e8f5e8;
+            color: #388e3c;
+        }}
+        
+        .role-critic {{
+            background: #fff3e0;
+            color: #f57c00;
+        }}
+        
+        .conversation-title {{
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #333;
+        }}
+        
+        .timestamp {{
+            color: #657786;
+            font-size: 0.85em;
+        }}
+        
+        .conversation-content {{
+            padding: 25px;
+        }}
+        
+        .content-text {{
+            margin-bottom: 20px;
+            line-height: 1.7;
+            color: #333;
+        }}
+        
+        .content-text p {{
+            margin-bottom: 12px;
+        }}
+        
+        .code-block {{
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            overflow-x: auto;
+            position: relative;
+        }}
+        
+        .code-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+        }}
+        
+        .code-label {{
+            color: #ffd700;
+            font-weight: 600;
+            font-size: 0.9em;
+        }}
+        
+        .code-lang {{
+            color: #888;
+            font-size: 0.8em;
+        }}
+        
+        .code-content {{
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #f8f8f2;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }}
+        
+        .keyword {{
+            color: #ff79c6;
+            font-weight: bold;
+        }}
+        
+        .string {{
+            color: #f1fa8c;
+        }}
+        
+        .comment {{
+            color: #6272a4;
+            font-style: italic;
+        }}
+        
+        .number {{
+            color: #bd93f9;
+        }}
+        
+        .function {{
+            color: #50fa7b;
+        }}
+        
+        .output-section {{
+            margin: 20px 0;
+        }}
+        
+        .output-header {{
+            background: #f8f9fa;
+            padding: 12px 18px;
+            border-left: 4px solid #007bff;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0;
+            border-radius: 4px 4px 0 0;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+        }}
+        
+        .output-content {{
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #495057;
+        }}
+        
+        .output-success {{
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }}
+        
+        .output-success .output-header {{
+            background-color: #d4edda;
+            border-left-color: #28a745;
+            border-color: #c3e6cb;
+        }}
+        
+        .output-error {{
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }}
+        
+        .output-error .output-header {{
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+            border-color: #f5c6cb;
+        }}
+        
+        .output-warning {{
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }}
+        
+        .output-warning .output-header {{
+            background-color: #fff3cd;
+            border-left-color: #ffc107;
+            border-color: #ffeaa7;
+        }}
+        
+        .output-empty {{
+            color: #6c757d;
+            font-style: italic;
+        }}
+        
+        .metadata {{
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            border-left: 3px solid #4285f4;
+        }}
+        
+        .metadata-title {{
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }}
+        
+        .metadata-content {{
+            color: #5f6368;
+        }}
+        
+        .scroll-to-top {{
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }}
+        
+        .scroll-to-top:hover {{
+            background: #1557b0;
+            transform: translateY(-2px);
+        }}
+        
+        @media (max-width: 768px) {{
+            .container {{
+                padding: 10px;
+            }}
+            
+            .header {{
+                padding: 20px;
+            }}
+            
+            .header h1 {{
+                font-size: 2em;
+            }}
+            
+            .conversation-content {{
+                padding: 15px;
+            }}
+            
+            .conversation-header {{
+                padding: 15px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }}
         }}
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>EvolAgent Task Execution Log</h1>
-        <p>Task ID: {task_id} | Model: {model} | Started: {start_time}</p>
-    </div>
-    
-    <div class="conversations">
-        {conversations}
+    <div class="container">
+        <div class="header">
+            <h1>🤖 EvolAgent Task Execution Log</h1>
+            <div class="meta">
+                <strong>Task ID:</strong> {task_id} | 
+                <strong>Model:</strong> {model} | 
+                <strong>Started:</strong> {start_time}
+            </div>
+        </div>
+        
+        <div class="conversations">
+            {conversations}
+        </div>
+        
+        <button class="scroll-to-top" onclick="window.scrollTo({{top: 0, behavior: 'smooth'}})">↑</button>
     </div>
 </body>
 </html>"""
@@ -402,34 +719,59 @@ class HTMLTaskLogger(BaseTaskLogger):
         code = conv.get("code", "")
         code_output = conv.get("code_output", "")
         timestamp = conv.get("timestamp", "")
+        metadata = conv.get("metadata", {})
+        
+        # Format timestamp
+        try:
+            formatted_timestamp = datetime.fromisoformat(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        except:
+            formatted_timestamp = timestamp or "Unknown time"
+        
+        # Format content with proper line breaks and paragraphs
+        formatted_content = self._format_content_text(content)
         
         html_content = f"""
         <div class="conversation">
-            <div class="role-header {role}">
-                {role.title()}: {title}
+            <div class="conversation-header">
+                <div>
+                    <span class="role-badge role-{role}">{role}</span>
+                    <span class="conversation-title">{self._escape_html(title)}</span>
+                </div>
+                <div class="timestamp">{formatted_timestamp}</div>
             </div>
-            <div class="content">
-                <div>{self._escape_html(content)}</div>
+            <div class="conversation-content">
+                <div class="content-text">{formatted_content}</div>
         """
         
         if code:
             html_content += f"""
-                <div class="code">
-                    {self._highlight_python_code(code)}
+                <div class="code-block">
+                    <div class="code-header">
+                        <span class="code-label">📝 Code</span>
+                        <span class="code-lang">Python</span>
+                    </div>
+                    <div class="code-content">{self._highlight_python_code(code)}</div>
                 </div>
             """
         
         if code_output:
+            output_type = self._detect_output_type(code_output)
             html_content += f"""
-                <div class="output">
-                    {self._format_code_output(code_output)}
+                <div class="output-section {output_type}">
+                    <div class="output-header">📄 Output</div>
+                    <div class="output-content">{self._format_code_output(code_output)}</div>
                 </div>
             """
         
-        html_content += f"""
-                <div class="timestamp">
-                    {datetime.fromisoformat(timestamp).strftime('%Y-%m-%d %H:%M:%S')}
+        if metadata:
+            html_content += f"""
+                <div class="metadata">
+                    <div class="metadata-title">📊 Metadata</div>
+                    <div class="metadata-content">{self._format_metadata(metadata)}</div>
                 </div>
+            """
+        
+        html_content += """
             </div>
         </div>
         """
@@ -497,34 +839,18 @@ class HTMLTaskLogger(BaseTaskLogger):
         """Save critic result to task root directory."""
         task_root = self.base_dir.parent
         
-        # HTML format
-        html_content = f"""<!DOCTYPE html>
-<html><head><title>Critic Result</title></head>
-<body>
-<h1>Critic Evaluation Result</h1>
-<h2>Final Answer</h2>
-<p>{self._escape_html(final_answer)}</p>
-<h2>Reasoning</h2>
-<p>{self._escape_html(reason)}</p>
-<h2>Best Model Index</h2>
-<p>{best_model_index}</p>
-</body></html>"""
+        # Use the same modern HTML template as the static method
+        # Extract task_id from path
+        task_id = task_root.name.replace("log_", "")
         
-        # JSON format
-        json_data = {
-            "final_answer": final_answer,
-            "reason": reason,
-            "best_model_index": best_model_index,
-            "evaluation_time": datetime.now().isoformat()
-        }
-        
-        try:
-            with open(task_root / "critic.html", 'w', encoding='utf-8') as f:
-                f.write(html_content)
-            with open(task_root / "critic.json", 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, indent=2, ensure_ascii=False)
-        except Exception as e:
-            print(f"Error saving critic result: {e}")
+        # Use the static method to ensure consistency
+        HTMLTaskLogger.save_critic_result_static(
+            task_id=task_id,
+            critic_model=self.model,
+            final_answer=final_answer,
+            reason=reason,
+            best_model_index=best_model_index
+        )
     
     @staticmethod
     def save_critic_result_static(task_id: str, critic_model: str, final_answer: str, 
@@ -533,21 +859,279 @@ class HTMLTaskLogger(BaseTaskLogger):
         task_root = Path(f"logs/log_{task_id}")
         task_root.mkdir(parents=True, exist_ok=True)
         
-        # Create basic HTML
+        # Create modern HTML with beautiful styling
         html_content = f"""<!DOCTYPE html>
-<html><head><title>Critic Result - {task_id}</title></head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Critic Evaluation Result - {task_id}</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        
+        .container {{
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }}
+        
+        @keyframes slideUp {{
+            from {{
+                opacity: 0;
+                transform: translateY(30px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateY(0);
+            }}
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }}
+        
+        .header::before {{
+            content: '🎯';
+            font-size: 4em;
+            display: block;
+            margin-bottom: 10px;
+        }}
+        
+        .header h1 {{
+            font-size: 2.5em;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }}
+        
+        .header .subtitle {{
+            font-size: 1.1em;
+            opacity: 0.9;
+        }}
+        
+        .content {{
+            padding: 40px;
+        }}
+        
+        .meta-info {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .meta-card {{
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }}
+        
+        .meta-card .label {{
+            font-size: 0.9em;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }}
+        
+        .meta-card .value {{
+            font-size: 1.1em;
+            color: #333;
+            font-weight: 500;
+        }}
+        
+        .section {{
+            margin-bottom: 35px;
+        }}
+        
+        .section-header {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }}
+        
+        .section-icon {{
+            font-size: 1.5em;
+            margin-right: 12px;
+        }}
+        
+        .section-title {{
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #333;
+        }}
+        
+        .answer-box {{
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+        }}
+        
+        .answer-text {{
+            font-size: 2em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }}
+        
+        .reasoning-box {{
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 25px;
+            line-height: 1.8;
+            color: #495057;
+        }}
+        
+        .best-model {{
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+        }}
+        
+        .best-model .index {{
+            font-size: 2.5em;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            margin-bottom: 5px;
+        }}
+        
+        .best-model .label {{
+            font-size: 1.1em;
+            opacity: 0.9;
+        }}
+        
+        .footer {{
+            background: #f1f3f4;
+            padding: 20px 40px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9em;
+        }}
+        
+        .timestamp {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        @media (max-width: 768px) {{
+            .container {{
+                margin: 10px;
+                border-radius: 15px;
+            }}
+            
+            .header {{
+                padding: 30px 20px;
+            }}
+            
+            .header h1 {{
+                font-size: 2em;
+            }}
+            
+            .content {{
+                padding: 30px 20px;
+            }}
+            
+            .meta-info {{
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }}
+            
+            .footer {{
+                padding: 20px;
+            }}
+        }}
+    </style>
+</head>
 <body>
-<h1>Critic Evaluation Result</h1>
-<p><strong>Task ID:</strong> {task_id}</p>
-<p><strong>Critic Model:</strong> {critic_model}</p>
-<h2>Final Answer</h2>
-<p>{html.escape(final_answer)}</p>
-<h2>Reasoning</h2>
-<p>{html.escape(reason)}</p>
-<h2>Best Model Index</h2>
-<p>{best_model_index}</p>
-<p><strong>Evaluation Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-</body></html>"""
+    <div class="container">
+        <div class="header">
+            <h1>Critic Evaluation Result</h1>
+            <div class="subtitle">AI Agent Performance Assessment</div>
+        </div>
+        
+        <div class="content">
+            <div class="meta-info">
+                <div class="meta-card">
+                    <div class="label">Task ID</div>
+                    <div class="value">{html.escape(task_id)}</div>
+                </div>
+                <div class="meta-card">
+                    <div class="label">Critic Model</div>
+                    <div class="value">{html.escape(critic_model)}</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-icon">🎯</span>
+                    <span class="section-title">Final Answer</span>
+                </div>
+                <div class="answer-box">
+                    <div class="answer-text">{html.escape(final_answer)}</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-icon">🤔</span>
+                    <span class="section-title">Reasoning</span>
+                </div>
+                <div class="reasoning-box">
+                    {html.escape(reason)}
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-icon">🏆</span>
+                    <span class="section-title">Best Model Selection</span>
+                </div>
+                <div class="best-model">
+                    <div class="index">#{best_model_index}</div>
+                    <div class="label">Selected Model Index</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="timestamp">
+                <span>⏰</span>
+                <span>Evaluation completed on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>"""
         
         # Create JSON data
         json_data = {

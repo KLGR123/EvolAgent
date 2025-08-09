@@ -176,7 +176,6 @@ class ExperimentRunner:
                 "a26649c6-1cb2-470a-871e-6910c64c3e53",
                 "b9763138-c053-4832-9f55-86200cb1f99c",
                 "3ff6b7a9-a5bd-4412-ad92-0cd0d45c0fee",
-                "b7f857e4-d8aa-4387-af2a-0e844df5b9d8",
                 "3627a8be-a77f-41bb-b807-7e1bd4c0ebdf",
                 "ad37a656-079a-49f9-a493-7b739c9167d1",
                 "73c1b9fe-ee1d-4cf4-96ca-35c08f97b054",
@@ -210,40 +209,24 @@ class ExperimentRunner:
                 "da52d699-e8d2-4dc5-9191-a2199e0b6a9b",
                 "65afbc8a-89ca-4ad5-8d62-355bb401f61d",
                 "e29834fd-413a-455c-a33e-c3915b07401c",
-                "a1e91b78-d3d8-4675-bb8d-62741b4b68a6",
                 "ec09fa32-d03f-4bf8-84b0-1f16922c3ae4",
                 "cabe07ed-9eca-40ea-8ead-410ef5e83f91",
                 "17b5a6a3-bc87-42e8-b0fb-6ab0781ef2cc",
                 "2a649bb1-795f-4a01-b3be-9a01868dae73",
                 "04a04a9b-226c-43fd-b319-d5e89743676f",
-                "b415aba4-4b68-4fc6-9b89-2c812e55a3e1", # wrong
-                "0bb3b44a-ede5-4db5-a520-4e844b0079c5", # wrong
-                "9f41b083-683e-4dcf-9185-ccfeaa88fa45", # wrong
-                "05407167-39ec-4d3a-a234-73a9120c325d", # wrong
-                "7b5377b0-3f38-4103-8ad2-90fe89864c04", # wrong
-                "ed58682d-bc52-4baa-9eb0-4eb81e1edacc", # wrong
-                "cca70ce6-1952-45d2-acd4-80c903b0bc49", # wrong
-            ]
-            task_list = [
-                "2dfc4c37-fec1-4518-84a7-10095d30ad75",
+                "a1e91b78-d3d8-4675-bb8d-62741b4b68a6",
+                "b7f857e4-d8aa-4387-af2a-0e844df5b9d8",
                 "d700d50d-c707-4dca-90dc-4528cddd0c80",
                 "840bfca7-4f7b-481a-8794-c560c340185d",
-                "b4cc024b-3f5e-480e-b96a-6656493255b5",
-                "56137764-b4e0-45b8-9c52-1866420c3df5",
-                "a56f1527-3abf-41d6-91f8-7296d6336c3f",
                 "71345b0a-9c7d-4b50-b2bf-937ec5879845",
-                "e8cb5b03-41e0-4086-99e5-f6806cd97211",
-                "0512426f-4d28-49f0-be77-06d05daec096",
-                "676e5e31-a554-4acc-9286-b60d90a92d26",
-                "de9887f5-ead8-4727-876f-5a4078f8598c",
-                "5b2a14e8-6e59-479c-80e3-4696e8980152",
                 "0bdb7c40-671d-4ad1-9ce3-986b159c0ddc",
                 "ebbc1f13-d24d-40df-9068-adcf735b4240",
-                "9e1fc53b-46ff-49a1-9d05-9e6faac34cc5",
-                "a0c07678-e491-4bbc-8f0b-07405144218f",
-                "0383a3ee-47a7-41a4-b493-519bdefe0488",
-                "23dd907f-1261-4488-b21c-e9185af91d5e",
-                "7d4a7d1d-cac6-44a8-96e8-ea9584a70825",
+            ]
+            task_list = [
+                "56137764-b4e0-45b8-9c52-1866420c3df5", # not finished
+                "676e5e31-a554-4acc-9286-b60d90a92d26", # not finished
+                "0383a3ee-47a7-41a4-b493-519bdefe0488", # not finished
+                "7d4a7d1d-cac6-44a8-96e8-ea9584a70825", # not finished
                 "dc22a632-937f-4e6a-b72f-ba0ff3f5ff97",
                 "e142056d-56ab-4352-b091-b56054bd1359",
                 "d0633230-7067-47a9-9dbf-ee11e0a2cdd6",
@@ -297,7 +280,24 @@ class ExperimentRunner:
                 "72c06643-a2fa-4186-aa5c-9ec33ae9b445",
                 "983bba7c-c092-455f-b6c9-7857003d48fc",
                 "bec74516-02fc-48dc-b202-55e78d0e17cf",
-                "c526d8d6-5987-4da9-b24c-83466fa172f3"
+                "c526d8d6-5987-4da9-b24c-83466fa172f3",
+                "b415aba4-4b68-4fc6-9b89-2c812e55a3e1", # wrong
+                "0bb3b44a-ede5-4db5-a520-4e844b0079c5", # wrong
+                "9f41b083-683e-4dcf-9185-ccfeaa88fa45", # wrong
+                "05407167-39ec-4d3a-a234-73a9120c325d", # wrong
+                "7b5377b0-3f38-4103-8ad2-90fe89864c04", # wrong
+                "ed58682d-bc52-4baa-9eb0-4eb81e1edacc", # wrong
+                "cca70ce6-1952-45d2-acd4-80c903b0bc49", # wrong
+                "2dfc4c37-fec1-4518-84a7-10095d30ad75", # wrong
+                "b4cc024b-3f5e-480e-b96a-6656493255b5", # wrong
+                "de9887f5-ead8-4727-876f-5a4078f8598c", # wrong
+                "a56f1527-3abf-41d6-91f8-7296d6336c3f", # wrong
+                "e8cb5b03-41e0-4086-99e5-f6806cd97211", # wrong
+                "0512426f-4d28-49f0-be77-06d05daec096", # wrong
+                "5b2a14e8-6e59-479c-80e3-4696e8980152", # wrong
+                "9e1fc53b-46ff-49a1-9d05-9e6faac34cc5", # wrong
+                "a0c07678-e491-4bbc-8f0b-07405144218f", # wrong
+                "23dd907f-1261-4488-b21c-e9185af91d5e", # wrong
             ]
         elif dataset == "coldstart":
             task_list = [f"webshaper_{i}" for i in range(50)]
@@ -413,7 +413,7 @@ class ExperimentRunner:
         
         # Set parallel workers
         if parallel_workers is None:
-            parallel_workers = config.get('runtime.parallel_workers', config.get('pipeline.max_parallel_tasks', 3))
+            parallel_workers = config.get('runtime.parallel_workers', 3)
         
         self.logger.info(f"Starting {dataset} experiment with {len(task_list)} tasks")
         self.logger.info(f"Using {parallel_workers} parallel workers")
