@@ -53,9 +53,46 @@ class EvolvePipeline(BasePipeline):
         self.logger.info("EvolvePipeline initialized with configuration:")
         self.logger.info(f"Max dev-test iterations: {config.get('pipeline.max_dev_test_iterations', 50)}")
         self.logger.info(f"Max parallel tasks: {config.get('runtime.parallel_workers', 3)}")
-        self.logger.info(f"Default models: {config.get('models.default_models', ['o4-mini'])}")
+        
+        models = config.get('models.default_models', ['o4-mini'])
+        temperatures = config.get('models.temperature', 0.7)
+        
+        self.logger.info(f"Default models: {models}")
+        self.logger.info(f"Temperature configuration: {temperatures}")
+        
+        # Validate temperature configuration
+        self._validate_temperature_config(models, temperatures)
 
-    def _create_agent_nodes(self, model: str) -> Tuple[PlanNode, DevNode, TestNode]:
+    def _validate_temperature_config(self, models: List[str], temperatures) -> None:
+        """
+        Validate that temperature configuration matches models configuration.
+        
+        Args:
+            models: List of model names
+            temperatures: Temperature configuration (single value or list)
+        """
+        if isinstance(temperatures, list):
+            if len(temperatures) != len(models):
+                warning_msg = (
+                    f"Temperature list length ({len(temperatures)}) does not match "
+                    f"models list length ({len(models)}). This may cause issues with "
+                    f"temperature assignment. Models: {models}, Temperatures: {temperatures}"
+                )
+                self.logger.warning(warning_msg)
+                
+                # Suggest fix
+                if len(temperatures) < len(models):
+                    self.logger.warning(f"Consider adding {len(models) - len(temperatures)} more temperature values")
+                else:
+                    self.logger.warning(f"Consider removing {len(temperatures) - len(models)} temperature values")
+            else:
+                self.logger.info("Temperature configuration validated successfully")
+                for i, (model, temp) in enumerate(zip(models, temperatures)):
+                    self.logger.debug(f"Model {i}: {model} -> Temperature: {temp}")
+        else:
+            self.logger.info(f"Using single temperature value {temperatures} for all models")
+
+    def _create_agent_nodes(self, model: str, model_index: int) -> Tuple[PlanNode, DevNode, TestNode]:
         """
         Create fresh agent nodes for each task execution.
         
@@ -63,24 +100,28 @@ class EvolvePipeline(BasePipeline):
         
         Args:
             model: Model identifier for the agents
+            model_index: Index of the model in the default_models list
             
         Returns:
             Tuple of (planner, developer, tester) nodes
         """
-        self.logger.debug(f"Creating fresh agent nodes for model: {model}")
+        self.logger.debug(f"Creating fresh agent nodes for model: {model} (index: {model_index})")
         
-        # Create nodes with configured history lengths
+        # Create nodes with configured history lengths and model index
         planner = PlanNode(
             model=model, 
-            past_n=config.get('nodes.plan_history_length', 8)
+            past_n=config.get('nodes.plan_history_length', 8),
+            model_index=model_index
         )
         developer = DevNode(
             model=model, 
-            past_n=config.get('nodes.dev_history_length', 8)
+            past_n=config.get('nodes.dev_history_length', 8),
+            model_index=model_index
         )
         tester = TestNode(
             model=model, 
-            past_n=config.get('nodes.test_history_length', 8)
+            past_n=config.get('nodes.test_history_length', 8),
+            model_index=model_index
         )
         
         # Track nodes with weak references for automatic cleanup
@@ -88,7 +129,7 @@ class EvolvePipeline(BasePipeline):
         self._active_nodes.add(developer)
         self._active_nodes.add(tester)
         
-        self.logger.debug(f"Created agent nodes for model: {model}")
+        self.logger.debug(f"Created agent nodes for model: {model} (index: {model_index})")
         return planner, developer, tester
 
     def _cleanup_agent_nodes(self, *nodes) -> None:
@@ -149,7 +190,7 @@ class EvolvePipeline(BasePipeline):
         ) if task_id else None
 
         # Create fresh agent nodes for isolation
-        planner, developer, tester = self._create_agent_nodes(model)
+        planner, developer, tester = self._create_agent_nodes(model, model_index)
         
         try:
             # Initialize planner with task
@@ -430,7 +471,9 @@ class EvolvePipeline(BasePipeline):
 
     def _initialize_critic(self, models: List[str], task: str) -> CriticNode:
         """Initialize and configure the critic node."""
-        critic = CriticNode(model=models[random.randint(0, len(models) - 1)])
+        # Randomly select a model and its index for the critic
+        critic_model_index = random.randint(0, len(models) - 1)
+        critic = CriticNode(model=models[critic_model_index], model_index=critic_model_index)
         critic._init_prompt(task=task)
         return critic
 
@@ -607,7 +650,7 @@ class EvolvePipeline(BasePipeline):
             history = self.best_history
             content = f"### {title}\n\n**TASK**: {self.task}\n\n```\n{history}\n```"
             
-            plan_node = PlanNode(model=self.best_model)
+            plan_node = PlanNode(model=self.best_model, model_index=self.best_id)
             plan_node.memory.add_episodic(content)
             self.logger.info(f"Plan episodic memory saved successfully: {title}")
                 
@@ -646,7 +689,7 @@ class EvolvePipeline(BasePipeline):
                     
                     self.logger.debug(f"Dev episodic memory content created: {title}")
                     
-                    dev_node = DevNode(model=self.best_model)
+                    dev_node = DevNode(model=self.best_model, model_index=self.best_id)
                     dev_node.memory.add_episodic(content)
                     successful_saves += 1
                     
@@ -693,8 +736,8 @@ class EvolvePipeline(BasePipeline):
         """Clear all episodic memories."""
         try:
             # Create temporary nodes to access memory
-            temp_plan_node = PlanNode(model="o4-mini")
-            temp_dev_node = DevNode(model="o4-mini")
+            temp_plan_node = PlanNode(model="o4-mini", model_index=0)
+            temp_dev_node = DevNode(model="o4-mini", model_index=0)
             
             temp_plan_node.memory.clear_episodic()
             temp_dev_node.memory.clear_episodic()

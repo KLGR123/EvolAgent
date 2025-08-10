@@ -119,7 +119,8 @@ class BaseNode:
 
     def __init__(self, 
         role: str,
-        model: str
+        model: str,
+        model_index: Optional[int] = None
     ):
         """
         Initialize the node with configuration and logging.
@@ -127,10 +128,12 @@ class BaseNode:
         Args:
             role: The role of the node, which is used to determine the type of the node.
             model: The model to use for the node.
+            model_index: Optional index of the model in the default_models list for temperature mapping.
         """
 
         self.role: str = role
         self.model: str = model
+        self.model_index: Optional[int] = model_index
         self.logger = get_logger(f"agent.node.{role.lower()}")
         self.client = OPENAI_CLIENT_POOL.get_client()
         
@@ -145,7 +148,37 @@ class BaseNode:
         
         self.history_maintainer = HistoryMaintainer()
         self.history_maintainer.client = self.client
-        self.logger.debug(f"Initialized {role} node with model {model}")
+        self.logger.debug(f"Initialized {role} node with model {model} (index: {model_index})")
+
+    def _get_temperature(self) -> float:
+        """
+        Get the temperature value for this node's model.
+        
+        Returns:
+            Temperature value for the current model, either from list or default.
+        """
+        from ..utils.config import config
+        
+        temperature_config = config.get('models.temperature', 0.7)
+        
+        # If temperature is a list and we have a model index, use the corresponding temperature
+        if isinstance(temperature_config, list) and self.model_index is not None:
+            if 0 <= self.model_index < len(temperature_config):
+                temp = temperature_config[self.model_index]
+                self.logger.debug(f"Using temperature {temp} for model index {self.model_index}")
+                return temp
+            else:
+                self.logger.warning(f"Model index {self.model_index} out of range for temperature list, using default")
+                return temperature_config[0] if temperature_config else 0.7
+        
+        # If temperature is a single value or no model index provided, use it as default
+        if isinstance(temperature_config, (int, float)):
+            return float(temperature_config)
+        elif isinstance(temperature_config, list) and temperature_config:
+            # Use first temperature as default if no model index
+            return float(temperature_config[0])
+        else:
+            return 0.7  # Fallback default
 
     def _init_counter(self) -> None:
         """
@@ -205,7 +238,7 @@ class BaseNode:
                 messages=[{"role": "user", "content": prompt}],
                             max_tokens=config.get('models.max_tokens', 32000),
             timeout=config.get('timeout.api_timeout', 800),
-            temperature=config.get('models.temperature', 0.7),
+            temperature=self._get_temperature(),
                 extra_headers={
                     'x-ms-client-request-id': "evolagent-"+str(uuid.uuid4()),
                 },

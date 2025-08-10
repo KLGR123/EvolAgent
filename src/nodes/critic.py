@@ -1,5 +1,5 @@
 from string import Template
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import random
 
 from .base import BaseNode
@@ -13,10 +13,11 @@ class CriticNode(BaseNode):
     No memory is used for the critic node.
     """
 
-    def __init__(self, model: str = "o4-mini"):
+    def __init__(self, model: str = "o4-mini", model_index: Optional[int] = None):
         super().__init__(
             role="critic", 
-            model=model
+            model=model,
+            model_index=model_index
         )
     
     def _init_prompt(self, task: str) -> None:

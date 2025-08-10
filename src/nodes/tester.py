@@ -1,5 +1,5 @@
 from string import Template
-from typing import Dict
+from typing import Dict, Optional
 
 from .base import BaseNode
 from ..memory import Memory
@@ -12,10 +12,11 @@ class TestNode(BaseNode):
     It leverages the procedural memories only, the plan and the history to test the code.
     """
 
-    def __init__(self, model: str = "o4-mini", past_n: int = 4):
+    def __init__(self, model: str = "o4-mini", past_n: int = 4, model_index: Optional[int] = None):
         super().__init__(
             role="tester",
-            model=model
+            model=model,
+            model_index=model_index
         )
         self.memory: Memory = Memory("tester")
         self.past_n: int = past_n

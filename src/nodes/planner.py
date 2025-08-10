@@ -11,10 +11,11 @@ class PlanNode(BaseNode):
     It leverages the procedural, semantic, episodic memories, the task and the history to generate the next plan.
     """
 
-    def __init__(self, model: str = "o4-mini", past_n: int = 10):
+    def __init__(self, model: str = "o4-mini", past_n: int = 10, model_index: Optional[int] = None):
         super().__init__(
             role="planner",
-            model=model
+            model=model,
+            model_index=model_index
         )
         self.memory: Memory = Memory("planner")
         self.past_n: int = past_n

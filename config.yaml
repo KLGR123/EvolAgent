@@ -6,20 +6,20 @@ runtime:
   dataset: "gaia"                    # Dataset to run: "gaia" or "coldstart" 
   split: "validation"                # Data split: "validation" or "test"
   max_tasks: null                    # Maximum number of tasks to run (null for all)
-  parallel_workers: 1                # Number of parallel workers for task execution
+  parallel_workers: 2                # Number of parallel workers for task execution
   
 # Pipeline Configuration
 pipeline:
-  max_dev_test_iterations: 95        # Maximum iterations for dev-test loop
-  emergency_break_iterations: 100    # Emergency break point (max_dev_test_iterations + 5)
+  max_dev_test_iterations: 150       # Maximum iterations for dev-test loop
+  emergency_break_iterations: 155    # Emergency break point (max_dev_test_iterations + 5)
 
 # Memory and RAG Configuration
 memory:
   max_tokens_per_chunk: 8192         # Maximum tokens allowed per text chunk
   search_method: "dense"             # Search method for semantic search: "dense", "sparse", "hybrid"
-  semantic_search_limit: 4           # Number of semantic search results to return
-  episodic_search_limit: 4           # Number of episodic search results to return
-  score_threshold: 0.15              # Minimum confidence score for search results
+  semantic_search_limit: 5           # Number of semantic search results to return
+  episodic_search_limit: 5           # Number of episodic search results to return
+  score_threshold: 0.1               # Minimum confidence score for search results
   hybrid_search_multiplier: 2        # Multiplier for hybrid search prefetch limit
 
 # Model Configuration
@@ -33,11 +33,13 @@ models:
     # - "gemini2.5propreview"
     # - "claude-3-7-sonnet-v1"
     # - "o4-mini"
+    # - "o4-mini"
     - "anthropic.claude-sonnet-4-20250514-v1:0"
     - "anthropic.claude-sonnet-4-20250514-v1:0"
     - "anthropic.claude-sonnet-4-20250514-v1:0"
     
-  temperature: 0.7
+  # Temperature settings for each model (must match the order and length of default_models)
+  temperature: [0.2, 0.5, 0.8]  # corresponds to each model in default_models
   max_tokens: 32000
   
   # Task summarization settings
@@ -47,10 +49,10 @@ models:
 
 # Node Configuration
 nodes:
-  plan_history_length: 8             # Default history length for plan node
-  dev_history_length: 8              # History length for dev node
-  test_history_length: 8             # History length for test node
-  critic_length: 6
+  plan_history_length: 10             # Default history length for plan node
+  dev_history_length: 12             # History length for dev node
+  test_history_length: 12            # History length for test node
+  critic_length: 10
   max_history_tokens: 184320         # 180k tokens
   max_compress_rounds: 3             # Maximum number of compression loops
   

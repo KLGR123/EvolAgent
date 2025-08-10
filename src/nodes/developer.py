@@ -12,10 +12,11 @@ class DevNode(BaseNode):
     It leverages the procedural, semantic, episodic memories, the task and the history to develop the code.
     """
 
-    def __init__(self, model: str = "o4-mini", past_n: int = 4):
+    def __init__(self, model: str = "o4-mini", past_n: int = 4, model_index: Optional[int] = None):
         super().__init__(
             role="developer", 
-            model=model
+            model=model,
+            model_index=model_index
         )
         self.memory: Memory = Memory("developer")
         self.past_n: int = past_n

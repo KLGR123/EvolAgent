@@ -176,5 +176,5 @@ $history
 ```
 
 ---
-**Reminder 1**: To end the task, simply set plan to <END>.
+**Reminder 1**: To end the task, simply set plan to <END>. Remember, you must always provide a clear explanation of the completion reason and the final answer in the description field. If you cannot determine a definitive answer or lack clarity, describe as comprehensively as possible the discoveries and outputs you and the developer have produced during your collaborative work process!
 **Reminder 2**: When writing the plan, there is no need to emphasize the established fact of "accomplishing something by writing Python code." NEVER instruct your colleagues to "write Python code directly in the workspace"! DO NOT micromanage the developer's work, such as specifying which packages to use or other technical details!
