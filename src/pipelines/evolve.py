@@ -233,17 +233,23 @@ class EvolvePipeline(BasePipeline):
 
     def _execute_planning_cycles(self, planner, developer, tester, task_logger, html_logger) -> Tuple[str, List[Dict[str, Any]]]:
         """
-        Execute the main planning-development-testing cycles.
+        Execute the main planning-development-testing cycles with timeout protection.
         
         Returns:
             Tuple of (execution_history, development_trajectory)
         """
         next_code = None
         plan_iteration = 0
+        max_plan_iterations = config.get('pipeline.max_plan_iterations', 10)
         
         while True:
             plan_iteration += 1
             self.logger.debug(f"Plan iteration {plan_iteration}")
+            
+            # Check for planning timeout
+            if plan_iteration > max_plan_iterations:
+                self.logger.warning(f"Planning exceeded maximum iterations ({max_plan_iterations}), forcing completion")
+                is_plan_complete = True
             
             # Generate next plan
             next_plan, is_plan_complete = planner(h=next_code)

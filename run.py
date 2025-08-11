@@ -443,7 +443,8 @@ class ExperimentRunner:
             for future in as_completed(future_to_task_id, timeout=None):
                 task_id = future_to_task_id[future]
                 try:
-                    result = future.result(timeout=10000)  # 10000 seconds per task
+                    task_timeout = config.get('runtime.task_timeout_seconds', 7200)  # 2 hours default
+                    result = future.result(timeout=task_timeout)
                     results.append(result)
                     completed_count += 1
                     self.logger.info(f"Completed task {completed_count}/{len(task_list)} - {task_id}: {result.get('is_correct', 'N/A')}")
@@ -454,7 +455,8 @@ class ExperimentRunner:
                         self.logger.debug(f"Periodic GC: freed {collected} objects")
                         
                 except TimeoutError:
-                    self.logger.error(f"Task {task_id} timed out after 10000 seconds")
+                    task_timeout = config.get('runtime.task_timeout_seconds', 7200)
+                    self.logger.error(f"Task {task_id} timed out after {task_timeout} seconds")
                     future.cancel()
                     results.append({
                         "task_id": task_id,

@@ -63,5 +63,5 @@ class CriticNode(BaseNode):
             self.logger.warning(f"Selected best member index: {parsed_response.get('best_member_index', 'N/A')} is not valid.")
             best_id = random.randint(0, 2)
 
-        self.logger.info(f"Selected best member index: {best_id}")
+        self.logger.info(f"Selected best member index: {best_id} out of {len(histories)} trajectories")
         return final_answer, reason, best_id
