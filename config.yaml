@@ -6,16 +6,16 @@ runtime:
   dataset: "gaia"                    # Dataset to run: "gaia" or "coldstart" 
   split: "validation"                # Data split: "validation" or "test"
   max_tasks: null                    # Maximum number of tasks to run (null for all)
-  parallel_workers: 2                # Number of parallel workers for task execution
-  task_timeout_seconds: 15000        # Configurable task timeout (15000s)
+  parallel_workers: 1                # Number of parallel workers for task execution
+  task_timeout_seconds: 160000       # Configurable task timeout (15000s)
   
 # Pipeline Configuration
 pipeline:
-  max_dev_test_iterations: 150       # Maximum iterations for dev-test loop
-  emergency_break_iterations: 155    # Emergency break point (max_dev_test_iterations + 5)
-  max_plan_iterations: 15            # Maximum iterations for planning loop
-  max_task_duration_seconds: 8000    # Maximum duration for a single task (8000s)
-  trajectory_timeout_seconds: 4000   # Maximum duration for a single trajectory (4000s)
+  max_dev_test_iterations: 100       # Maximum iterations for dev-test loop
+  emergency_break_iterations: 105    # Emergency break point (max_dev_test_iterations + 5)
+  max_plan_iterations: 25            # Maximum iterations for planning loop
+  max_task_duration_seconds: 16000   # Maximum duration for a single task (16000s)
+  trajectory_timeout_seconds: 8000   # Maximum duration for a single trajectory (8000s)
 
 # Memory and RAG Configuration
 memory:
@@ -35,15 +35,15 @@ models:
   # Model lists for multi-path sampling
   default_models:
     # - "gemini2.5propreview"
-    # - "claude-3-7-sonnet-v1"
+    - "claude-3-7-sonnet-v1"
     # - "o4-mini"
-    # - "o4-mini"
-    - "anthropic.claude-sonnet-4-20250514-v1:0"
-    - "anthropic.claude-sonnet-4-20250514-v1:0"
+    - "o4-mini"
+    # - "anthropic.claude-sonnet-4-20250514-v1:0"
+    # - "anthropic.claude-sonnet-4-20250514-v1:0"
     - "anthropic.claude-sonnet-4-20250514-v1:0"
     
   # Temperature settings for each model (must match the order and length of default_models)
-  temperature: [0.5, 0.6, 0.7]  # corresponds to each model in default_models
+  temperature: [0.5, 0.5, 0.5]  # corresponds to each model in default_models
   max_tokens: 32000
   
   # Task summarization settings
@@ -56,8 +56,8 @@ nodes:
   plan_history_length: 10             # Default history length for plan node
   dev_history_length: 12             # History length for dev node
   test_history_length: 12            # History length for test node
-  critic_length: 10
-  max_history_tokens: 184320         # 180k tokens
+  critic_length: 6
+  max_history_tokens: 160000         # 160k tokens
   max_compress_rounds: 3             # Maximum number of compression loops
   
   # Required fields configuration for each node role
@@ -133,7 +133,8 @@ task:
   
   # Use case generation prompt
   use_cases_prompt: |
-    Based on the following plan and code implementation, generate 6-8 practical use cases in the exact format shown below. Each use case should be a specific, real-world application scenario that demonstrates when and why someone would use this solution.
+    Based on the following plan and code implementation, generate 4-6 practical use cases in the exact format shown below. 
+    Each use case should be a specific, real-world application scenario that demonstrates when and why someone would use this solution.
 
     PLAN: {plan}
 
@@ -150,7 +151,7 @@ task:
     3. Cover diverse domains (business, research, automation, analysis, etc.)
     4. Be concise but descriptive
     5. Avoid generic descriptions - be specific about the application
-    6. Generate 6-8 use cases total
+    6. Generate 4-6 use cases total
 
     Example format:
     - Financial report analysis and automated data extraction for accounting workflows
