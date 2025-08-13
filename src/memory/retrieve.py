@@ -151,7 +151,12 @@ class MemoryRetriever:
             })
         
         # Generate embeddings for text content only
-        dense_embeddings = self.dense_model.embed([p["text"] for p in processed_payloads])
+        # dense_embeddings = self.dense_model.embed([p["text"] for p in processed_payloads])
+        dense_embeddings = []
+        batch_size = config.get('memory.batch_size', 16)
+        for i in range(0, len(processed_payloads), batch_size):
+            batch_texts = [payload["text"] for payload in processed_payloads[i:i + batch_size]]
+            dense_embeddings.extend(self.dense_model.embed(batch_texts))
         
         # Create points for insertion
         points_to_add = []

@@ -11,10 +11,13 @@ import time
 import tiktoken
 import requests
 import threading
+import numpy as np
+from deprecated import deprecated
 from dotenv import load_dotenv
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Union, Any, Tuple
 from fastembed import SparseTextEmbedding, SparseEmbedding
+from openai import OpenAI
 
 from ..utils.config import config
 
@@ -57,12 +60,13 @@ class DenseEmbeddingModel:
                     cls._instance = super(DenseEmbeddingModel, cls).__new__(cls)
         return cls._instance
     
-    def __init__(self, model_name: str = "text-embedding-3-large"):
+    def __init__(self, model_name: str = "text-embedding-3-large", dimension: int = None):
         """
         Initialize the dense embedding model.
         
         Args:
             model_name: OpenAI embedding model name
+            dimension: Optional dimension limit for embeddings (None for full dimension)
         """
         # Only initialize once, even if __init__ is called multiple times
         if not self._initialized:
@@ -73,9 +77,15 @@ class DenseEmbeddingModel:
                         self.base_url = self.base_url.rstrip('/')
                     self.api_key = os.getenv("OPENAI_API_KEY")
                     self.model_name = model_name
-                    self.dimension = None
+                    self.dimension = dimension
+                    # Initialize OpenAI client
+                    if self.base_url:
+                        self.client = OpenAI(api_key=self.api_key, base_url=self.base_url, max_retries=3)
+                    else:
+                        self.client = OpenAI(api_key=self.api_key, max_retries=3)
                     self._initialized = True
-        
+
+    @deprecated("Use embed_with_openai_sdk instead")
     def embed(self, texts: Union[str, List[str]], max_retries: int = 3, retry_delay: float = 1.0) -> List[List[float]]:
         """
         Generate dense embeddings for input texts.
@@ -137,6 +147,67 @@ class DenseEmbeddingModel:
         # This line should never be reached, but included for type checking
         raise Exception(f"Dense embedding API call failed after {max_retries + 1} attempts: {last_exception}")
 
+    def embed(self, texts: Union[str, List[str]]) -> List[List[float]]:
+        """
+        Generate dense embeddings using OpenAI SDK (alternative method).
+        
+        Args:
+            texts: Single text or list of texts to embed
+            
+        Returns:
+            List of embedding vectors
+            
+        Raises:
+            Exception: If embedding generation fails
+        """
+        if isinstance(texts, str):
+            texts = [texts]
+            
+        try:
+            response = self.client.embeddings.create(
+                model=self.model_name,
+                input=texts,
+                encoding_format="float"
+            )
+            
+            if hasattr(response, "error"):
+                raise Exception(response.error)
+                
+            embeddings = [x.embedding for x in response.data]
+            
+            # Apply dimension limit if specified
+            if self.dimension is not None:
+                embeddings = [emb[:self.dimension] for emb in embeddings]
+            
+            # Cache dimension on first successful call
+            if self.dimension is None and embeddings:
+                self.dimension = len(embeddings[0])
+                
+            return embeddings
+            
+        except Exception as e:
+            raise Exception(f"Dense embedding API call failed: {e}")
+    
+    def _normalize_l2(self, x: List[float]) -> List[float]:
+        """
+        Apply L2 normalization to a vector.
+        
+        Args:
+            x: Input vector
+            
+        Returns:
+            L2 normalized vector
+        """
+        x = np.array(x)
+        if x.ndim == 1:
+            norm = np.linalg.norm(x)
+            if norm == 0:
+                return x.tolist()
+            return (x / norm).tolist()
+        else:
+            norm = np.linalg.norm(x, 2, axis=1, keepdims=True)
+            return np.where(norm == 0, x, (x / norm)).tolist()
+
 
 class SparseEmbeddingModel:
     """
@@ -164,7 +235,13 @@ class SparseEmbeddingModel:
             model_name: FastEmbed sparse model name
         """
         if model_name is None:
-            model_name = config.get('models.default_sparse_model', 'prithivida/Splade_PP_en_v1')
+            # Try to get from config using both methods for compatibility
+            try:
+                model_name = getattr(config, 'default_sparse_model', None)
+                if model_name is None:
+                    model_name = config.get('models.default_sparse_model', 'prithivida/Splade_PP_en_v1')
+            except (AttributeError, KeyError):
+                model_name = config.get('models.default_sparse_model', 'prithivida/Splade_PP_en_v1')
             
         # Only initialize the model once, even if __init__ is called multiple times
         if self._model is None or self._model_name != model_name:
