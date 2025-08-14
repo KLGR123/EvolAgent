@@ -14,7 +14,7 @@
 - 生成交互式HTML报告
 
 作者: Assistant
-版本: 2.2 (修正版)
+版本: 2.3 (集成统一t-SNE功能)
 """
 
 # =============================================================================
@@ -110,44 +110,46 @@ class Config:
     # 聚类配置
     CLUSTERING_METHOD = "dbscan"  # "kmeans" 或 "dbscan"
     AUTO_CLUSTER_DETECTION = True
-    MAX_CLUSTERS = 15
-    MIN_CLUSTERS = 2
-    N_CLUSTERS = 8
+    MAX_CLUSTERS = 7
+    MIN_CLUSTERS = 3
+    N_CLUSTERS = 5
     CLUSTER_DETECTION_METHOD = "silhouette"  # "elbow" 或 "silhouette"
     OUTLIER_DETECTION_ENABLED = True
     OUTLIER_METHOD = "distance_percentile"
-    OUTLIER_PERCENTILE = 25
+    OUTLIER_PERCENTILE = 80
     OUTLIER_CONTAMINATION = 0.1
     
     # DBSCAN特定配置
-    DBSCAN_EPS = None
-    DBSCAN_MIN_SAMPLES = None
-    DBSCAN_AUTO_PARAMS = True
+    DBSCAN_AUTO_PARAMS = False
+    DBSCAN_EPS = 0.1
+    DBSCAN_MIN_SAMPLES = 100
+   
     
     # 预处理配置
-    ENABLE_PCA_PREPROCESSING = True
+    ENABLE_PCA_PREPROCESSING = False
     PRE_REDUCTION = True
     PRE_PCA_COMPONENTS = 512
     PCA_VARIANCE_THRESHOLD = 0.95
-    MAX_PCA_COMPONENTS = 100
+    MAX_PCA_COMPONENTS = 512
     ENABLE_STANDARDIZATION = True
     ENABLE_L2_NORMALIZATION = True
     
     # 降维配置
     DIMENSION_REDUCTION_METHOD = "UMAP"  # "UMAP", "TSNE", "PCA" (推荐UMAP或PCA以进行参考点对比)
-    OUTPUT_DIMENSIONS = 3
-    UMAP_N_NEIGHBORS = 15
-    UMAP_MIN_DIST = 0.1
+    UNIFIED_TSNE_IF_OVERLAY = True
+    OUTPUT_DIMENSIONS = 2
+    UMAP_N_NEIGHBORS = 100
+    UMAP_MIN_DIST = 0.6
     UMAP_METRIC = "cosine"
-    TSNE_PERPLEXITY = 30
-    TSNE_LEARNING_RATE = 200
+    TSNE_PERPLEXITY = 10
+    TSNE_LEARNING_RATE = 100
     
     # 可视化配置
-    VISUAL_EMBEDDING_SCALE = 0.7
+    VISUAL_EMBEDDING_SCALE = 0.6
     COLOR_PALETTE = "viridis"
     FIG_WIDTH = 1200
     FIG_HEIGHT = 900
-    MARKER_SIZE_2D = 13.5
+    MARKER_SIZE_2D = 11
     MARKER_SIZE_3D = 3
     POINT_SIZE = 3
     MARKER_OPACITY = 0.7
@@ -173,9 +175,9 @@ class Config:
     BASIC_OVERLAY_COLLECTION = "developer_semantic"
     BASIC_OVERLAY_LIMIT = 5000
     BASIC_OVERLAY_COLOR = "#000000"
-    BASIC_OVERLAY_SIZE = 2
+    BASIC_OVERLAY_SIZE = 1
     BASIC_OVERLAY_OPACITY = 0.8
-    BASIC_MARKER_SIZE_BOOST = 2
+    BASIC_MARKER_SIZE_BOOST = 1
 
 # 创建配置实例
 config = Config()
@@ -405,8 +407,8 @@ class DataPreprocessor:
             self.fitted = True
             return result
         
-        def transform_new(self, vectors):
-            """使用已有的模型转换新向量"""
+        def transform(self, vectors):
+            """使用已有的模型转换新向量（兼容旧称）"""
             if not self.fitted:
                 raise ValueError("Model must be fitted before transforming new data")
             
@@ -419,6 +421,9 @@ class DataPreprocessor:
                 result = self.normalizer.transform(result)
             
             return result
+        
+        # 为了清晰，添加一个别名
+        transform_new = transform
 
     @staticmethod
     def preprocess_with_pca_and_normalize(vectors):
@@ -555,7 +560,7 @@ class DimensionReducer:
         if len(vectors) == 0:
             logger.error("No vectors to reduce"); return (None, None) if return_reducer else None
         
-        logger.info(f"Reducing dimensions using {method} to {n_components}D...")
+        logger.info(f"Reducing dimensions of {len(vectors)} vectors using {method} to {n_components}D...")
         reducer, reduced = None, None
         
         try:
@@ -570,11 +575,12 @@ class DimensionReducer:
                 if vectors.shape[1] > 50 and len(vectors) > 1000:
                     pca_for_tsne = PCA(n_components=50, random_state=config.RANDOM_SEED)
                     vectors = pca_for_tsne.fit_transform(vectors)
-                perplexity = min(config.TSNE_PERPLEXITY, (len(vectors) - 1) // 3, len(vectors) - 2) # Perplexity must be less than n_samples
-                perplexity = max(1, perplexity) # Perplexity must be at least 1
+                # Perplexity must be less than n_samples. Clamp it safely.
+                perplexity = min(config.TSNE_PERPLEXITY, len(vectors) - 1)
+                perplexity = max(1, perplexity)
                 
                 # t-SNE 不支持独立的transform，所以返回的reducer为None
-                tsne_reducer = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=config.TSNE_LEARNING_RATE, random_state=config.RANDOM_SEED, n_jobs=1)
+                tsne_reducer = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=config.TSNE_LEARNING_RATE, random_state=config.RANDOM_SEED, n_jobs=config.N_JOBS)
                 reduced = tsne_reducer.fit_transform(vectors)
                 if return_reducer: 
                     logger.warning("t-SNE does not support transforming new data. Cannot return a reusable reducer.")
@@ -609,28 +615,42 @@ class Visualizer:
     
     @staticmethod
     def create_visualization(reduced_vectors, cluster_labels, metrics, collection_name, basic_reduced=None):
-        """创建可视化图表"""
+        """创建可视化图表 (已修正)"""
         logger.info("Creating visualization...")
         
+        # 准备DataFrame
         df_data = {'x': reduced_vectors[:, 0], 'y': reduced_vectors[:, 1], 'cluster': cluster_labels.astype(str)}
         if reduced_vectors.shape[1] >= 3:
             df_data['z'] = reduced_vectors[:, 2]
         df = pd.DataFrame(df_data)
 
+        # 判断维度并选择相应的绘图函数
         is_3d = config.OUTPUT_DIMENSIONS == 3 and 'z' in df.columns
         scatter_func = px.scatter_3d if is_3d else px.scatter
         
-        fig = scatter_func(
-            df, x='x', y='y', z='z' if is_3d else None,
-            color='cluster',
-            title=f'Vector Distribution - {collection_name}',
-            color_discrete_sequence=px.colors.qualitative.Plotly,
-            template=config.PLOTLY_TEMPLATE
-        )
+        # --- [核心修改] ---
+        # 动态构建绘图函数的关键字参数
+        plot_kwargs = {
+            'x': 'x',
+            'y': 'y',
+            'color': 'cluster',
+            'title': f'Vector Distribution - {collection_name}',
+            'color_discrete_sequence': px.colors.qualitative.Plotly,
+            'template': config.PLOTLY_TEMPLATE
+        }
+        
+        # 仅在3D模式下添加 'z' 参数
+        if is_3d:
+            plot_kwargs['z'] = 'z'
+
+        # 使用参数解包来调用函数
+        fig = scatter_func(df, **plot_kwargs)
+        # --- [修改结束] ---
         
         marker_size = config.MARKER_SIZE_3D if is_3d else config.MARKER_SIZE_2D
         fig.update_traces(marker=dict(size=marker_size, opacity=config.MARKER_OPACITY))
         
+        # 添加 basic 向量参考点
         if basic_reduced is not None and len(basic_reduced) > 0:
             trace_func = go.Scatter3d if is_3d else go.Scatter
             trace_data = {
@@ -646,10 +666,12 @@ class Visualizer:
                 'name': 'Basic Overlay'
             }
             if is_3d:
+                # 确保即使basic向量只有2维也能在3D图上显示
                 trace_data['z'] = basic_reduced[:, 2] if basic_reduced.shape[1] >= 3 else np.zeros(len(basic_reduced))
             
             fig.add_trace(trace_func(**trace_data))
         
+        # 更新图表标题和布局
         title_text = f"Vector Distribution - {collection_name}<br>Clusters: {metrics.get('n_clusters', 0)}, Outliers: {metrics.get('n_outliers', 0)}"
         if metrics.get('silhouette_score') is not None:
             title_text += f", Silhouette: {metrics['silhouette_score']:.3f}"
@@ -692,7 +714,7 @@ class Visualizer:
     .footer{{margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; color: #666; font-size: 0.9em;}}
 </style></head><body><div class="container"><div class="header"><h1>Vector Distribution Analysis</h1><h2>{collection_name}</h2><p>Generated on {time.strftime('%Y-%m-%d %H:%M:%S')}</p></div>
 <div class="stats-grid">{stats_html}</div><div class="visualization"><h3>Interactive Visualization</h3>{fig_html}</div>
-<div class="footer"><p>Generated by Vector Distribution Analysis Tool v2.2</p><p>Configuration: {config.DIMENSION_REDUCTION_METHOD} + {config.CLUSTERING_METHOD.upper()}</p></div></div></body></html>
+<div class="footer"><p>Generated by Vector Distribution Analysis Tool v2.3</p><p>Configuration: {config.DIMENSION_REDUCTION_METHOD} + {config.CLUSTERING_METHOD.upper()}</p></div></div></body></html>
 """
 
 # =============================================================================
@@ -707,11 +729,10 @@ def main():
     try:
         Utils.validate_config(config)
         
-        # 假设 Qdrant 在本地运行或使用环境变量配置
-        # client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
-        client = QdrantClient(path="qdrant") # 使用本地文件存储，如果不存在会自动创建
+        client = QdrantClient(path="qdrant")
         logger.info("Connected to Qdrant successfully")
         
+        # --- 数据获取 ---
         vectors, ids = DataFetcher.fetch_data_from_qdrant_optimized(client, config.COLLECTION_NAME)
         if len(vectors) == 0:
             logger.error("No vectors retrieved. Exiting."); return
@@ -728,73 +749,126 @@ def main():
         
         logger.info(f"Analyzing {len(analysis_vectors)} vectors")
         
-        # 聚类并捕获预处理模型
-        cluster_result = ClusterAnalyzer.cluster_vectors_optimized(analysis_vectors)
-        if cluster_result[0] is None:
-            logger.error("Clustering failed. Exiting."); return
-            
-        cluster_labels, final_n_clusters, normalized_vectors, kept_indices, preprocessing_model = cluster_result
+        # 定义将在所有路径中填充的变量
+        fig = None
+        metrics = {}
+        analyzed_count = 0
 
-        # 保存聚类样本ID
-        kept_ids = analysis_ids[kept_indices]
-        export_samples = {int(label): [str(x) for x in kept_ids[cluster_labels == label][:5]] for label in np.unique(cluster_labels) if label != -1}
-        os.makedirs('output', exist_ok=True)
-        sample_file_path = f"output/cluster_samples_{config.COLLECTION_NAME}.json"
-        with open(sample_file_path, 'w') as f:
-            json.dump({'collection': config.COLLECTION_NAME, 'per_cluster_ids': export_samples}, f, indent=2)
-        logger.info(f"Cluster sample IDs saved to {sample_file_path}")
-
-        metrics = Utils.calculate_clustering_metrics(cluster_labels, normalized_vectors)
+        # --- 根据降维方法选择不同的处理路径 ---
         
-        # 降维并捕获降维器
-        reduced_vectors, reducer = DimensionReducer.reduce_dimensions_optimized(
-            normalized_vectors,
-            method=config.DIMENSION_REDUCTION_METHOD,
-            n_components=config.OUTPUT_DIMENSIONS,
-            return_reducer=True
-        )
-        if reduced_vectors is None:
-            logger.error("Dimensionality reduction failed. Exiting."); return
-
-        # 处理并变换 basic 向量以进行叠加显示
-        basic_reduced = None
-        if config.BASIC_OVERLAY_ENABLED:
-            raw_basic_vectors = DataFetcher.fetch_basic_vectors(client, expected_dim=vector_dim)
+        # 路径1: 统一 t-SNE 处理 (当使用 t-SNE 且需要叠加 basic 向量时)
+        if config.DIMENSION_REDUCTION_METHOD.upper() == "TSNE" and config.BASIC_OVERLAY_ENABLED and config.UNIFIED_TSNE_IF_OVERLAY:
+            logger.info("--- Using Unified t-SNE Path for Overlay ---")
             
+            # 1. 先对主向量进行聚类，获取标签和预处理模型
+            cluster_result = ClusterAnalyzer.cluster_vectors_optimized(analysis_vectors)
+            if cluster_result[0] is None:
+                logger.error("Clustering failed. Exiting."); return
+            cluster_labels, _, normalized_vectors, kept_indices, preprocessing_model = cluster_result
+            analyzed_count = len(normalized_vectors)
+            
+            # 2. 获取并处理 basic 向量
+            raw_basic_vectors = DataFetcher.fetch_basic_vectors(client, expected_dim=vector_dim)
             if raw_basic_vectors is not None and preprocessing_model is not None:
-                try:
-                    logger.info("Transforming basic vectors with the existing preprocessing model...")
-                    basic_processed = preprocessing_model.transform_new(raw_basic_vectors)
-                    
-                    if reducer is not None:
-                        logger.info(f"Transforming basic vectors with the existing '{config.DIMENSION_REDUCTION_METHOD}' reducer...")
-                        # 使用已有的reducer进行transform，而不是fit_transform
-                        basic_reduced = reducer.transform(basic_processed)
-                        basic_reduced = basic_reduced * config.VISUAL_EMBEDDING_SCALE
-                        logger.info("Successfully transformed basic vectors for overlay.")
-                    else:
-                        logger.warning(f"Reducer '{config.DIMENSION_REDUCTION_METHOD}' does not support transforming new data. Cannot plot basic overlay.")
+                logger.info("Transforming basic vectors with the existing preprocessing model...")
+                basic_processed = preprocessing_model.transform_new(raw_basic_vectors)
                 
-                except Exception as e:
-                    logger.warning(f"Failed to process basic vectors for overlay: {e}")
-                    basic_reduced = None
+                # 3. 合并主向量和 basic 向量
+                num_main_vectors = len(normalized_vectors)
+                combined_vectors = np.vstack((normalized_vectors, basic_processed))
+                logger.info(f"Combined main ({num_main_vectors}) and basic ({len(basic_processed)}) vectors for unified t-SNE.")
+                
+                # 4. 对合并后的向量进行降维
+                combined_reduced = DimensionReducer.reduce_dimensions_optimized(
+                    combined_vectors,
+                    method="TSNE",
+                    n_components=config.OUTPUT_DIMENSIONS,
+                    return_reducer=False # t-SNE不需要返回reducer
+                )
+                
+                if combined_reduced is not None:
+                    # 5. 拆分降维结果
+                    reduced_vectors = combined_reduced[:num_main_vectors]
+                    basic_reduced = combined_reduced[num_main_vectors:]
+                    logger.info("Successfully split reduced vectors.")
 
-        # 创建可视化
-        fig = Visualizer.create_visualization(
-            reduced_vectors, 
-            cluster_labels, 
-            metrics,
-            config.COLLECTION_NAME,
-            basic_reduced=basic_reduced
-        )
+                    metrics = Utils.calculate_clustering_metrics(cluster_labels, normalized_vectors)
+                    fig = Visualizer.create_visualization(reduced_vectors, cluster_labels, metrics, config.COLLECTION_NAME, basic_reduced)
+                else:
+                    logger.error("Unified t-SNE dimensionality reduction failed.")
+
+            else:
+                 logger.warning("Could not fetch or process basic vectors. Running t-SNE on main vectors only.")
+                 # 回退到只处理主向量
+                 reduced_vectors = DimensionReducer.reduce_dimensions_optimized(normalized_vectors, "TSNE", config.OUTPUT_DIMENSIONS)
+                 if reduced_vectors is not None:
+                    metrics = Utils.calculate_clustering_metrics(cluster_labels, normalized_vectors)
+                    fig = Visualizer.create_visualization(reduced_vectors, cluster_labels, metrics, config.COLLECTION_NAME)
+
+        # 路径2: 标准处理路径 (适用于 UMAP, PCA, 或不带叠加的 t-SNE)
+        else:
+            logger.info("--- Using Standard Processing Path (UMAP/PCA or t-SNE without overlay) ---")
+            
+            # 1. 聚类并获取预处理模型
+            cluster_result = ClusterAnalyzer.cluster_vectors_optimized(analysis_vectors)
+            if cluster_result[0] is None:
+                logger.error("Clustering failed. Exiting."); return
+            cluster_labels, _, normalized_vectors, kept_indices, preprocessing_model = cluster_result
+            analyzed_count = len(normalized_vectors)
+
+            # 2. 降维并获取降维器
+            reduced_vectors, reducer = DimensionReducer.reduce_dimensions_optimized(
+                normalized_vectors,
+                method=config.DIMENSION_REDUCTION_METHOD,
+                n_components=config.OUTPUT_DIMENSIONS,
+                return_reducer=True
+            )
+            if reduced_vectors is None:
+                logger.error("Dimensionality reduction failed. Exiting."); return
+
+            # 3. 处理并变换 basic 向量以进行叠加显示
+            basic_reduced = None
+            if config.BASIC_OVERLAY_ENABLED:
+                raw_basic_vectors = DataFetcher.fetch_basic_vectors(client, expected_dim=vector_dim)
+                
+                if raw_basic_vectors is not None and preprocessing_model is not None:
+                    try:
+                        logger.info("Transforming basic vectors with the existing preprocessing model...")
+                        basic_processed = preprocessing_model.transform_new(raw_basic_vectors)
+                        
+                        if reducer is not None:
+                            logger.info(f"Transforming basic vectors with the existing '{config.DIMENSION_REDUCTION_METHOD}' reducer...")
+                            basic_reduced = reducer.transform(basic_processed)
+                            basic_reduced *= config.VISUAL_EMBEDDING_SCALE
+                            logger.info("Successfully transformed basic vectors for overlay.")
+                        else:
+                            logger.warning(f"Reducer '{config.DIMENSION_REDUCTION_METHOD}' does not support transforming new data. Cannot plot basic overlay.")
+                    
+                    except Exception as e:
+                        logger.warning(f"Failed to process basic vectors for overlay: {e}")
+                        basic_reduced = None
+
+            metrics = Utils.calculate_clustering_metrics(cluster_labels, normalized_vectors)
+            fig = Visualizer.create_visualization(reduced_vectors, cluster_labels, metrics, config.COLLECTION_NAME, basic_reduced)
+
+        # --- 报告生成 (所有路径通用) ---
         if fig is None:
             logger.error("Visualization creation failed. Exiting."); return
+        
+        # 保存聚类样本ID (仅在聚类成功后执行)
+        if cluster_result[0] is not None:
+            kept_ids = analysis_ids[cluster_result[3]] # kept_indices
+            export_samples = {int(label): [str(x) for x in kept_ids[cluster_result[0] == label][:5]] for label in np.unique(cluster_result[0]) if label != -1}
+            os.makedirs('output', exist_ok=True)
+            sample_file_path = f"output/cluster_samples_{config.COLLECTION_NAME}.json"
+            with open(sample_file_path, 'w') as f:
+                json.dump({'collection': config.COLLECTION_NAME, 'per_cluster_ids': export_samples}, f, indent=2)
+            logger.info(f"Cluster sample IDs saved to {sample_file_path}")
 
-        # 生成并保存HTML报告
         total_time = time.time() - total_start_time
         html_content = Visualizer.generate_html_report(
             fig=fig, metrics=metrics, original_count=original_vector_count,
-            analyzed_count=len(normalized_vectors), total_time=total_time,
+            analyzed_count=analyzed_count, total_time=total_time,
             collection_name=config.COLLECTION_NAME, vector_dim=vector_dim
         )
         
