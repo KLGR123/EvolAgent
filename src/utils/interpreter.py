@@ -20,8 +20,35 @@ import threading
 import subprocess
 import importlib
 import contextlib
-from dataclasses import dataclass
+import platform
+import shutil
+import tempfile
+from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
+from pathlib import Path
+
+
+@dataclass
+class WebBrowsingConfig:
+    """Web browsing specific configuration"""
+    headless: bool = True
+    window_size: str = "1920,1080"
+    chrome_args: List[str] = field(default_factory=lambda: [
+        "--headless",
+        "--no-sandbox", 
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-extensions",
+        "--disable-plugins",
+        "--disable-web-security",
+        "--disable-features=VizDisplayCompositor",
+        "--remote-debugging-port=9222"
+    ])
+    implicit_wait: int = 10
+    page_load_timeout: int = 30
+    script_timeout: int = 30
+    enable_logging: bool = False
+    user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 
 @dataclass
@@ -32,6 +59,8 @@ class InterpreterConfig:
     matplotlib_backend: str = 'Agg'
     max_output_length: Optional[int] = None
     requirements_file: str = "requirements.txt"
+    web_browsing: WebBrowsingConfig = field(default_factory=WebBrowsingConfig)
+    enable_web_browsing_env: bool = True
 
 
 class PackageManager:
@@ -41,6 +70,13 @@ class PackageManager:
         self._install_lock = threading.Lock()
         self._installed_cache = set()
         self._builtin_modules = self._get_builtin_modules()
+        self._web_browsing_packages = {
+            'selenium': ['webdriver-manager', 'beautifulsoup4', 'requests'],
+            'crawl4ai': ['aiohttp', 'playwright'],
+            'playwright': ['playwright-stealth'],
+            'requests': ['urllib3', 'certifi'],
+            'beautifulsoup4': ['lxml', 'html5lib']
+        }
     
     def _get_builtin_modules(self) -> set:
         """Get the list of Python built-in and standard library modules"""
@@ -122,9 +158,12 @@ class PackageManager:
         # filter out built-in modules
         external_packages = [pkg for pkg in packages if pkg not in self._builtin_modules]
         
+        # Add web browsing dependencies
+        extended_packages = self._expand_web_browsing_packages(external_packages)
+        
         # load packages from requirements.txt
         req_packages = self._load_requirements(requirements_file)
-        all_packages = list(set(external_packages + req_packages))
+        all_packages = list(set(extended_packages + req_packages))
         
         installed = []
         failed = []
@@ -139,6 +178,10 @@ class PackageManager:
                 else:
                     failed.append(package)
                     print(f"Installation failed: {package}")
+        
+        # Special handling for selenium webdriver setup
+        if any(pkg in packages for pkg in ['selenium']):
+            self._setup_selenium_environment()
         
         return installed, failed
     
@@ -192,6 +235,52 @@ class PackageManager:
         except Exception as e:
             print(f"Error updating {requirements_file}: {e}")
             return False
+    
+    def _expand_web_browsing_packages(self, packages: List[str]) -> List[str]:
+        """Expand web browsing packages with their dependencies"""
+        
+        expanded = packages.copy()
+        
+        for package in packages:
+            if package in self._web_browsing_packages:
+                expanded.extend(self._web_browsing_packages[package])
+                print(f"Adding dependencies for {package}: {self._web_browsing_packages[package]}")
+        
+        return list(set(expanded))
+    
+    def _setup_selenium_environment(self):
+        """Setup selenium-specific environment and webdrivers"""
+        
+        try:
+            # Try to setup Chrome webdriver
+            self._setup_chrome_webdriver()
+        except Exception as e:
+            print(f"Warning: Failed to setup Chrome webdriver: {e}")
+    
+    def _setup_chrome_webdriver(self):
+        """Setup Chrome webdriver using webdriver-manager"""
+        
+        try:
+            # Install webdriver-manager if not present
+            if not self.is_installed('webdriver-manager'):
+                if self.install_package('webdriver-manager'):
+                    print("Successfully installed webdriver-manager")
+            
+            # Try to initialize webdriver manager
+            from webdriver_manager.chrome import ChromeDriverManager
+            from selenium.webdriver.chrome.service import Service
+            
+            # Download and cache the chromedriver
+            driver_path = ChromeDriverManager().install()
+            print(f"ChromeDriver installed at: {driver_path}")
+            
+            # Set environment variable for chromedriver path
+            os.environ['CHROMEDRIVER_PATH'] = driver_path
+            
+        except ImportError:
+            print("Warning: webdriver-manager not available, manual chromedriver setup may be required")
+        except Exception as e:
+            print(f"Warning: ChromeDriver setup failed: {e}")
 
 
 class CodeParser:
@@ -241,12 +330,15 @@ class ExecutionEnvironment:
         self._original_backend = None
         self._original_sys_path = None
         self._original_cwd = None
+        self._original_env_vars = {}
     
     def __enter__(self):
         """Enter execution environment"""
         
         self._setup_matplotlib()
         self._setup_paths()
+        if self.config.enable_web_browsing_env:
+            self._setup_web_browsing_environment()
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -254,6 +346,8 @@ class ExecutionEnvironment:
         
         self._restore_paths()
         self._restore_matplotlib()
+        if self.config.enable_web_browsing_env:
+            self._restore_web_browsing_environment()
         gc.collect()
     
     def _setup_matplotlib(self):
@@ -295,6 +389,96 @@ class ExecutionEnvironment:
             sys.path.extend(self._original_sys_path)
         if self._original_cwd is not None:
             os.chdir(self._original_cwd)
+    
+    def _setup_web_browsing_environment(self):
+        """Setup environment for web browsing tools like selenium"""
+        
+        web_env_vars = {
+            # Display environment for headless browsing
+            'DISPLAY': ':99',
+            # Chrome/Chromium configuration
+            'CHROME_BIN': self._find_chrome_binary(),
+            'CHROME_PATH': self._find_chrome_binary(),
+            # Disable GPU for headless Chrome
+            'CHROME_ARGS': ' '.join(self.config.web_browsing.chrome_args),
+            # Webdriver manager configuration
+            'WDM_LOG_LEVEL': '0',
+            'WDM_PRINT_FIRST_LINE': 'False',
+            'WDM_LOCAL': '1',
+            # Selenium configuration
+            'SELENIUM_MANAGER_LOG_LEVEL': '0',
+            # Playwright configuration
+            'PLAYWRIGHT_BROWSERS_PATH': str(Path.home() / '.cache' / 'ms-playwright'),
+            # User agent
+            'USER_AGENT': self.config.web_browsing.user_agent,
+            # Timeout configurations
+            'WEB_DRIVER_TIMEOUT': str(self.config.web_browsing.page_load_timeout),
+            'IMPLICIT_WAIT': str(self.config.web_browsing.implicit_wait),
+        }
+        
+        # Store original values and set new ones
+        for key, value in web_env_vars.items():
+            if key in os.environ:
+                self._original_env_vars[key] = os.environ[key]
+            else:
+                self._original_env_vars[key] = None
+            
+            if value:
+                os.environ[key] = value
+                if self.config.web_browsing.enable_logging:
+                    print(f"[WEB_ENV] Set {key}={value}")
+    
+    def _restore_web_browsing_environment(self):
+        """Restore original web browsing environment variables"""
+        
+        for key, original_value in self._original_env_vars.items():
+            if original_value is None:
+                # Remove the key if it wasn't originally set
+                if key in os.environ:
+                    del os.environ[key]
+            else:
+                # Restore original value
+                os.environ[key] = original_value
+    
+    def _find_chrome_binary(self) -> str:
+        """Find Chrome binary path on the system"""
+        
+        chrome_paths = []
+        
+        if platform.system() == "Darwin":  # macOS
+            chrome_paths = [
+                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            ]
+        elif platform.system() == "Linux":
+            chrome_paths = [
+                "/usr/bin/google-chrome",
+                "/usr/bin/google-chrome-stable",
+                "/usr/bin/chromium",
+                "/usr/bin/chromium-browser",
+                "/snap/bin/chromium",
+            ]
+        elif platform.system() == "Windows":
+            chrome_paths = [
+                "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+                "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+                "C:\\Users\\%USERNAME%\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe",
+            ]
+        
+        # Check which chrome binary exists
+        for path in chrome_paths:
+            if os.path.exists(path):
+                return path
+        
+        # Try using shutil.which
+        chrome_names = ["google-chrome", "chrome", "chromium", "chromium-browser"]
+        for name in chrome_names:
+            path = shutil.which(name)
+            if path:
+                return path
+        
+        # Default fallback
+        return "/usr/bin/google-chrome"
     
     def create_globals(self) -> Dict[str, Any]:
         """Create isolated execution global environment"""
@@ -490,17 +674,267 @@ class PythonInterpreter:
         """Print error hints"""
 
         error_type = type(error).__name__
+        error_msg = str(error).lower()
         
-        if "ModuleNotFoundError" in error_type:
-            print("\nHint: If you're getting a ModuleNotFoundError, the package might need to be installed.")
-            print("The interpreter will automatically install packages from requirements.txt and those you import.")
+        # Web browsing specific errors
+        if "timeoutexception" in error_type.lower():
+            print("\nHint: Selenium TimeoutException - Element not found")
+            print("Suggestion: Increase wait time, check element locators, confirm page is loaded correctly")
+            print("Try: Add longer wait time or use more robust element locator strategies")
+            print("Example: WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.ID, 'element_id')))")
+        
+        elif "webdriverexception" in error_type.lower():
+            print("\nHint: WebDriver Exception - Browser driver problem")
+            print("Suggestion: Check Chrome/ChromeDriver version compatibility, confirm headless mode configuration")
+            print("Try: Update webdriver-manager or manually specify driver path")
+            print("Environment variable CHROMEDRIVER_PATH is automatically set")
+        
+        elif "sessionnotcreatedexception" in error_type.lower():
+            print("\nHint: WebDriver Session Creation Failed")
+            print("Suggestion: Check if Chrome browser is installed, check ChromeDriver version compatibility")
+            print("Try: pip install --upgrade selenium webdriver-manager")
+        
+        elif "nosuchelementexception" in error_type.lower():
+            print("\nHint: No Such Element Exception - Page element not found")
+            print("Suggestion: Check if element locator is correct, check if page is fully loaded")
+            print("Try: Use explicit wait: WebDriverWait(driver, 10).until(...)")
+        
+        elif "selenium" in error_msg or "webdriver" in error_msg:
+            print("\nHint: Selenium Related Errors")
+            print("Suggestion: Confirm selenium and related dependencies are correctly installed, check browser environment configuration")
+            print("Web browsing environment is automatically configured, including Chrome path and environment variables")
+        
+        elif "crawl4ai" in error_msg:
+            print("\nHint: Crawl4AI Related Errors")
+            print("Suggestion: Confirm crawl4ai and its dependencies are correctly installed")
+            print("Try: pip install crawl4ai aiohttp playwright")
+        
+        elif "playwright" in error_msg:
+            print("\nHint: Playwright Related Errors")
+            print("Suggestion: Confirm playwright is correctly installed and downloaded the browser")
+            print("Try: pip install playwright && playwright install")
+        
+        elif "requests" in error_msg and ("connection" in error_msg or "timeout" in error_msg):
+            print("\nHint: Network Connection Error")
+            print("Suggestion: Check network connection, increase timeout, use retry mechanism")
+            print("Try: Add headers and timeout parameters")
+        
+        # General errors
+        elif "ModuleNotFoundError" in error_type:
+            print("\nHint: Module Not Found Error - Package may need to be installed")
+            print("The interpreter will automatically install requirements.txt and imported packages")
+            print("Web browsing related dependencies will be automatically added")
 
         elif "PermissionError" in error_type:
-            print("\nHint: Permission error - check file/directory permissions.")
+            print("\nHint: Permission Error - Check file/directory permissions")
 
         elif "FileNotFoundError" in error_type:
-            print("\nHint: File not found - check if the file path is correct.")
+            print("\nHint: File Not Found Error - Check file path is correct")
+        
+        elif "connectionerror" in error_msg or "httperror" in error_msg:
+            print("\nHint: HTTP Connection Error")
+            print("Suggestion: Check network connection, check if target website is accessible, check if proxy is needed")
+        
+        # Add web browsing troubleshooting info
+        if any(term in error_msg for term in ['selenium', 'webdriver', 'chrome', 'browser']):
+            print("\n[WEB BROWSING TROUBLESHOOTING]")
+            print("1. Chrome path is automatically detected and set")
+            print("2. Environment variables are configured for headless mode")
+            print("3. ChromeDriver is automatically downloaded and managed")
+            print("4. If there are still problems, check if Chrome is installed")
 
 
-config = InterpreterConfig(timeout=5000)
+class BrowserDetector:
+    """Browser and WebDriver detection utilities"""
+    
+    @staticmethod
+    def detect_chrome() -> Dict[str, Any]:
+        """Detect Chrome installation and version"""
+        
+        result = {
+            'installed': False,
+            'path': None,
+            'version': None,
+            'error': None
+        }
+        
+        try:
+            # Find Chrome binary
+            chrome_paths = []
+            
+            if platform.system() == "Darwin":  # macOS
+                chrome_paths = [
+                    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+                ]
+            elif platform.system() == "Linux":
+                chrome_paths = [
+                    "/usr/bin/google-chrome",
+                    "/usr/bin/google-chrome-stable",
+                    "/usr/bin/chromium",
+                    "/usr/bin/chromium-browser",
+                ]
+            elif platform.system() == "Windows":
+                chrome_paths = [
+                    "C:\\Program Files\\Google Chrome\\Application\\chrome.exe",
+                    "C:\\Program Files (x86)\\Google Chrome\\Application\\chrome.exe",
+                ]
+            
+            # Check existing paths
+            for path in chrome_paths:
+                if os.path.exists(path):
+                    result['installed'] = True
+                    result['path'] = path
+                    break
+            
+            # Try using shutil.which if not found
+            if not result['installed']:
+                chrome_names = ["google-chrome", "chrome", "chromium", "chromium-browser"]
+                for name in chrome_names:
+                    path = shutil.which(name)
+                    if path:
+                        result['installed'] = True
+                        result['path'] = path
+                        break
+            
+            # Get version if found
+            if result['installed'] and result['path']:
+                try:
+                    version_cmd = [result['path'], '--version']
+                    version_output = subprocess.check_output(
+                        version_cmd, stderr=subprocess.DEVNULL, timeout=10
+                    ).decode('utf-8').strip()
+                    result['version'] = version_output
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                    result['version'] = 'Unknown'
+        
+        except Exception as e:
+            result['error'] = str(e)
+        
+        return result
+    
+    @staticmethod
+    def detect_webdriver() -> Dict[str, Any]:
+        """Detect WebDriver availability"""
+        
+        result = {
+            'selenium_installed': False,
+            'webdriver_manager_installed': False,
+            'chromedriver_available': False,
+            'chromedriver_path': None,
+            'error': None
+        }
+        
+        try:
+            # Check selenium installation
+            try:
+                import selenium
+                result['selenium_installed'] = True
+            except ImportError:
+                pass
+            
+            # Check webdriver-manager installation
+            try:
+                import webdriver_manager
+                result['webdriver_manager_installed'] = True
+            except ImportError:
+                pass
+            
+            # Check chromedriver availability
+            if result['webdriver_manager_installed']:
+                try:
+                    from webdriver_manager.chrome import ChromeDriverManager
+                    driver_path = ChromeDriverManager().install()
+                    result['chromedriver_available'] = True
+                    result['chromedriver_path'] = driver_path
+                except Exception as e:
+                    result['error'] = f"ChromeDriver setup failed: {e}"
+            
+        except Exception as e:
+            result['error'] = str(e)
+        
+        return result
+    
+    @classmethod
+    def get_web_browsing_status(cls) -> Dict[str, Any]:
+        """Get complete web browsing environment status"""
+        
+        chrome_info = cls.detect_chrome()
+        webdriver_info = cls.detect_webdriver()
+        
+        return {
+            'chrome': chrome_info,
+            'webdriver': webdriver_info,
+            'ready_for_selenium': (
+                chrome_info['installed'] and 
+                webdriver_info['selenium_installed'] and 
+                webdriver_info['chromedriver_available']
+            ),
+            'system': platform.system(),
+            'recommendations': cls._get_recommendations(chrome_info, webdriver_info)
+        }
+    
+    @staticmethod
+    def _get_recommendations(chrome_info: Dict, webdriver_info: Dict) -> List[str]:
+        """Get recommendations for improving web browsing setup"""
+        
+        recommendations = []
+        
+        if not chrome_info['installed']:
+            recommendations.append("Install Google Chrome or Chromium browser")
+        
+        if not webdriver_info['selenium_installed']:
+            recommendations.append("Install selenium: pip install selenium")
+        
+        if not webdriver_info['webdriver_manager_installed']:
+            recommendations.append("Install webdriver-manager: pip install webdriver-manager")
+        
+        if not webdriver_info['chromedriver_available']:
+            recommendations.append("ChromeDriver setup failed - check Chrome version compatibility")
+        
+        if chrome_info.get('error'):
+            recommendations.append(f"Chrome detection error: {chrome_info['error']}")
+        
+        if webdriver_info.get('error'):
+            recommendations.append(f"WebDriver setup error: {webdriver_info['error']}")
+        
+        return recommendations
+
+
+# Enhanced configuration with browser detection
+def create_enhanced_config(enable_browser_detection: bool = True) -> InterpreterConfig:
+    """Create enhanced interpreter configuration with browser detection"""
+    
+    config = InterpreterConfig(timeout=5000)
+    
+    if enable_browser_detection:
+        browser_status = BrowserDetector.get_web_browsing_status()
+        
+        # Update Chrome path if detected
+        if browser_status['chrome']['installed']:
+            config.web_browsing.chrome_args = [
+                "--headless",
+                "--no-sandbox", 
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--disable-extensions",
+                "--disable-plugins",
+                "--disable-web-security",
+                "--disable-features=VizDisplayCompositor",
+                "--remote-debugging-port=9222",
+                f"--user-agent={config.web_browsing.user_agent}"
+            ]
+        
+        # Enable logging if setup is not ready
+        if not browser_status['ready_for_selenium']:
+            config.web_browsing.enable_logging = True
+            print("[BROWSER DETECTION] Web browsing setup incomplete:")
+            for rec in browser_status['recommendations']:
+                print(f"  - {rec}")
+    
+    return config
+
+
+# Default configuration instances
+config = create_enhanced_config()
 python_interpreter = PythonInterpreter(config)
