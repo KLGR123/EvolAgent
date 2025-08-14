@@ -110,7 +110,7 @@ EvolAgent implements a sophisticated multi-agent architecture:
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Planner       │───▶│   Developer     │───▶│   Tester        │
-│   (Strategy)    │    │ (Implementation)│    │   (Validation)  │
+│   (Strategy)    │    │ (Implementation)│◀───│   (Validation)  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────▼───────────────────────┘
