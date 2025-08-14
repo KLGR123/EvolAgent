@@ -134,7 +134,7 @@ class Config:
     ENABLE_L2_NORMALIZATION = True
     
     # 降维配置
-    DIMENSION_REDUCTION_METHOD = "TSNE"  # "UMAP", "TSNE", "PCA" (推荐UMAP或PCA以进行参考点对比)
+    DIMENSION_REDUCTION_METHOD = "UMAP"  # "UMAP", "TSNE", "PCA" (推荐UMAP或PCA以进行参考点对比)
     OUTPUT_DIMENSIONS = 3
     UMAP_N_NEIGHBORS = 15
     UMAP_MIN_DIST = 0.1
@@ -145,8 +145,8 @@ class Config:
     # 可视化配置
     VISUAL_EMBEDDING_SCALE = 0.7
     COLOR_PALETTE = "viridis"
-    FIG_WIDTH = 800
-    FIG_HEIGHT = 600
+    FIG_WIDTH = 1200
+    FIG_HEIGHT = 900
     MARKER_SIZE_2D = 13.5
     MARKER_SIZE_3D = 3
     POINT_SIZE = 3
@@ -387,7 +387,8 @@ class DataPreprocessor:
             result = vectors.copy()
             
             if config.ENABLE_PCA_PREPROCESSING and config.PRE_REDUCTION:
-                n_components = min(config.PRE_PCA_COMPONENTS, vectors.shape[1], vectors.shape[0] - 1)
+                # 确保n_components小于样本数和特征数
+                n_components = min(config.PRE_PCA_COMPONENTS, vectors.shape[1], vectors.shape[0] -1)
                 if n_components > 1:
                     self.pca = PCA(n_components=n_components, random_state=config.RANDOM_SEED)
                     result = self.pca.fit_transform(result)
@@ -405,7 +406,7 @@ class DataPreprocessor:
             return result
         
         def transform_new(self, vectors):
-            """转换新向量"""
+            """使用已有的模型转换新向量"""
             if not self.fitted:
                 raise ValueError("Model must be fitted before transforming new data")
             
@@ -437,7 +438,6 @@ class DataPreprocessor:
 class ClusterAnalyzer:
     """聚类分析类"""
     
-    # ... (find_optimal_clusters_elbow_optimized, find_optimal_clusters_silhouette_fast, etc. 不需要修改)
     @staticmethod
     def find_optimal_clusters_elbow_optimized(vectors, max_clusters=None, min_clusters=2, sample_size=None):
         if max_clusters is None: max_clusters = config.MAX_CLUSTERS
@@ -469,7 +469,6 @@ class ClusterAnalyzer:
     
     @staticmethod
     def perform_dbscan_clustering(vectors, eps=None, min_samples=None):
-        # ... (此函数无需修改)
         if eps is None or min_samples is None:
             min_samples = max(2, int(np.log(len(vectors)))) if min_samples is None else min_samples
             if eps is None:
@@ -491,13 +490,18 @@ class ClusterAnalyzer:
         
         logger.info(f"Starting clustering analysis on {len(vectors)} vectors...")
         
-        # ... 数据清洗逻辑 ...
+        # 数据清洗
         original_count = len(vectors)
+        kept_indices = np.arange(original_count)
         if config.ENABLE_DATA_CLEANING:
             finite_mask = np.all(np.isfinite(vectors), axis=1)
             vectors = vectors[finite_mask]
+            kept_indices = kept_indices[finite_mask]
+            
             non_zero_mask = np.linalg.norm(vectors, axis=1) > 1e-10
             vectors = vectors[non_zero_mask]
+            kept_indices = kept_indices[non_zero_mask]
+            
             logger.info(f"Removed {original_count - len(vectors)} invalid vectors")
         
         if len(vectors) == 0:
@@ -505,7 +509,6 @@ class ClusterAnalyzer:
 
         # 预处理
         try:
-            ### 已修改 ###
             processed_vectors, preprocessing_model = DataPreprocessor.preprocess_with_pca_and_normalize(vectors)
             if preprocessing_model is None: raise ValueError("Preprocessing model failed to initialize.")
             logger.info(f"Preprocessing completed. Shape: {processed_vectors.shape}")
@@ -529,15 +532,13 @@ class ClusterAnalyzer:
         if labels is None:
             logger.error("Clustering failed"); return (None,) * 5
 
-        # ... (离群点检测逻辑无需修改)
+        # 离群点检测 (仅KMeans)
         if config.OUTLIER_DETECTION_ENABLED and config.CLUSTERING_METHOD.lower() == "kmeans":
             cluster_centers = np.array([processed_vectors[labels == i].mean(axis=0) for i in range(n_clusters)])
             distances = np.linalg.norm(processed_vectors - cluster_centers[labels], axis=1)
             threshold = np.percentile(distances, 100 - config.OUTLIER_PERCENTILE)
             labels[distances > threshold] = -1
 
-        kept_indices = np.arange(len(labels))
-        ### 已修改 ###
         return labels, n_clusters, processed_vectors, kept_indices, preprocessing_model
 
 
@@ -549,8 +550,8 @@ class DimensionReducer:
     """降维处理类"""
     
     @staticmethod
-    def reduce_dimensions_optimized(vectors, method="UMAP", n_components=2, return_reducer=False): ### 已修改 ###
-        """优化的降维函数"""
+    def reduce_dimensions_optimized(vectors, method="UMAP", n_components=2, return_reducer=False):
+        """优化的降维函数，可选择返回降维器"""
         if len(vectors) == 0:
             logger.error("No vectors to reduce"); return (None, None) if return_reducer else None
         
@@ -567,12 +568,17 @@ class DimensionReducer:
 
             if method.upper() == "TSNE":
                 if vectors.shape[1] > 50 and len(vectors) > 1000:
-                    vectors = PCA(n_components=50, random_state=config.RANDOM_SEED).fit_transform(vectors)
-                perplexity = min(config.TSNE_PERPLEXITY, (len(vectors) - 1) // 3)
-                reducer = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=config.TSNE_LEARNING_RATE, random_state=config.RANDOM_SEED, n_jobs=1)
-                reduced = reducer.fit_transform(vectors)
-                # t-SNE不支持独立的transform，所以返回的reducer为None
-                if return_reducer: reducer = None
+                    pca_for_tsne = PCA(n_components=50, random_state=config.RANDOM_SEED)
+                    vectors = pca_for_tsne.fit_transform(vectors)
+                perplexity = min(config.TSNE_PERPLEXITY, (len(vectors) - 1) // 3, len(vectors) - 2) # Perplexity must be less than n_samples
+                perplexity = max(1, perplexity) # Perplexity must be at least 1
+                
+                # t-SNE 不支持独立的transform，所以返回的reducer为None
+                tsne_reducer = TSNE(n_components=n_components, perplexity=perplexity, learning_rate=config.TSNE_LEARNING_RATE, random_state=config.RANDOM_SEED, n_jobs=1)
+                reduced = tsne_reducer.fit_transform(vectors)
+                if return_reducer: 
+                    logger.warning("t-SNE does not support transforming new data. Cannot return a reusable reducer.")
+                    reducer = None
 
             if method.upper() == "PCA":
                 reducer = PCA(n_components=n_components, random_state=config.RANDOM_SEED)
@@ -585,11 +591,12 @@ class DimensionReducer:
             reduced = reduced * config.VISUAL_EMBEDDING_SCALE
             logger.info(f"{method} reduction completed.")
             
-            ### 已修改 ###
             return (reduced, reducer) if return_reducer else reduced
 
         except Exception as e:
             logger.error(f"Dimension reduction failed: {e}")
+            import traceback
+            traceback.print_exc()
             return (None, None) if return_reducer else None
 
 
@@ -617,7 +624,7 @@ class Visualizer:
             df, x='x', y='y', z='z' if is_3d else None,
             color='cluster',
             title=f'Vector Distribution - {collection_name}',
-            color_discrete_sequence=px.colors.qualitative.Set3,
+            color_discrete_sequence=px.colors.qualitative.Plotly,
             template=config.PLOTLY_TEMPLATE
         )
         
@@ -633,7 +640,8 @@ class Visualizer:
                 'marker': dict(
                     color=config.BASIC_OVERLAY_COLOR,
                     size=marker_size * config.BASIC_MARKER_SIZE_BOOST,
-                    opacity=config.BASIC_OVERLAY_OPACITY
+                    opacity=config.BASIC_OVERLAY_OPACITY,
+                    symbol='x'
                 ),
                 'name': 'Basic Overlay'
             }
@@ -646,14 +654,18 @@ class Visualizer:
         if metrics.get('silhouette_score') is not None:
             title_text += f", Silhouette: {metrics['silhouette_score']:.3f}"
         
-        fig.update_layout(title_text=title_text, width=config.FIG_WIDTH, height=config.FIG_HEIGHT)
+        fig.update_layout(
+            title_text=title_text, 
+            width=config.FIG_WIDTH, 
+            height=config.FIG_HEIGHT,
+            legend_title_text='Cluster'
+        )
         return fig
 
-    # generate_html_report 函数无需修改，它会接收并正确处理图表对象
     @staticmethod
     def generate_html_report(fig, metrics, original_count, analyzed_count, total_time, collection_name, vector_dim, **kwargs):
         """生成HTML报告"""
-        fig_html = fig.to_html(include_plotlyjs='cdn', div_id='main-plot') if fig else "<p>Visualization failed.</p>"
+        fig_html = fig.to_html(full_html=False, include_plotlyjs='cdn', div_id='main-plot') if fig else "<p>Visualization failed.</p>"
         stats = {
             'collection': collection_name, 'total_vectors': f"{original_count:,}", 'analyzed_vectors': f"{analyzed_count:,}",
             'vector_dimension': vector_dim, 'clusters_found': metrics.get('n_clusters', 0),
@@ -667,10 +679,17 @@ class Visualizer:
         return f"""
 <!DOCTYPE html><html><head><title>Vector Analysis - {collection_name}</title><meta charset="utf-8">
 <style>
-    body{{font-family:Arial,sans-serif;margin:20px;background-color:#f5f5f5}} .container{{max-width:1200px;margin:0 auto;background-color:white;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}}
-    .header{{text-align:center;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #eee}} .stats-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:30px}}
-    .stat-card{{background-color:#f8f9fa;padding:15px;border-radius:8px;border-left:4px solid #007bff}} .stat-title{{font-weight:bold;color:#333;margin-bottom:5px}} .stat-value{{font-size:1.2em;color:#007bff}}
-    .visualization{{margin:20px 0;text-align:center}} .footer{{margin-top:30px;padding-top:20px;border-top:2px solid #eee;text-align:center;color:#666;font-size:0.9em}}
+    body{{font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f5f5f5; color: #333;}} 
+    .container{{max-width: 1400px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}}
+    .header{{text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #eee;}} 
+    h1{{font-size: 2.5em; color: #0056b3;}} h2{{color: #555;}}
+    .stats-grid{{display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px;}}
+    .stat-card{{background-color: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 5px solid #007bff; transition: transform 0.2s, box-shadow 0.2s;}}
+    .stat-card:hover{{transform: translateY(-5px); box-shadow: 0 4px 15px rgba(0,0,0,0.1);}}
+    .stat-title{{font-weight: bold; color: #333; margin-bottom: 8px; font-size: 1.1em;}} 
+    .stat-value{{font-size: 1.5em; color: #007bff; font-weight: 300;}}
+    .visualization{{margin: 40px 0; text-align: center;}} .visualization h3{{font-size: 1.8em; margin-bottom: 20px;}}
+    .footer{{margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; color: #666; font-size: 0.9em;}}
 </style></head><body><div class="container"><div class="header"><h1>Vector Distribution Analysis</h1><h2>{collection_name}</h2><p>Generated on {time.strftime('%Y-%m-%d %H:%M:%S')}</p></div>
 <div class="stats-grid">{stats_html}</div><div class="visualization"><h3>Interactive Visualization</h3>{fig_html}</div>
 <div class="footer"><p>Generated by Vector Distribution Analysis Tool v2.2</p><p>Configuration: {config.DIMENSION_REDUCTION_METHOD} + {config.CLUSTERING_METHOD.upper()}</p></div></div></body></html>
@@ -687,7 +706,10 @@ def main():
     
     try:
         Utils.validate_config(config)
-        client = QdrantClient(path="qdrant")
+        
+        # 假设 Qdrant 在本地运行或使用环境变量配置
+        # client = QdrantClient(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
+        client = QdrantClient(path="qdrant") # 使用本地文件存储，如果不存在会自动创建
         logger.info("Connected to Qdrant successfully")
         
         vectors, ids = DataFetcher.fetch_data_from_qdrant_optimized(client, config.COLLECTION_NAME)
@@ -706,22 +728,25 @@ def main():
         
         logger.info(f"Analyzing {len(analysis_vectors)} vectors")
         
-        ### 已修改: 捕获预处理模型 ###
+        # 聚类并捕获预处理模型
         cluster_result = ClusterAnalyzer.cluster_vectors_optimized(analysis_vectors)
         if cluster_result[0] is None:
             logger.error("Clustering failed. Exiting."); return
             
         cluster_labels, final_n_clusters, normalized_vectors, kept_indices, preprocessing_model = cluster_result
 
-        # ... (聚类样本导出逻辑无需修改)
+        # 保存聚类样本ID
         kept_ids = analysis_ids[kept_indices]
         export_samples = {int(label): [str(x) for x in kept_ids[cluster_labels == label][:5]] for label in np.unique(cluster_labels) if label != -1}
-        with open(f"cluster_samples_{config.COLLECTION_NAME}.json", 'w') as f:
+        os.makedirs('output', exist_ok=True)
+        sample_file_path = f"output/cluster_samples_{config.COLLECTION_NAME}.json"
+        with open(sample_file_path, 'w') as f:
             json.dump({'collection': config.COLLECTION_NAME, 'per_cluster_ids': export_samples}, f, indent=2)
+        logger.info(f"Cluster sample IDs saved to {sample_file_path}")
 
         metrics = Utils.calculate_clustering_metrics(cluster_labels, normalized_vectors)
         
-        ### 已修改: 捕获降维器 ###
+        # 降维并捕获降维器
         reduced_vectors, reducer = DimensionReducer.reduce_dimensions_optimized(
             normalized_vectors,
             method=config.DIMENSION_REDUCTION_METHOD,
@@ -731,7 +756,7 @@ def main():
         if reduced_vectors is None:
             logger.error("Dimensionality reduction failed. Exiting."); return
 
-        ### 已修改: 正确处理 basic 向量 ###
+        # 处理并变换 basic 向量以进行叠加显示
         basic_reduced = None
         if config.BASIC_OVERLAY_ENABLED:
             raw_basic_vectors = DataFetcher.fetch_basic_vectors(client, expected_dim=vector_dim)
@@ -746,7 +771,7 @@ def main():
                         # 使用已有的reducer进行transform，而不是fit_transform
                         basic_reduced = reducer.transform(basic_processed)
                         basic_reduced = basic_reduced * config.VISUAL_EMBEDDING_SCALE
-                        logger.info("Successfully transformed basic vectors.")
+                        logger.info("Successfully transformed basic vectors for overlay.")
                     else:
                         logger.warning(f"Reducer '{config.DIMENSION_REDUCTION_METHOD}' does not support transforming new data. Cannot plot basic overlay.")
                 
@@ -773,7 +798,6 @@ def main():
             collection_name=config.COLLECTION_NAME, vector_dim=vector_dim
         )
         
-        os.makedirs('output', exist_ok=True)
         output_path = f'output/distribution_{config.COLLECTION_NAME}.html'
         with open(output_path, 'w', encoding='utf-8') as f: f.write(html_content)
         
@@ -785,4 +809,6 @@ def main():
         traceback.print_exc()
 
 if __name__ == "__main__":
+    # 使用脚本前，请确保已安装必要的库:
+    # pip install numpy pandas qdrant-client scikit-learn plotly umap-learn python-dotenv
     main()
