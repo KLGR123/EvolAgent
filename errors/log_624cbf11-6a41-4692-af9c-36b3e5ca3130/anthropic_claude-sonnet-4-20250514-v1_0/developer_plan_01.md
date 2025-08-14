@@ -1,185 +1,12 @@
 # Developer Plan 01
 
 ## Plan
-Search for Ben & Jerry's online flavor graveyard and identify the oldest flavor's headstone to examine the photo showing another headstone in the background. Navigate to the Ben & Jerry's website or official flavor graveyard section, locate information about discontinued flavors, and determine which flavor is considered the oldest. Then examine the photo of that oldest flavor's headstone to identify any other headstones visible in the background.
+Search for Ben & Jerry's online flavor graveyard to locate the oldest flavor's headstone photo and identify the rhyme text under the flavor name. Focus on finding the official Ben & Jerry's flavor graveyard webpage, identifying which flavor is considered the oldest discontinued flavor, and extracting the complete rhyme text from the headstone image to determine the last line.
 
 ## Description
-This is the optimal first step because: (1) We need to locate Ben & Jerry's official online flavor graveyard and understand its structure to find the oldest flavor, (2) No previous research has been conducted on this specific website or flavor information, (3) Expected outcome is to identify the Ben & Jerry's flavor graveyard website and determine which flavor is considered the oldest based on their records as of end of 2022, (4) This establishes the foundation needed to examine the photo of the oldest flavor's headstone and identify background headstones with rhymes as requested in the TASK
+This is the optimal first step because: (1) We need to locate the Ben & Jerry's online flavor graveyard and understand its structure to find the oldest flavor, (2) No previous research has been conducted on this task, (3) Expected outcome is to access the official flavor graveyard, identify the oldest discontinued flavor, and locate its headstone photo with the associated rhyme, (4) This establishes the foundation for finding the specific last line of the rhyme as requested in the TASK
 
 ## Episodic Examples
-### Development Step 1: Ice Cream Product Image Analysis: Extract Brand, Name, Nutrition, Ingredients, Serving Size, Butterfat Content
-
-**Description**: Analyze the attached image file data/gaia/2023/validation/b2c257e0-3ad7-4f05-b8e3-d9da973be36e.jpg to identify and extract information about the ice cream product, including any visible nutrition labels, ingredient lists, or butterfat content specifications. Look for product name, brand, serving size, and any fat content information that might be displayed on the packaging.
-
-**Use Cases**:
-- Automated quality assurance for food manufacturers to verify that ice cream packaging displays accurate nutrition and ingredient information before products are shipped to retailers
-- Regulatory compliance checks for food safety inspectors who need to confirm that butterfat content and labeling meet legal standards by analyzing product images from factory floors
-- Retail inventory digitization for grocery chains, enabling staff to quickly extract and catalog detailed product specs (brand, flavor, nutrition) from shelf images for online store listings
-- Consumer health app integration, allowing users to scan ice cream packaging and receive instant, detailed breakdowns of nutrition facts and ingredients for dietary tracking
-- Competitive product benchmarking for market analysts comparing fat content, ingredients, and nutritional claims across multiple ice cream brands using shelf or marketing images
-- Automated product recall identification, where food safety teams analyze packaging images to detect specific batch numbers, allergens, or ingredient changes in response to recalls
-- Academic research in food science, enabling researchers to collect and analyze large datasets of ingredient lists and nutritional profiles from diverse ice cream products for trend analysis
-- Visual merchandising audits for brand managers, who use extracted label data from in-store photos to verify correct product placement, branding, and compliance with promotional standards
-
-```
-import os
-import base64
-import requests
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# The path to the image file containing the ice cream product
-image_path = "data/gaia/2023/validation/b2c257e0-3ad7-4f05-b8e3-d9da973be36e.jpg"
-
-print("=== ICE CREAM PRODUCT ANALYSIS FROM IMAGE ===")
-print(f"Analyzing image: {image_path}")
-
-if not os.path.exists(image_path):
-    print(f"Error: Image file '{image_path}' does not exist.")
-else:
-    # Check file properties
-    file_size = os.path.getsize(image_path)
-    print(f"Image file size: {file_size} bytes")
-    
-    supported_formats = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp']
-    file_ext = os.path.splitext(image_path)[1].lower()
-    
-    if file_ext not in supported_formats:
-        print(f"Error: Unsupported image format '{file_ext}'. Supported formats: {', '.join(supported_formats)}")
-    else:
-        # Encode image to base64 format
-        img_type = "data:image/jpeg;base64," if file_ext in ['.jpg', '.jpeg'] else "data:image/png;base64,"
-        with open(image_path, "rb") as f:
-            img_base64 = base64.b64encode(f.read()).decode("utf-8")
-        
-        print(f"Image encoded successfully for GPT-4o analysis")
-        
-        # Create a specific prompt to extract ice cream product information
-        prompt = (
-            "Please analyze this ice cream product image carefully and extract all visible information including:\n\n"
-            "1. **Product Name**: The specific name/flavor of the ice cream\n"
-            "2. **Brand**: The manufacturer or brand name\n"
-            "3. **Nutrition Information**: Any visible nutrition facts, serving sizes, calorie counts\n"
-            "4. **Fat Content**: Specifically look for butterfat content, total fat, saturated fat percentages\n"
-            "5. **Ingredient List**: Any visible ingredients listed on the packaging\n"
-            "6. **Package Size**: Container size, weight, or volume information\n"
-            "7. **Other Details**: Any other product specifications, certifications, or nutritional claims\n\n"
-            "Please transcribe all text exactly as it appears on the packaging, paying special attention to:\n"
-            "- Nutrition labels and their specific values\n"
-            "- Any percentage values for fat content\n"
-            "- Serving size information\n"
-            "- Complete ingredient lists if visible\n\n"
-            "# Output Format\n"
-            "## Product Identification\n"
-            "[Product name, brand, and basic details]\n\n"
-            "## Nutrition Information\n"
-            "[All visible nutrition facts, serving sizes, fat content]\n\n"
-            "## Ingredients\n"
-            "[Complete ingredient list if visible]\n\n"
-            "## Additional Information\n"
-            "[Any other relevant product details, certifications, or specifications]"
-        )
-        
-        # Prepare API request payload
-        payload = {
-            "model": "gpt-4o-0806",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt,
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"{img_type}{img_base64}"
-                            }
-                        }
-                    ],
-                },
-            ],
-            "max_tokens": 8192,
-        }
-        
-        # Get API credentials from environment variables
-        api_key = os.getenv("OPENAI_API_KEY")
-        api_base = os.getenv("OPENAI_BASE_URL")
-        
-        if not api_key or not api_base:
-            print("Error: Missing OpenAI API credentials in environment variables")
-            print("Required: OPENAI_API_KEY and OPENAI_BASE_URL")
-        else:
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            
-            print("\nSending request to GPT-4o for ice cream product analysis...")
-            
-            # Send request to OpenAI API
-            response = requests.post(f"{api_base}/chat/completions", headers=headers, json=payload)
-            
-            if response.status_code != 200:
-                print(f"Error: API request failed with status {response.status_code}: {response.text}")
-            else:
-                result = response.json()
-                if "choices" not in result or len(result["choices"]) == 0:
-                    print(f"Error: Invalid API response: {result}")
-                else:
-                    # Extract and print the analysis result
-                    output = result["choices"][0]["message"]["content"]
-                    print("\n=== GPT-4O ANALYSIS RESULTS ===")
-                    print(output)
-                    
-                    # Save the analysis to workspace
-                    with open('workspace/ice_cream_product_analysis.txt', 'w', encoding='utf-8') as f:
-                        f.write("ICE CREAM PRODUCT ANALYSIS\n")
-                        f.write("=" * 50 + "\n\n")
-                        f.write(f"Image analyzed: {image_path}\n")
-                        f.write(f"File size: {file_size} bytes\n\n")
-                        f.write("EXTRACTED INFORMATION:\n")
-                        f.write("-" * 30 + "\n")
-                        f.write(output)
-                    
-                    print(f"\nAnalysis saved to: workspace/ice_cream_product_analysis.txt")
-                    
-                    # Also try OCR extraction for additional text details
-                    print("\n=== ATTEMPTING OCR EXTRACTION FOR ADDITIONAL TEXT DETAILS ===")
-                    try:
-                        from gradio_client import Client, handle_file
-                        
-                        # Initialize Hugging Face Tesseract-OCR client
-                        client = Client("kneelesh48/Tesseract-OCR")
-                        
-                        # Process the image and extract text using OCR
-                        ocr_result = client.predict(handle_file(image_path))
-                        
-                        if ocr_result and ocr_result.strip():
-                            print("OCR extracted text:")
-                            print("-" * 30)
-                            print(ocr_result.strip())
-                            
-                            # Save OCR results
-                            with open('workspace/ice_cream_ocr_text.txt', 'w', encoding='utf-8') as f:
-                                f.write("OCR EXTRACTED TEXT FROM ICE CREAM PRODUCT\n")
-                                f.write("=" * 50 + "\n\n")
-                                f.write(ocr_result.strip())
-                            
-                            print(f"\nOCR text saved to: workspace/ice_cream_ocr_text.txt")
-                        else:
-                            print("No additional text found via OCR.")
-                            
-                    except Exception as ocr_error:
-                        print(f"OCR extraction failed: {ocr_error}")
-                        print("Continuing with GPT-4o analysis only.")
-                    
-                    print("\n=== ANALYSIS COMPLETE ===")
-                    print("Ice cream product information has been extracted and saved to workspace files.")
-```
-
 ### Development Step 4: US Federal Minimum Butterfat Requirement for Ice Cream: 10% per 2020 Wikipedia Standards
 
 **Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
@@ -840,335 +667,177 @@ print(f"\n=== WIKIPEDIA SEARCH PHASE COMPLETE ===")
 print(f"Next: Direct analysis of main 'Ice cream' Wikipedia page for federal standards")
 ```
 
-### Development Step 3: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification (2020 Wikipedia Data)
+### Development Step 1: Ice Cream Product Image Analysis: Extract Brand, Name, Nutrition, Ingredients, Serving Size, Butterfat Content
 
-**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
+**Description**: Analyze the attached image file data/gaia/2023/validation/b2c257e0-3ad7-4f05-b8e3-d9da973be36e.jpg to identify and extract information about the ice cream product, including any visible nutrition labels, ingredient lists, or butterfat content specifications. Look for product name, brand, serving size, and any fat content information that might be displayed on the packaging.
 
 **Use Cases**:
-- Regulatory compliance verification for food manufacturers ensuring their ice cream products meet US federal butterfat standards before market release
-- Automated quality assurance checks in dairy production facilities to validate product labeling against legal ice cream definitions
-- Food import/export documentation review for customs brokers to confirm imported ice cream products comply with US classification requirements
-- Academic research on historical changes in food standards, using extracted butterfat regulations as part of a longitudinal analysis
-- Consumer advocacy investigations to identify and report brands mislabeling frozen desserts as ice cream without meeting federal butterfat minimums
-- Development of nutrition and ingredient databases for food delivery apps, ensuring accurate product categorization based on federal standards
-- Legal case preparation for attorneys representing clients in food labeling disputes, using extracted Wikipedia data as supporting evidence
-- Automated content curation for food bloggers or journalists reporting on industry trends and regulatory updates in the US ice cream market
+- Automated quality assurance for food manufacturers to verify that ice cream packaging displays accurate nutrition and ingredient information before products are shipped to retailers
+- Regulatory compliance checks for food safety inspectors who need to confirm that butterfat content and labeling meet legal standards by analyzing product images from factory floors
+- Retail inventory digitization for grocery chains, enabling staff to quickly extract and catalog detailed product specs (brand, flavor, nutrition) from shelf images for online store listings
+- Consumer health app integration, allowing users to scan ice cream packaging and receive instant, detailed breakdowns of nutrition facts and ingredients for dietary tracking
+- Competitive product benchmarking for market analysts comparing fat content, ingredients, and nutritional claims across multiple ice cream brands using shelf or marketing images
+- Automated product recall identification, where food safety teams analyze packaging images to detect specific batch numbers, allergens, or ingredient changes in response to recalls
+- Academic research in food science, enabling researchers to collect and analyze large datasets of ingredient lists and nutritional profiles from diverse ice cream products for trend analysis
+- Visual merchandising audits for brand managers, who use extracted label data from in-store photos to verify correct product placement, branding, and compliance with promotional standards
 
 ```
-import requests
-from bs4 import BeautifulSoup
 import os
-import json
-from datetime import datetime
-import re
+import base64
+import requests
+from dotenv import load_dotenv
 
-print("=== DIRECT ACCESS TO WIKIPEDIA ICE CREAM PAGE FOR BUTTERFAT STANDARDS ===")
-print("Objective: Find US federal minimum butterfat percentage for ice cream classification")
-print("Strategy: Direct Wikipedia page access using correct API endpoints\n")
+load_dotenv()
 
-# Ensure workspace directory exists
-workspace_dir = 'workspace'
-os.makedirs(workspace_dir, exist_ok=True)
+# The path to the image file containing the ice cream product
+image_path = "data/gaia/2023/validation/b2c257e0-3ad7-4f05-b8e3-d9da973be36e.jpg"
 
-# First, let's try the correct Wikipedia API endpoint to get the Ice cream page
-print("=== STEP 1: ACCESSING WIKIPEDIA ICE CREAM PAGE DIRECTLY ===")
+print("=== ICE CREAM PRODUCT ANALYSIS FROM IMAGE ===")
+print(f"Analyzing image: {image_path}")
 
-try:
-    # Use the correct Wikipedia API endpoint
-    api_url = 'https://en.wikipedia.org/w/api.php'
+if not os.path.exists(image_path):
+    print(f"Error: Image file '{image_path}' does not exist.")
+else:
+    # Check file properties
+    file_size = os.path.getsize(image_path)
+    print(f"Image file size: {file_size} bytes")
     
-    # Get the Ice cream page content
-    params = {
-        'action': 'query',
-        'format': 'json',
-        'titles': 'Ice cream',
-        'prop': 'extracts',
-        'exintro': False,  # Get full content
-        'explaintext': True,  # Get plain text
-        'exsectionformat': 'wiki'
-    }
+    supported_formats = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp']
+    file_ext = os.path.splitext(image_path)[1].lower()
     
-    print("Requesting Ice cream page from Wikipedia...")
-    response = requests.get(api_url, params=params, timeout=30)
-    response.raise_for_status()
-    
-    data = response.json()
-    print(f"API response received (Status: {response.status_code})")
-    
-    # Extract page content
-    if 'query' in data and 'pages' in data['query']:
-        pages = data['query']['pages']
-        
-        for page_id, page_info in pages.items():
-            if 'extract' in page_info:
-                page_title = page_info.get('title', 'Unknown')
-                full_text = page_info['extract']
-                
-                print(f"\nSuccessfully retrieved: '{page_title}'")
-                print(f"Content length: {len(full_text):,} characters")
-                
-                # Save the full Wikipedia content for reference
-                wiki_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_full_content.txt')
-                with open(wiki_content_file, 'w', encoding='utf-8') as f:
-                    f.write(f"WIKIPEDIA ICE CREAM PAGE CONTENT\n")
-                    f.write(f"Retrieved: {datetime.now().isoformat()}\n")
-                    f.write(f"Page: {page_title}\n")
-                    f.write(f"Content Length: {len(full_text):,} characters\n")
-                    f.write("=" * 80 + "\n\n")
-                    f.write(full_text)
-                
-                print(f"Full content saved to: {wiki_content_file}")
-                
-                # Now search for butterfat content information
-                print("\n=== STEP 2: ANALYZING CONTENT FOR BUTTERFAT STANDARDS ===")
-                
-                # Convert to lowercase for case-insensitive searching
-                text_lower = full_text.lower()
-                
-                # Look for butterfat-related content
-                if 'butterfat' in text_lower:
-                    print("*** BUTTERFAT CONTENT FOUND ***")
-                    
-                    # Split into sentences for detailed analysis
-                    sentences = full_text.split('.')
-                    
-                    butterfat_sentences = []
-                    federal_standard_sentences = []
-                    
-                    for sentence in sentences:
-                        sentence_clean = sentence.strip()
-                        sentence_lower = sentence_clean.lower()
-                        
-                        # Look for sentences containing butterfat
-                        if 'butterfat' in sentence_lower:
-                            butterfat_sentences.append(sentence_clean)
-                            
-                            # Check if it mentions federal standards, FDA, or regulations
-                            if any(keyword in sentence_lower for keyword in ['federal', 'fda', 'regulation', 'standard', 'minimum', 'require']):
-                                federal_standard_sentences.append(sentence_clean)
-                    
-                    print(f"\nSentences mentioning butterfat: {len(butterfat_sentences)}")
-                    print(f"Sentences about federal standards: {len(federal_standard_sentences)}")
-                    
-                    # Display butterfat sentences
-                    if butterfat_sentences:
-                        print("\n=== BUTTERFAT CONTENT ANALYSIS ===")
-                        
-                        for i, sentence in enumerate(butterfat_sentences, 1):
-                            print(f"\n{i}. {sentence}")
-                            
-                            # Extract percentage values from each sentence
-                            percentage_patterns = [
-                                r'(\d+(?:\.\d+)?)\s*(?:percent|%)',
-                                r'(\d+(?:\.\d+)?)\s*(?:per cent)',
-                                r'(\d+(?:\.\d+)?)\s*(?:pct)'
-                            ]
-                            
-                            found_percentages = []
-                            for pattern in percentage_patterns:
-                                matches = re.findall(pattern, sentence, re.IGNORECASE)
-                                found_percentages.extend(matches)
-                            
-                            if found_percentages:
-                                print(f"   Percentages found: {found_percentages}")
-                                
-                                # Check for context indicating minimum federal standard
-                                if any(keyword in sentence.lower() for keyword in ['minimum', 'federal', 'fda', 'standard', 'regulation', 'require']):
-                                    print(f"   *** POTENTIAL FEDERAL STANDARD: {found_percentages} ***")
-                    
-                    # Focus on federal standard sentences
-                    if federal_standard_sentences:
-                        print("\n=== FEDERAL STANDARD SENTENCES ===")
-                        
-                        federal_standards_found = []
-                        
-                        for i, sentence in enumerate(federal_standard_sentences, 1):
-                            print(f"\n{i}. {sentence}")
-                            
-                            # Extract percentages from federal standard sentences
-                            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-                            
-                            if percentages:
-                                print(f"   Federal standard percentages: {percentages}")
-                                
-                                federal_standards_found.append({
-                                    'sentence': sentence,
-                                    'percentages': percentages,
-                                    'context': 'federal_standard'
-                                })
-                        
-                        # Save federal standards analysis
-                        if federal_standards_found:
-                            standards_file = os.path.join(workspace_dir, 'federal_butterfat_standards.json')
-                            with open(standards_file, 'w') as f:
-                                json.dump({
-                                    'analysis_date': datetime.now().isoformat(),
-                                    'source': 'Wikipedia Ice cream page',
-                                    'objective': 'US federal minimum butterfat percentage for ice cream',
-                                    'federal_standards_found': len(federal_standards_found),
-                                    'standards_data': federal_standards_found,
-                                    'all_butterfat_sentences': butterfat_sentences
-                                }, f, indent=2)
-                            
-                            print(f"\nFederal standards analysis saved to: {standards_file}")
-                            
-                            # Extract the most likely federal minimum percentage
-                            print("\n=== FEDERAL MINIMUM BUTTERFAT PERCENTAGE EXTRACTION ===")
-                            
-                            all_federal_percentages = []
-                            for standard in federal_standards_found:
-                                all_federal_percentages.extend(standard['percentages'])
-                            
-                            if all_federal_percentages:
-                                # Convert to float and find common values
-                                percentage_values = []
-                                for pct in all_federal_percentages:
-                                    try:
-                                        percentage_values.append(float(pct))
-                                    except ValueError:
-                                        continue
-                                
-                                if percentage_values:
-                                    unique_percentages = list(set(percentage_values))
-                                    print(f"Unique federal percentages found: {unique_percentages}")
-                                    
-                                    # Look for the most commonly mentioned percentage
-                                    from collections import Counter
-                                    percentage_counts = Counter(percentage_values)
-                                    most_common = percentage_counts.most_common(1)
-                                    
-                                    if most_common:
-                                        federal_minimum = most_common[0][0]
-                                        frequency = most_common[0][1]
-                                        
-                                        print(f"\n*** FEDERAL MINIMUM BUTTERFAT PERCENTAGE: {federal_minimum}% ***")
-                                        print(f"Mentioned {frequency} time(s) in federal standard contexts")
-                                        
-                                        # Find the specific sentence with this percentage
-                                        for standard in federal_standards_found:
-                                            if str(federal_minimum) in standard['percentages'] or str(int(federal_minimum)) in standard['percentages']:
-                                                print(f"\nSource sentence: {standard['sentence']}")
-                                                break
-                                        
-                                        # Save the final result
-                                        result_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard.json')
-                                        with open(result_file, 'w') as f:
-                                            json.dump({
-                                                'analysis_date': datetime.now().isoformat(),
-                                                'source': 'Wikipedia Ice cream page (2020 information)',
-                                                'federal_minimum_butterfat_percentage': federal_minimum,
-                                                'percentage_unit': 'percent',
-                                                'context': 'US federal regulations for ice cream classification',
-                                                'frequency_mentioned': frequency,
-                                                'supporting_evidence': [s['sentence'] for s in federal_standards_found if str(federal_minimum) in s['percentages'] or str(int(federal_minimum)) in s['percentages']],
-                                                'all_federal_percentages_found': unique_percentages
-                                            }, f, indent=2)
-                                        
-                                        print(f"\nFinal result saved to: {result_file}")
-                                        
-                                        print(f"\n=== PLAN OBJECTIVE COMPLETED ===")
-                                        print(f"US Federal Minimum Butterfat Content for Ice Cream: {federal_minimum}%")
-                                        print(f"Source: Wikipedia (2020 information)")
-                                        print(f"Context: Federal regulations for legal ice cream classification")
-                
-                else:
-                    print("No butterfat content found in the Wikipedia Ice cream page.")
-                    print("Searching for alternative terms...")
-                    
-                    # Search for alternative terms
-                    alternative_terms = ['fat content', 'milk fat', 'dairy fat', 'cream content', 'fat percentage']
-                    
-                    for term in alternative_terms:
-                        if term in text_lower:
-                            print(f"Found alternative term: '{term}'")
-                            
-                            # Extract sentences with alternative terms
-                            sentences = full_text.split('.')
-                            relevant_sentences = []
-                            
-                            for sentence in sentences:
-                                if term in sentence.lower():
-                                    relevant_sentences.append(sentence.strip())
-                            
-                            if relevant_sentences:
-                                print(f"Sentences with '{term}': {len(relevant_sentences)}")
-                                for i, sentence in enumerate(relevant_sentences[:3], 1):  # Show first 3
-                                    print(f"  {i}. {sentence[:200]}{'...' if len(sentence) > 200 else ''}")
-            else:
-                print("No content extract available from the Wikipedia page.")
+    if file_ext not in supported_formats:
+        print(f"Error: Unsupported image format '{file_ext}'. Supported formats: {', '.join(supported_formats)}")
     else:
-        print("Error: Could not retrieve Wikipedia page data.")
-        print(f"API response structure: {list(data.keys()) if isinstance(data, dict) else 'Not a dictionary'}")
-
-except requests.exceptions.RequestException as e:
-    print(f"Error accessing Wikipedia API: {e}")
-    print("Will try alternative approach...")
-    
-    # Alternative approach: Direct HTML scraping
-    print("\n=== ALTERNATIVE APPROACH: DIRECT HTML SCRAPING ===")
-    
-    try:
-        # Direct access to Wikipedia Ice cream page
-        wiki_url = 'https://en.wikipedia.org/wiki/Ice_cream'
+        # Encode image to base64 format
+        img_type = "data:image/jpeg;base64," if file_ext in ['.jpg', '.jpeg'] else "data:image/png;base64,"
+        with open(image_path, "rb") as f:
+            img_base64 = base64.b64encode(f.read()).decode("utf-8")
         
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        print(f"Image encoded successfully for GPT-4o analysis")
+        
+        # Create a specific prompt to extract ice cream product information
+        prompt = (
+            "Please analyze this ice cream product image carefully and extract all visible information including:\n\n"
+            "1. **Product Name**: The specific name/flavor of the ice cream\n"
+            "2. **Brand**: The manufacturer or brand name\n"
+            "3. **Nutrition Information**: Any visible nutrition facts, serving sizes, calorie counts\n"
+            "4. **Fat Content**: Specifically look for butterfat content, total fat, saturated fat percentages\n"
+            "5. **Ingredient List**: Any visible ingredients listed on the packaging\n"
+            "6. **Package Size**: Container size, weight, or volume information\n"
+            "7. **Other Details**: Any other product specifications, certifications, or nutritional claims\n\n"
+            "Please transcribe all text exactly as it appears on the packaging, paying special attention to:\n"
+            "- Nutrition labels and their specific values\n"
+            "- Any percentage values for fat content\n"
+            "- Serving size information\n"
+            "- Complete ingredient lists if visible\n\n"
+            "# Output Format\n"
+            "## Product Identification\n"
+            "[Product name, brand, and basic details]\n\n"
+            "## Nutrition Information\n"
+            "[All visible nutrition facts, serving sizes, fat content]\n\n"
+            "## Ingredients\n"
+            "[Complete ingredient list if visible]\n\n"
+            "## Additional Information\n"
+            "[Any other relevant product details, certifications, or specifications]"
+        )
+        
+        # Prepare API request payload
+        payload = {
+            "model": "gpt-4o-0806",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"{img_type}{img_base64}"
+                            }
+                        }
+                    ],
+                },
+            ],
+            "max_tokens": 8192,
         }
         
-        print(f"Accessing Wikipedia Ice cream page directly: {wiki_url}")
-        response = requests.get(wiki_url, headers=headers, timeout=30)
-        response.raise_for_status()
+        # Get API credentials from environment variables
+        api_key = os.getenv("OPENAI_API_KEY")
+        api_base = os.getenv("OPENAI_BASE_URL")
         
-        print(f"Successfully accessed Wikipedia page (Status: {response.status_code})")
-        print(f"Content length: {len(response.content):,} bytes")
-        
-        # Parse HTML content
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Extract text content
-        page_text = soup.get_text()
-        
-        print(f"Extracted text length: {len(page_text):,} characters")
-        
-        # Search for butterfat content
-        if 'butterfat' in page_text.lower():
-            print("\n*** BUTTERFAT CONTENT FOUND VIA HTML SCRAPING ***")
-            
-            # Split into paragraphs for analysis
-            paragraphs = page_text.split('\n')
-            
-            butterfat_paragraphs = []
-            for paragraph in paragraphs:
-                if 'butterfat' in paragraph.lower() and len(paragraph.strip()) > 20:
-                    butterfat_paragraphs.append(paragraph.strip())
-            
-            print(f"Paragraphs mentioning butterfat: {len(butterfat_paragraphs)}")
-            
-            for i, paragraph in enumerate(butterfat_paragraphs, 1):
-                print(f"\n{i}. {paragraph[:300]}{'...' if len(paragraph) > 300 else ''}")
-                
-                # Look for percentages
-                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', paragraph, re.IGNORECASE)
-                if percentages:
-                    print(f"   Percentages: {percentages}")
-                    
-                    # Check for federal context
-                    if any(keyword in paragraph.lower() for keyword in ['federal', 'fda', 'regulation', 'standard', 'minimum']):
-                        print(f"   *** POTENTIAL FEDERAL STANDARD: {percentages} ***")
-        
+        if not api_key or not api_base:
+            print("Error: Missing OpenAI API credentials in environment variables")
+            print("Required: OPENAI_API_KEY and OPENAI_BASE_URL")
         else:
-            print("No butterfat content found via HTML scraping either.")
-            print("The Wikipedia page may not contain the specific federal butterfat standards.")
-    
-    except Exception as scraping_error:
-        print(f"HTML scraping also failed: {scraping_error}")
-
-except Exception as e:
-    print(f"Unexpected error during Wikipedia analysis: {e}")
-    import traceback
-    traceback.print_exc()
-
-print("\n=== WIKIPEDIA ANALYSIS COMPLETE ===")
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+            
+            print("\nSending request to GPT-4o for ice cream product analysis...")
+            
+            # Send request to OpenAI API
+            response = requests.post(f"{api_base}/chat/completions", headers=headers, json=payload)
+            
+            if response.status_code != 200:
+                print(f"Error: API request failed with status {response.status_code}: {response.text}")
+            else:
+                result = response.json()
+                if "choices" not in result or len(result["choices"]) == 0:
+                    print(f"Error: Invalid API response: {result}")
+                else:
+                    # Extract and print the analysis result
+                    output = result["choices"][0]["message"]["content"]
+                    print("\n=== GPT-4O ANALYSIS RESULTS ===")
+                    print(output)
+                    
+                    # Save the analysis to workspace
+                    with open('workspace/ice_cream_product_analysis.txt', 'w', encoding='utf-8') as f:
+                        f.write("ICE CREAM PRODUCT ANALYSIS\n")
+                        f.write("=" * 50 + "\n\n")
+                        f.write(f"Image analyzed: {image_path}\n")
+                        f.write(f"File size: {file_size} bytes\n\n")
+                        f.write("EXTRACTED INFORMATION:\n")
+                        f.write("-" * 30 + "\n")
+                        f.write(output)
+                    
+                    print(f"\nAnalysis saved to: workspace/ice_cream_product_analysis.txt")
+                    
+                    # Also try OCR extraction for additional text details
+                    print("\n=== ATTEMPTING OCR EXTRACTION FOR ADDITIONAL TEXT DETAILS ===")
+                    try:
+                        from gradio_client import Client, handle_file
+                        
+                        # Initialize Hugging Face Tesseract-OCR client
+                        client = Client("kneelesh48/Tesseract-OCR")
+                        
+                        # Process the image and extract text using OCR
+                        ocr_result = client.predict(handle_file(image_path))
+                        
+                        if ocr_result and ocr_result.strip():
+                            print("OCR extracted text:")
+                            print("-" * 30)
+                            print(ocr_result.strip())
+                            
+                            # Save OCR results
+                            with open('workspace/ice_cream_ocr_text.txt', 'w', encoding='utf-8') as f:
+                                f.write("OCR EXTRACTED TEXT FROM ICE CREAM PRODUCT\n")
+                                f.write("=" * 50 + "\n\n")
+                                f.write(ocr_result.strip())
+                            
+                            print(f"\nOCR text saved to: workspace/ice_cream_ocr_text.txt")
+                        else:
+                            print("No additional text found via OCR.")
+                            
+                    except Exception as ocr_error:
+                        print(f"OCR extraction failed: {ocr_error}")
+                        print("Continuing with GPT-4o analysis only.")
+                    
+                    print("\n=== ANALYSIS COMPLETE ===")
+                    print("Ice cream product information has been extracted and saved to workspace files.")
 ```
 
 ### Development Step 5: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification According to 2020 Wikipedia Standards
@@ -1426,4 +1095,4 @@ print(f"\n=== CORRECTED ANALYSIS COMPLETE ===")
 ```
 
 ## Created Time
-2025-08-11 07:06:06
+2025-08-13 23:33:05

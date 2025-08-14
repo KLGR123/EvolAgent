@@ -1,10 +1,10 @@
 # Developer Plan 01
 
 ## Plan
-Search ScienceDirect to identify and extract data about Reference Works publications in Life Science domains and Health Sciences as of 2022. Focus on finding comprehensive publication counts or statistics that show the number of Reference Works across different Life Science subject areas and Health Sciences. Look for official ScienceDirect statistics, subject classification data, or publication databases that provide detailed breakdowns by domain type and publication year.
+Search ScienceDirect for comprehensive data on Reference Works publications across Life Science domains and Health Sciences as of 2022. Focus on identifying the complete list of Life Science domains (such as Biochemistry, Biology, Ecology, Genetics, etc.) and Health Sciences categories available on ScienceDirect. Extract the number of Reference Works publications for each domain and compile this data for statistical analysis of sample standard deviations.
 
 ## Description
-This is the optimal starting approach because: (1) We need to establish baseline data about Reference Works publications on ScienceDirect for both Life Science domains and Health Sciences in 2022, (2) No previous research has been conducted, (3) Expected outcome is to locate ScienceDirect's publication statistics or subject classification data showing Reference Works counts by domain, (4) This provides the foundation for calculating sample standard deviations and determining the difference between Life Science domains and Health Sciences as requested in the TASK
+This is the optimal starting approach because: (1) We need to establish what constitutes 'Life Science domains' versus 'Health Sciences' on ScienceDirect and gather the reference works count data for 2022, (2) No previous research has been conducted yet, (3) Expected outcome is to identify all relevant subject domains and their respective Reference Works publication counts, (4) This provides the foundation for calculating sample standard deviations and determining the difference to 3 decimal places as requested in the TASK
 
 ## Episodic Examples
 ### Development Step 2: Total Peer-Reviewed Research Articles Published by Nature Journal in 2020
@@ -259,6 +259,235 @@ else:
 
 print("\n=== DEBUG AND ANALYSIS PHASE COMPLETE ===")
 print("\nFiles in workspace:")
+for file in os.listdir(workspace_dir):
+    file_path = os.path.join(workspace_dir, file)
+    file_size = os.path.getsize(file_path)
+    print(f"  - {file} ({file_size:,} bytes)")
+```
+
+### Development Step 5: Total Peer-Reviewed Research Articles Published by Nature Journal in 2020
+
+**Description**: Research and determine the total number of research articles (excluding book reviews, columns, editorials, and other non-research content) published by Nature journal in 2020. Focus on identifying peer-reviewed research articles that would typically involve statistical analysis and hypothesis testing.
+
+**Use Cases**:
+- University research office benchmarking annual publication output by counting peer-reviewed Nature research articles from 2020 to assess departmental performance
+- Pharmaceutical R&D intelligence team extracting the total number of Nature 2020 immunology papers to prioritize drug discovery projects
+- Funding agency audit unit verifying grantees met their 2020 deliverable of publishing in Nature by tallying approved research articles
+- Biotech market analysis group monitoring Nature’s 2020 research volume in genomics to inform competitive positioning and investor pitches
+- Academic library automation workflow updating catalog records by identifying and importing all 2020 Nature journal research publications
+- Science newsroom editorial planning compiling “Top Breakthroughs of 2020” from Nature by filtering and ranking the year’s key research papers
+- Intellectual property analysts mapping novel technologies by surveying all 2020 Nature research articles for patent landscaping
+- Environmental NGO policy team quantifying 2020 Nature biodiversity studies to support evidence-based conservation advocacy
+
+```
+import os
+import json
+
+print("=== ACCESSING NATURE 2020 SEARCH RESULTS WITH SIMPLE LOOP APPROACH ===\n")
+
+# Find workspace directory
+workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
+if workspace_dirs:
+    workspace_dir = workspace_dirs[0]
+    print(f"Using workspace directory: {workspace_dir}")
+else:
+    print("No workspace directory found.")
+    exit()
+
+# Find search results file
+search_files = [f for f in os.listdir(workspace_dir) if 'search_results' in f and f.endswith('.json')]
+if not search_files:
+    print("No search results file found.")
+    exit()
+
+search_file_path = os.path.join(workspace_dir, search_files[0])
+print(f"Loading: {search_files[0]}")
+print(f"File size: {os.path.getsize(search_file_path):,} bytes\n")
+
+# Load the JSON data
+with open(search_file_path, 'r') as f:
+    search_data = json.load(f)
+
+print(f"Loaded {len(search_data)} search queries\n")
+
+# Extract all results using simple loops (no generator expressions)
+all_results = []
+
+for query_data in search_data:
+    query_text = query_data.get('query', 'Unknown query')
+    results = query_data.get('results', [])
+    
+    print(f"Processing: {query_text}")
+    print(f"Results: {len(results)}")
+    
+    for result in results:
+        if isinstance(result, dict):
+            # Add query context to result
+            result['source_query'] = query_text
+            all_results.append(result)
+
+print(f"\nTotal results collected: {len(all_results)}")
+
+# Analyze results using simple loops to avoid variable scoping issues
+print("\n=== ANALYZING FOR NATURE 2020 RELEVANCE ===\n")
+
+relevant_results = []
+
+for result in all_results:
+    # Extract fields safely
+    title = result.get('title', '')
+    url = result.get('link', '')
+    snippet = result.get('snippet', '')
+    source_query = result.get('source_query', 'Unknown')
+    
+    # Convert to lowercase for checking
+    title_low = title.lower()
+    url_low = url.lower()
+    snippet_low = snippet.lower()
+    
+    # Check individual criteria
+    has_nature = False
+    if 'nature' in title_low or 'nature' in snippet_low:
+        has_nature = True
+    
+    has_2020 = False
+    if '2020' in title_low or '2020' in snippet_low or '2020' in url_low:
+        has_2020 = True
+    
+    is_nature_site = False
+    if 'nature.com' in url_low:
+        is_nature_site = True
+    
+    has_publication_terms = False
+    pub_terms = ['publication', 'article', 'research', 'annual', 'report', 'statistics', 'editorial', 'published']
+    for term in pub_terms:
+        if term in title_low or term in snippet_low:
+            has_publication_terms = True
+            break
+    
+    has_count_terms = False
+    count_terms = ['count', 'number', 'total', 'volume', 'issue', 'published']
+    for term in count_terms:
+        if term in title_low or term in snippet_low:
+            has_count_terms = True
+            break
+    
+    # Calculate relevance score
+    score = 0
+    if has_nature:
+        score += 2
+    if has_2020:
+        score += 2
+    if is_nature_site:
+        score += 3
+    if has_publication_terms:
+        score += 1
+    if has_count_terms:
+        score += 1
+    
+    # Only include results with minimum relevance
+    if score >= 3:
+        relevant_results.append({
+            'title': title,
+            'url': url,
+            'snippet': snippet,
+            'source_query': source_query,
+            'relevance_score': score,
+            'has_nature': has_nature,
+            'has_2020': has_2020,
+            'is_nature_site': is_nature_site,
+            'has_publication_terms': has_publication_terms,
+            'has_count_terms': has_count_terms
+        })
+
+# Sort by relevance score
+relevant_results.sort(key=lambda x: x['relevance_score'], reverse=True)
+
+print(f"Found {len(relevant_results)} relevant results for Nature 2020 research articles:\n")
+
+# Display top results
+for i in range(min(8, len(relevant_results))):
+    result = relevant_results[i]
+    print(f"{i+1}. {result['title']}")
+    print(f"   URL: {result['url']}")
+    print(f"   Relevance Score: {result['relevance_score']}")
+    print(f"   Source Query: {result['source_query']}")
+    
+    # Show which criteria matched
+    criteria_matched = []
+    if result['has_nature']:
+        criteria_matched.append('Nature mention')
+    if result['has_2020']:
+        criteria_matched.append('2020 data')
+    if result['is_nature_site']:
+        criteria_matched.append('Nature.com site')
+    if result['has_publication_terms']:
+        criteria_matched.append('Publication terms')
+    if result['has_count_terms']:
+        criteria_matched.append('Count terms')
+    
+    print(f"   Criteria matched: {', '.join(criteria_matched)}")
+    print(f"   Snippet: {result['snippet'][:120]}...\n")
+
+# Save analysis results
+analysis_output = {
+    'search_summary': {
+        'total_queries_processed': len(search_data),
+        'total_results_analyzed': len(all_results),
+        'relevant_results_found': len(relevant_results)
+    },
+    'top_relevant_sources': relevant_results[:10],
+    'analysis_method': 'Simple loop approach to avoid variable scoping issues',
+    'relevance_criteria': {
+        'minimum_score': 3,
+        'scoring': {
+            'nature_mention': 2,
+            '2020_reference': 2,
+            'nature_official_site': 3,
+            'publication_terms': 1,
+            'count_terms': 1
+        }
+    }
+}
+
+output_file = os.path.join(workspace_dir, 'nature_2020_analysis_final.json')
+with open(output_file, 'w') as f:
+    json.dump(analysis_output, f, indent=2)
+
+print(f"=== ANALYSIS COMPLETE ===\n")
+print(f"Analysis saved to: {os.path.basename(output_file)}")
+print(f"Total search queries: {len(search_data)}")
+print(f"Total search results: {len(all_results)}")
+print(f"Relevant results: {len(relevant_results)}")
+
+if relevant_results:
+    print(f"\n=== TOP SOURCES TO ACCESS FOR NATURE 2020 RESEARCH ARTICLE COUNT ===\n")
+    
+    # Identify the most promising sources
+    top_3 = relevant_results[:3]
+    
+    for i, source in enumerate(top_3, 1):
+        print(f"{i}. {source['title']} (Score: {source['relevance_score']})")
+        print(f"   URL: {source['url']}")
+        
+        # Highlight high-priority sources
+        if source['is_nature_site'] and source['relevance_score'] >= 6:
+            print(f"   *** HIGH PRIORITY: Official Nature.com source with high relevance ***")
+        elif source['is_nature_site']:
+            print(f"   ** PRIORITY: Official Nature.com source **")
+        print()
+    
+    print("Next step: Access these top sources to extract the specific count")
+    print("of research articles published by Nature journal in 2020.")
+    print("Focus on peer-reviewed research articles, excluding editorials,")
+    print("book reviews, correspondence, and other non-research content.")
+else:
+    print("\nNo relevant sources found. Consider alternative approaches:")
+    print("1. Direct search of Nature.com archive pages")
+    print("2. Academic database queries (Web of Science, Scopus)")
+    print("3. Nature's official annual reports or editorial summaries")
+
+print(f"\nWorkspace files:")
 for file in os.listdir(workspace_dir):
     file_path = os.path.join(workspace_dir, file)
     file_size = os.path.getsize(file_path)
@@ -867,555 +1096,5 @@ for file in os.listdir(workspace_dir):
         print(f"  - {file} ({file_size:,} bytes)")
 ```
 
-### Development Step 5: Total Peer-Reviewed Research Articles Published by Nature Journal in 2020
-
-**Description**: Research and determine the total number of research articles (excluding book reviews, columns, editorials, and other non-research content) published by Nature journal in 2020. Focus on identifying peer-reviewed research articles that would typically involve statistical analysis and hypothesis testing.
-
-**Use Cases**:
-- University research office benchmarking annual publication output by counting peer-reviewed Nature research articles from 2020 to assess departmental performance
-- Pharmaceutical R&D intelligence team extracting the total number of Nature 2020 immunology papers to prioritize drug discovery projects
-- Funding agency audit unit verifying grantees met their 2020 deliverable of publishing in Nature by tallying approved research articles
-- Biotech market analysis group monitoring Nature’s 2020 research volume in genomics to inform competitive positioning and investor pitches
-- Academic library automation workflow updating catalog records by identifying and importing all 2020 Nature journal research publications
-- Science newsroom editorial planning compiling “Top Breakthroughs of 2020” from Nature by filtering and ranking the year’s key research papers
-- Intellectual property analysts mapping novel technologies by surveying all 2020 Nature research articles for patent landscaping
-- Environmental NGO policy team quantifying 2020 Nature biodiversity studies to support evidence-based conservation advocacy
-
-```
-import os
-import json
-
-print("=== ACCESSING NATURE 2020 SEARCH RESULTS WITH SIMPLE LOOP APPROACH ===\n")
-
-# Find workspace directory
-workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
-if workspace_dirs:
-    workspace_dir = workspace_dirs[0]
-    print(f"Using workspace directory: {workspace_dir}")
-else:
-    print("No workspace directory found.")
-    exit()
-
-# Find search results file
-search_files = [f for f in os.listdir(workspace_dir) if 'search_results' in f and f.endswith('.json')]
-if not search_files:
-    print("No search results file found.")
-    exit()
-
-search_file_path = os.path.join(workspace_dir, search_files[0])
-print(f"Loading: {search_files[0]}")
-print(f"File size: {os.path.getsize(search_file_path):,} bytes\n")
-
-# Load the JSON data
-with open(search_file_path, 'r') as f:
-    search_data = json.load(f)
-
-print(f"Loaded {len(search_data)} search queries\n")
-
-# Extract all results using simple loops (no generator expressions)
-all_results = []
-
-for query_data in search_data:
-    query_text = query_data.get('query', 'Unknown query')
-    results = query_data.get('results', [])
-    
-    print(f"Processing: {query_text}")
-    print(f"Results: {len(results)}")
-    
-    for result in results:
-        if isinstance(result, dict):
-            # Add query context to result
-            result['source_query'] = query_text
-            all_results.append(result)
-
-print(f"\nTotal results collected: {len(all_results)}")
-
-# Analyze results using simple loops to avoid variable scoping issues
-print("\n=== ANALYZING FOR NATURE 2020 RELEVANCE ===\n")
-
-relevant_results = []
-
-for result in all_results:
-    # Extract fields safely
-    title = result.get('title', '')
-    url = result.get('link', '')
-    snippet = result.get('snippet', '')
-    source_query = result.get('source_query', 'Unknown')
-    
-    # Convert to lowercase for checking
-    title_low = title.lower()
-    url_low = url.lower()
-    snippet_low = snippet.lower()
-    
-    # Check individual criteria
-    has_nature = False
-    if 'nature' in title_low or 'nature' in snippet_low:
-        has_nature = True
-    
-    has_2020 = False
-    if '2020' in title_low or '2020' in snippet_low or '2020' in url_low:
-        has_2020 = True
-    
-    is_nature_site = False
-    if 'nature.com' in url_low:
-        is_nature_site = True
-    
-    has_publication_terms = False
-    pub_terms = ['publication', 'article', 'research', 'annual', 'report', 'statistics', 'editorial', 'published']
-    for term in pub_terms:
-        if term in title_low or term in snippet_low:
-            has_publication_terms = True
-            break
-    
-    has_count_terms = False
-    count_terms = ['count', 'number', 'total', 'volume', 'issue', 'published']
-    for term in count_terms:
-        if term in title_low or term in snippet_low:
-            has_count_terms = True
-            break
-    
-    # Calculate relevance score
-    score = 0
-    if has_nature:
-        score += 2
-    if has_2020:
-        score += 2
-    if is_nature_site:
-        score += 3
-    if has_publication_terms:
-        score += 1
-    if has_count_terms:
-        score += 1
-    
-    # Only include results with minimum relevance
-    if score >= 3:
-        relevant_results.append({
-            'title': title,
-            'url': url,
-            'snippet': snippet,
-            'source_query': source_query,
-            'relevance_score': score,
-            'has_nature': has_nature,
-            'has_2020': has_2020,
-            'is_nature_site': is_nature_site,
-            'has_publication_terms': has_publication_terms,
-            'has_count_terms': has_count_terms
-        })
-
-# Sort by relevance score
-relevant_results.sort(key=lambda x: x['relevance_score'], reverse=True)
-
-print(f"Found {len(relevant_results)} relevant results for Nature 2020 research articles:\n")
-
-# Display top results
-for i in range(min(8, len(relevant_results))):
-    result = relevant_results[i]
-    print(f"{i+1}. {result['title']}")
-    print(f"   URL: {result['url']}")
-    print(f"   Relevance Score: {result['relevance_score']}")
-    print(f"   Source Query: {result['source_query']}")
-    
-    # Show which criteria matched
-    criteria_matched = []
-    if result['has_nature']:
-        criteria_matched.append('Nature mention')
-    if result['has_2020']:
-        criteria_matched.append('2020 data')
-    if result['is_nature_site']:
-        criteria_matched.append('Nature.com site')
-    if result['has_publication_terms']:
-        criteria_matched.append('Publication terms')
-    if result['has_count_terms']:
-        criteria_matched.append('Count terms')
-    
-    print(f"   Criteria matched: {', '.join(criteria_matched)}")
-    print(f"   Snippet: {result['snippet'][:120]}...\n")
-
-# Save analysis results
-analysis_output = {
-    'search_summary': {
-        'total_queries_processed': len(search_data),
-        'total_results_analyzed': len(all_results),
-        'relevant_results_found': len(relevant_results)
-    },
-    'top_relevant_sources': relevant_results[:10],
-    'analysis_method': 'Simple loop approach to avoid variable scoping issues',
-    'relevance_criteria': {
-        'minimum_score': 3,
-        'scoring': {
-            'nature_mention': 2,
-            '2020_reference': 2,
-            'nature_official_site': 3,
-            'publication_terms': 1,
-            'count_terms': 1
-        }
-    }
-}
-
-output_file = os.path.join(workspace_dir, 'nature_2020_analysis_final.json')
-with open(output_file, 'w') as f:
-    json.dump(analysis_output, f, indent=2)
-
-print(f"=== ANALYSIS COMPLETE ===\n")
-print(f"Analysis saved to: {os.path.basename(output_file)}")
-print(f"Total search queries: {len(search_data)}")
-print(f"Total search results: {len(all_results)}")
-print(f"Relevant results: {len(relevant_results)}")
-
-if relevant_results:
-    print(f"\n=== TOP SOURCES TO ACCESS FOR NATURE 2020 RESEARCH ARTICLE COUNT ===\n")
-    
-    # Identify the most promising sources
-    top_3 = relevant_results[:3]
-    
-    for i, source in enumerate(top_3, 1):
-        print(f"{i}. {source['title']} (Score: {source['relevance_score']})")
-        print(f"   URL: {source['url']}")
-        
-        # Highlight high-priority sources
-        if source['is_nature_site'] and source['relevance_score'] >= 6:
-            print(f"   *** HIGH PRIORITY: Official Nature.com source with high relevance ***")
-        elif source['is_nature_site']:
-            print(f"   ** PRIORITY: Official Nature.com source **")
-        print()
-    
-    print("Next step: Access these top sources to extract the specific count")
-    print("of research articles published by Nature journal in 2020.")
-    print("Focus on peer-reviewed research articles, excluding editorials,")
-    print("book reviews, correspondence, and other non-research content.")
-else:
-    print("\nNo relevant sources found. Consider alternative approaches:")
-    print("1. Direct search of Nature.com archive pages")
-    print("2. Academic database queries (Web of Science, Scopus)")
-    print("3. Nature's official annual reports or editorial summaries")
-
-print(f"\nWorkspace files:")
-for file in os.listdir(workspace_dir):
-    file_path = os.path.join(workspace_dir, file)
-    file_size = os.path.getsize(file_path)
-    print(f"  - {file} ({file_size:,} bytes)")
-```
-
-### Development Step 11: Number of Peer-Reviewed Research Articles Published by Nature Journal in 2020
-
-**Description**: Research and determine the total number of research articles (excluding book reviews, columns, editorials, and other non-research content) published by Nature journal in 2020. Focus on identifying peer-reviewed research articles that would typically involve statistical analysis and hypothesis testing.
-
-**Use Cases**:
-- University library subscription verification: automating DOI count checks on downloaded Nature 2020 archive files to confirm that all issues and research articles are present in the institutional collection
-- Patent office prior-art review automation: scanning Nature’s entire 2020 text archives for DOI extraction and article counts to support patent examiners in assessing relevant scientific literature
-- Pharmaceutical clinical trial intelligence: monthly parsing of Nature 2020 archives to identify and tally newly published clinical research articles for updating internal R&D databases
-- Science funding impact assessment: extracting per-issue research article counts from Nature’s 2020 volumes to measure publication outputs tied to specific grant programs and inform policy evaluations
-- Academic publisher quality assurance: validating volume/issue structure, pagination, and DOI presence in Nature 2020 text dumps before final online release to ensure consistency and completeness
-- Bibliometric service data pipeline: ingesting raw Nature archive files, parsing article listings and DOIs, and populating a bibliometric database used for institutional rankings and citation analysis
-- Data journalism on publication trends: programmatically analyzing Nature’s 2020 archive text for research article patterns, topic distributions, and monthly publication volumes to support investigative reporting
-- Research discovery platform integration: automated parsing of Nature 2020 archive text files to extract structured metadata (DOI, title, volume, issue) and feed into an academic search index for enhanced discoverability
-
-```
-import os
-import json
-import re
-
-print("=== DETAILED ANALYSIS OF DOWNLOADED NATURE JOURNAL 2020 ARCHIVE CONTENT ===\n")
-
-# Find workspace directory
-workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
-if workspace_dirs:
-    workspace_dir = workspace_dirs[0]
-    print(f"Using workspace directory: {workspace_dir}")
-else:
-    print("No workspace directory found.")
-    exit()
-
-# First, let's inspect what Nature journal archive files we have
-print(f"\nFiles in workspace:")
-archive_files = []
-for file in os.listdir(workspace_dir):
-    file_path = os.path.join(workspace_dir, file)
-    file_size = os.path.getsize(file_path)
-    print(f"  - {file} ({file_size:,} bytes)")
-    if 'nature_journal_archive' in file and file.endswith('.txt'):
-        archive_files.append(file)
-
-print(f"\nFound {len(archive_files)} Nature journal archive files to analyze:")
-for file in archive_files:
-    print(f"  - {file}")
-
-# Analyze each Nature journal archive file in detail
-print("\n=== DETAILED CONTENT ANALYSIS OF NATURE JOURNAL ARCHIVE FILES ===\n")
-
-analysis_results = []
-
-for i, filename in enumerate(archive_files, 1):
-    filepath = os.path.join(workspace_dir, filename)
-    print(f"Analyzing {i}. {filename}")
-    
-    with open(filepath, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    print(f"Content length: {len(content):,} characters")
-    
-    # Extract header information
-    lines = content.split('\n')
-    header_info = {}
-    for line in lines[:10]:
-        if line.startswith('Source:'):
-            header_info['source'] = line.replace('Source:', '').strip()
-        elif line.startswith('URL:'):
-            header_info['url'] = line.replace('URL:', '').strip()
-    
-    print(f"Source: {header_info.get('source', 'Unknown')}")
-    print(f"URL: {header_info.get('url', 'Unknown')}")
-    
-    # Show more content to understand the structure
-    print(f"\n--- Content Structure Analysis ---")
-    
-    # Look for the actual content after the header
-    content_start_marker = "=" * 50
-    if content_start_marker in content:
-        main_content = content[content.find(content_start_marker) + len(content_start_marker):]
-    else:
-        main_content = content[500:]  # Skip header info
-    
-    print(f"Main content length: {len(main_content):,} characters")
-    print(f"First 800 characters of main content:")
-    print(f"{main_content[:800]}...")
-    
-    # Convert to lowercase for analysis
-    content_lower = main_content.lower()
-    
-    # Look for article listing patterns
-    print(f"\n--- Searching for Article Listings and Counts ---")
-    
-    # Patterns that might indicate article counts or listings
-    article_listing_patterns = [
-        r'article\s+\d+',
-        r'\d+\s+articles?',
-        r'research\s+article',
-        r'volume\s+\d+',
-        r'issue\s+\d+',
-        r'doi:',
-        r'nature\s+\d+',
-        r'published\s+\d+',
-        r'january\s+2020',
-        r'december\s+2020'
-    ]
-    
-    found_patterns = {}
-    for pattern in article_listing_patterns:
-        matches = re.findall(pattern, content_lower)
-        if matches:
-            found_patterns[pattern] = len(matches)
-    
-    print(f"Article-related patterns found:")
-    for pattern, count in found_patterns.items():
-        print(f"  {pattern}: {count} occurrences")
-    
-    # Look for DOI patterns (each research article should have a DOI)
-    doi_patterns = [
-        r'doi:\s*10\.1038/s41586-\d+-\d+-\d+',
-        r'10\.1038/s41586-\d+-\d+-\d+',
-        r'doi:10\.1038',
-        r'10\.1038/nature\d+'
-    ]
-    
-    total_dois = 0
-    doi_matches = {}
-    for pattern in doi_patterns:
-        matches = re.findall(pattern, content_lower)
-        if matches:
-            doi_matches[pattern] = matches
-            total_dois += len(matches)
-    
-    print(f"\nDOI patterns found (indicates research articles):")
-    print(f"Total DOIs found: {total_dois}")
-    for pattern, matches in doi_matches.items():
-        print(f"  {pattern}: {len(matches)} matches")
-        if len(matches) <= 5:  # Show first few matches
-            for match in matches[:3]:
-                print(f"    - {match}")
-    
-    # Look for volume and issue structure
-    print(f"\n--- Volume and Issue Analysis ---")
-    
-    # Extract volume numbers
-    volume_matches = re.findall(r'volume\s+(\d+)', content_lower)
-    issue_matches = re.findall(r'issue\s+(\d+)', content_lower)
-    
-    unique_volumes = list(set(volume_matches))
-    unique_issues = list(set(issue_matches))
-    
-    print(f"Volumes found: {unique_volumes}")
-    print(f"Issues found: {unique_issues[:10]}{'...' if len(unique_issues) > 10 else ''}")
-    
-    # Look for article titles or research article indicators
-    research_article_indicators = [
-        'research article',
-        'article',
-        'letter',
-        'brief communication',
-        'analysis',
-        'perspective'
-    ]
-    
-    content_type_counts = {}
-    for indicator in research_article_indicators:
-        count = content_lower.count(indicator)
-        if count > 0:
-            content_type_counts[indicator] = count
-    
-    print(f"\nContent type indicators:")
-    for content_type, count in content_type_counts.items():
-        print(f"  {content_type}: {count} occurrences")
-    
-    # Look for pagination or "load more" indicators
-    pagination_patterns = [
-        r'page\s+(\d+)',
-        r'showing\s+(\d+)',
-        r'load\s+more',
-        r'next\s+(\d+)',
-        r'of\s+(\d+)\s+results',
-        r'(\d+)\s+results'
-    ]
-    
-    pagination_info = {}
-    for pattern in pagination_patterns:
-        matches = re.findall(pattern, content_lower)
-        if matches:
-            pagination_info[pattern] = matches
-    
-    print(f"\nPagination information:")
-    for pattern, matches in pagination_info.items():
-        print(f"  {pattern}: {matches[:5]}")
-    
-    # Save detailed analysis for this file
-    file_analysis = {
-        'filename': filename,
-        'source': header_info.get('source', 'Unknown'),
-        'url': header_info.get('url', 'Unknown'),
-        'content_length': len(content),
-        'main_content_length': len(main_content),
-        'article_patterns': found_patterns,
-        'doi_count': total_dois,
-        'doi_details': doi_matches,
-        'volumes_found': unique_volumes,
-        'issues_found': unique_issues,
-        'content_type_counts': content_type_counts,
-        'pagination_info': pagination_info
-    }
-    
-    analysis_results.append(file_analysis)
-    print("=" * 80)
-
-# Comprehensive analysis across all files
-print(f"\n=== COMPREHENSIVE ANALYSIS ACROSS ALL NATURE JOURNAL ARCHIVES ===\n")
-
-total_dois_all_files = sum(result['doi_count'] for result in analysis_results)
-all_volumes = []
-all_content_types = {}
-
-for result in analysis_results:
-    all_volumes.extend(result['volumes_found'])
-    for content_type, count in result['content_type_counts'].items():
-        all_content_types[content_type] = all_content_types.get(content_type, 0) + count
-
-unique_volumes_all = sorted(set(int(v) for v in all_volumes if v.isdigit()))
-
-print(f"Files analyzed: {len(analysis_results)}")
-print(f"Total DOIs found across all files: {total_dois_all_files}")
-print(f"All Nature volumes found: {unique_volumes_all}")
-print(f"Content type totals across all files:")
-for content_type, total_count in sorted(all_content_types.items(), key=lambda x: x[1], reverse=True):
-    print(f"  {content_type}: {total_count} total occurrences")
-
-# Estimate research article count based on analysis
-print(f"\n=== ESTIMATING NATURE JOURNAL 2020 RESEARCH ARTICLE COUNT ===\n")
-
-# Method 1: DOI count (most reliable for research articles)
-if total_dois_all_files > 0:
-    print(f"Method 1 - DOI Count: {total_dois_all_files} research articles")
-    print(f"  (Each research article should have a unique DOI)")
-else:
-    print(f"Method 1 - DOI Count: No DOIs extracted from content")
-
-# Method 2: Research article mentions
-research_article_mentions = all_content_types.get('research article', 0)
-if research_article_mentions > 0:
-    print(f"Method 2 - Research Article Mentions: ~{research_article_mentions} research articles")
-    print(f"  (Based on 'research article' text occurrences)")
-else:
-    print(f"Method 2 - Research Article Mentions: No clear research article mentions")
-
-# Method 3: Volume analysis
-if unique_volumes_all:
-    print(f"Method 3 - Volume Analysis: Found volumes {unique_volumes_all}")
-    print(f"  Nature 2020 published volumes {min(unique_volumes_all)}-{max(unique_volumes_all)}")
-    # Nature typically publishes ~40-50 articles per volume, ~50 issues per year
-    volume_count = len(unique_volumes_all)
-    if volume_count > 0:
-        estimated_articles = volume_count * 45  # Conservative estimate
-        print(f"  Estimated articles: ~{estimated_articles} (assuming ~45 articles per volume)")
-
-# Final determination
-print(f"\n=== FINAL DETERMINATION ===\n")
-
-if total_dois_all_files >= 200:  # Reasonable range for Nature journal
-    final_count = total_dois_all_files
-    method = "DOI count"
-    confidence = "High"
-elif research_article_mentions >= 200:
-    final_count = research_article_mentions
-    method = "Research article mentions"
-    confidence = "Medium"
-elif unique_volumes_all:
-    final_count = len(unique_volumes_all) * 45
-    method = "Volume-based estimation"
-    confidence = "Low"
-else:
-    final_count = None
-    method = "Unable to determine"
-    confidence = "None"
-
-if final_count:
-    print(f"🎯 ANSWER: Nature journal published approximately {final_count} research articles in 2020")
-    print(f"   Method: {method}")
-    print(f"   Confidence: {confidence}")
-    print(f"   Source: Analysis of Nature journal's official 2020 archives")
-    print(f"   Content type: Peer-reviewed research articles (excluding editorials, reviews, correspondence)")
-else:
-    print(f"⚠️  Unable to determine exact count from downloaded archive content")
-    print(f"   The archive pages may require JavaScript or have different structure than expected")
-    print(f"   Alternative: Manual inspection of Nature journal's 2020 issues or contact editorial office")
-
-# Save comprehensive final analysis
-final_comprehensive_analysis = {
-    'analysis_date': '2025-01-06',
-    'method': 'Detailed content analysis of Nature journal 2020 archives',
-    'files_analyzed': len(analysis_results),
-    'total_dois_found': total_dois_all_files,
-    'research_article_mentions': research_article_mentions,
-    'nature_2020_volumes': unique_volumes_all,
-    'content_type_totals': all_content_types,
-    'file_details': analysis_results,
-    'final_determination': {
-        'estimated_count': final_count,
-        'method_used': method,
-        'confidence_level': confidence,
-        'reasoning': 'Based on analysis of official Nature journal archive content'
-    }
-}
-
-final_file = os.path.join(workspace_dir, 'nature_2020_research_articles_final_analysis.json')
-with open(final_file, 'w') as f:
-    json.dump(final_comprehensive_analysis, f, indent=2)
-
-print(f"\nComprehensive analysis saved to: {os.path.basename(final_file)}")
-print(f"\nWorkspace files:")
-for file in sorted(os.listdir(workspace_dir)):
-    if 'nature' in file:
-        file_path = os.path.join(workspace_dir, file)
-        file_size = os.path.getsize(file_path)
-        print(f"  - {file} ({file_size:,} bytes)")
-```
-
 ## Created Time
-2025-08-11 06:05:52
+2025-08-13 22:42:42

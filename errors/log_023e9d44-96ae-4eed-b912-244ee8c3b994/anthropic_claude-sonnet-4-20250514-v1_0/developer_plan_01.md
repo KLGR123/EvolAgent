@@ -1,222 +1,12 @@
 # Developer Plan 01
 
 ## Plan
-Calculate the driving distance from Los Angeles to Cincinnati via I-40, then from Cincinnati to Augusta, Maine via I-90. Use mapping services or route planning tools to determine the total mileage for this cross-country trip, ensuring accuracy for the specific interstate highways mentioned (I-40 and I-90). Save the route information and total distance calculation to the workspace for subsequent bottle recycling value analysis.
+Research the driving distance from Los Angeles, California to Augusta, Maine following the specified route: I-40 from Los Angeles to Cincinnati, then I-90 from Cincinnati to Augusta. Use mapping services, route calculators, or distance databases to determine the total mileage for this cross-country journey. Focus on obtaining the most accurate total distance measurement that accounts for the specific interstate highways mentioned in the route.
 
 ## Description
-This is the optimal first step because: (1) We need to establish the total driving distance to calculate how many water bottles will be consumed during the trip, (2) The TASK specifies exact interstate routes (I-40 from LA to Cincinnati, then I-90 from Cincinnati to Augusta) that require precise distance measurement, (3) Expected outcome is to obtain the total mileage which will be used to calculate bottle consumption at 5 bottles per 100 miles, (4) This foundational distance calculation is essential before we can determine recycling values from Wikipedia's bottle deposit information.
+This is the optimal starting approach because: (1) We need to establish the total driving distance to calculate water bottle consumption (5 bottles per 100 miles), (2) No previous research has been conducted on this route, (3) Expected outcome is to obtain the precise mileage from LA to Augusta via I-40 and I-90, (4) This distance calculation is essential for determining the number of water bottles that will be recycled and subsequently the deposit refund amount
 
 ## Episodic Examples
-### Development Step 2: Parse Road Map to Identify Houses by Mile Markers and Compute Distances to Towers
-
-**Description**: Parse and analyze the attached file data/gaia/2023/validation/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt to understand the road layout, identify all house positions, and map their locations relative to mile markers. Extract the visual representation showing dashes (-) as mile markers and H symbols as houses, then determine the coordinate system and calculate distances between houses and potential tower locations.
-
-**Use Cases**:
-- Telecom network planners determining optimal cell tower placements along rural highways to minimize average signal distance to homes clustered above and below the road
-- Emergency services designing ambulance station or firehouse locations based on household positions along major roadways to reduce response times
-- Broadband internet providers mapping potential distribution hub sites along a trunk route to ensure equitable coverage for properties on both sides of the highway
-- Utility companies scheduling meter-reading and maintenance by calculating distances from main gas or water pipelines to residential units distributed along a linear corridor
-- School transportation coordinators optimizing bus stop placements by analyzing student home mile‐marker positions relative to the bus route
-- Real estate developers evaluating proximity of new housing parcels to proposed infrastructure expansions (roads, power lines) for investment decision support
-- Environmental planners modeling roadside noise-barrier or greenbelt placement by assessing residential distance metrics from the highway
-- Logistics and courier services planning drop‐off zones along delivery routes to minimize total travel and idle time when servicing homes on either side of the roadway
-
-```
-import os
-
-# Load the raw content from the previous analysis
-raw_file = 'workspace/road_layout_raw.txt'
-
-print("=== COORDINATE SYSTEM MAPPING ===")
-
-# Read the content from workspace if it exists, otherwise read from original file
-if os.path.exists(raw_file):
-    with open(raw_file, 'r', encoding='utf-8') as f:
-        content = f.read()
-    print(f"Loaded content from workspace: {raw_file}")
-else:
-    # Fallback to original file
-    with open('data/gaia/2023/validation/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt', 'r', encoding='utf-8') as f:
-        content = f.read()
-    print("Loaded content from original file")
-
-lines = content.splitlines()
-
-print(f"\nRoad layout structure:")
-for i, line in enumerate(lines):
-    print(f"Line {i}: '{line}' (length: {len(line)})")
-
-# Define the coordinate system based on the road (line 2 with dashes)
-road_line = lines[1]  # The line with dashes represents the road/mile markers
-road_length = len(road_line)
-print(f"\nRoad length: {road_length} characters (mile markers)")
-
-# Each dash represents a mile marker position (0-indexed)
-print(f"Mile markers: 0 to {road_length - 1}")
-
-# Analyze house positions relative to the road
-houses_analysis = {
-    'above_road': [],  # Houses on line 0 (above the road)
-    'below_road': []   # Houses on line 2 (below the road)
-}
-
-print("\n=== HOUSE POSITION ANALYSIS ===")
-
-# Analyze houses above the road (line 0)
-if len(lines) > 0:
-    above_line = lines[0]
-    print(f"\nHouses above road (Line 0): '{above_line}'")
-    
-    for pos, char in enumerate(above_line):
-        if char == 'H':
-            # Map to mile marker position (assuming alignment with road)
-            mile_marker = pos if pos < road_length else road_length - 1
-            houses_analysis['above_road'].append({
-                'house_id': f'A{len(houses_analysis["above_road"]) + 1}',
-                'position': pos,
-                'mile_marker': mile_marker,
-                'side': 'above'
-            })
-            print(f"  House A{len(houses_analysis['above_road'])}: position {pos}, mile marker {mile_marker}")
-
-# Analyze houses below the road (line 2)
-if len(lines) > 2:
-    below_line = lines[2]
-    print(f"\nHouses below road (Line 2): '{below_line}'")
-    
-    for pos, char in enumerate(below_line):
-        if char == 'H':
-            # Map to mile marker position
-            mile_marker = pos if pos < road_length else road_length - 1
-            houses_analysis['below_road'].append({
-                'house_id': f'B{len(houses_analysis["below_road"]) + 1}',
-                'position': pos,
-                'mile_marker': mile_marker,
-                'side': 'below'
-            })
-            print(f"  House B{len(houses_analysis['below_road'])}: position {pos}, mile marker {mile_marker}")
-
-# Combine all houses into a single list for analysis
-all_houses = houses_analysis['above_road'] + houses_analysis['below_road']
-total_houses = len(all_houses)
-
-print(f"\n=== SUMMARY ===")
-print(f"Total houses found: {total_houses}")
-print(f"Houses above road: {len(houses_analysis['above_road'])}")
-print(f"Houses below road: {len(houses_analysis['below_road'])}")
-print(f"Road length: {road_length} mile markers (0 to {road_length - 1})")
-
-# Calculate distances between all houses
-print("\n=== DISTANCE CALCULATIONS ===")
-
-distances = []
-for i in range(len(all_houses)):
-    for j in range(i + 1, len(all_houses)):
-        house1 = all_houses[i]
-        house2 = all_houses[j]
-        
-        # Calculate horizontal distance along the road
-        horizontal_distance = abs(house1['mile_marker'] - house2['mile_marker'])
-        
-        # Calculate vertical distance (0 if same side, 1 if opposite sides)
-        vertical_distance = 0 if house1['side'] == house2['side'] else 1
-        
-        # Calculate Euclidean distance
-        euclidean_distance = (horizontal_distance ** 2 + vertical_distance ** 2) ** 0.5
-        
-        distance_info = {
-            'house1': house1['house_id'],
-            'house2': house2['house_id'],
-            'house1_position': house1['mile_marker'],
-            'house2_position': house2['mile_marker'],
-            'horizontal_distance': horizontal_distance,
-            'vertical_distance': vertical_distance,
-            'euclidean_distance': euclidean_distance
-        }
-        
-        distances.append(distance_info)
-        
-        print(f"{house1['house_id']} to {house2['house_id']}: horizontal={horizontal_distance}, vertical={vertical_distance}, euclidean={euclidean_distance:.2f}")
-
-# Find potential tower locations along the road
-print("\n=== POTENTIAL TOWER LOCATIONS ===")
-
-# For each mile marker position, calculate total distance to all houses
-tower_analysis = []
-
-for mile_pos in range(road_length):
-    total_distance = 0
-    max_distance = 0
-    
-    for house in all_houses:
-        # Distance from tower at mile_pos to house
-        horizontal_dist = abs(mile_pos - house['mile_marker'])
-        vertical_dist = 1  # Tower is on road, house is above/below
-        euclidean_dist = (horizontal_dist ** 2 + vertical_dist ** 2) ** 0.5
-        
-        total_distance += euclidean_dist
-        max_distance = max(max_distance, euclidean_dist)
-    
-    average_distance = total_distance / total_houses
-    
-    tower_analysis.append({
-        'mile_marker': mile_pos,
-        'total_distance': total_distance,
-        'average_distance': average_distance,
-        'max_distance': max_distance
-    })
-
-# Sort by average distance to find optimal locations
-tower_analysis.sort(key=lambda x: x['average_distance'])
-
-print("Top 5 optimal tower locations (by average distance to all houses):")
-for i, tower in enumerate(tower_analysis[:5]):
-    print(f"{i+1}. Mile marker {tower['mile_marker']}: avg_dist={tower['average_distance']:.2f}, max_dist={tower['max_distance']:.2f}")
-
-# Save detailed analysis to workspace
-import json
-
-analysis_results = {
-    'road_layout': {
-        'total_mile_markers': road_length,
-        'mile_marker_range': f'0 to {road_length - 1}'
-    },
-    'houses': all_houses,
-    'house_summary': {
-        'total_houses': total_houses,
-        'houses_above_road': len(houses_analysis['above_road']),
-        'houses_below_road': len(houses_analysis['below_road'])
-    },
-    'distances_between_houses': distances,
-    'tower_locations': tower_analysis
-}
-
-with open('workspace/road_layout_analysis.json', 'w') as f:
-    json.dump(analysis_results, f, indent=2)
-
-print(f"\nDetailed analysis saved to: workspace/road_layout_analysis.json")
-
-# Create a visual representation with coordinates
-print("\n=== VISUAL REPRESENTATION WITH COORDINATES ===")
-print("Mile markers:  0123456789012345678901234567890123456789")
-print("              ", end="")
-for i in range(road_length):
-    if i % 10 == 0:
-        print(str(i // 10), end="")
-    else:
-        print(" ", end="")
-print()
-print("              ", end="")
-for i in range(road_length):
-    print(str(i % 10), end="")
-print()
-print(f"Above road:   {lines[0] if len(lines) > 0 else ''}")
-print(f"Road:         {lines[1] if len(lines) > 1 else ''}")
-print(f"Below road:   {lines[2] if len(lines) > 2 else ''}")
-
-print("\n=== COORDINATE MAPPING COMPLETE ===")
-```
-
 ### Development Step 28: Cities of Westernmost (Santa Clara University) and Easternmost (UMass Boston) Universities
 
 **Description**: Determine the cities where the westernmost university (Santa Clara University) and easternmost university (University of Massachusetts Boston) identified in our research are located. Create a comma-separated list with the westernmost city listed first, followed by the easternmost city.
@@ -256,227 +46,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
-
-### Development Step 5: ASEAN Capitals Great-Circle Distance Matrix with Furthest-Separated Capital Pair Analysis
-
-**Description**: Calculate the geographical distances between all possible pairs of ASEAN capital cities using the coordinate data from workspace/asean_complete_coordinates.json. Apply the haversine formula to compute great circle distances between each pair of capitals, then identify which two countries have the maximum distance between their capital cities. Create a comprehensive distance matrix showing all pairwise distances and determine the two ASEAN member countries whose capitals are geographically furthest apart.
-
-**Use Cases**:
-- Logistics network optimization for a regional freight company planning the most efficient trucking routes between ASEAN capitals
-- Airline route feasibility analysis for a budget carrier evaluating direct flight distances and fuel requirements between capital cities
-- Multinational retailer site selection, determining optimal warehouse locations based on average distances to member capitals
-- Disaster relief coordination for NGOs estimating overland travel times and identifying remote capitals during emergency response planning
-- Tourism operator itinerary design, calculating shortest driving or rail legs between capitals to package multi-country tours
-- Academic urban geography research comparing spatial dispersion of ASEAN capitals and correlating distance metrics with economic integration
-- Undersea cable planning by a telecom consortium assessing maximum span requirements between coastal capitals for broadband connectivity
-
-```
-import json
-import os
-
-# First, let's inspect the workspace directory to see what files are available
-print("=== WORKSPACE DIRECTORY INSPECTION ===")
-workspace_dir = 'workspace/'
-
-if os.path.exists(workspace_dir):
-    files = os.listdir(workspace_dir)
-    print(f"Files in workspace: {files}")
-else:
-    print("Workspace directory does not exist")
-    # Create workspace directory if it doesn't exist
-    os.makedirs(workspace_dir, exist_ok=True)
-    print("Created workspace directory")
-
-# Check if the expected coordinates file exists
-coordinates_file = 'workspace/asean_complete_coordinates.json'
-print(f"\n=== COORDINATES FILE INSPECTION ===")
-print(f"Checking for file: {coordinates_file}")
-
-if os.path.exists(coordinates_file):
-    print(f"File exists: {coordinates_file}")
-    
-    # Get file size for initial assessment
-    file_size = os.path.getsize(coordinates_file)
-    print(f"File size: {file_size} bytes")
-    
-    # Read and inspect the structure of the JSON file before processing
-    print("\n=== JSON STRUCTURE INSPECTION ===")
-    try:
-        with open(coordinates_file, 'r', encoding='utf-8') as f:
-            coordinates_data = json.load(f)
-        
-        print(f"JSON loaded successfully")
-        print(f"Data type: {type(coordinates_data)}")
-        
-        if isinstance(coordinates_data, dict):
-            print(f"Top-level keys: {list(coordinates_data.keys())}")
-            
-            # Inspect the structure of each key
-            for key in coordinates_data.keys():
-                print(f"\nKey '{key}':")
-                print(f"  Type: {type(coordinates_data[key])}")
-                
-                if isinstance(coordinates_data[key], dict):
-                    print(f"  Sub-keys: {list(coordinates_data[key].keys())}")
-                    # Show first few entries as examples
-                    sub_keys = list(coordinates_data[key].keys())
-                    for sub_key in sub_keys[:3]:  # Show first 3 entries
-                        print(f"    '{sub_key}': {coordinates_data[key][sub_key]}")
-                    if len(sub_keys) > 3:
-                        print(f"    ... and {len(sub_keys) - 3} more entries")
-                        
-                elif isinstance(coordinates_data[key], list):
-                    print(f"  Length: {len(coordinates_data[key])}")
-                    if len(coordinates_data[key]) > 0:
-                        print(f"  First entry: {coordinates_data[key][0]}")
-                        print(f"  First entry type: {type(coordinates_data[key][0])}")
-        
-        elif isinstance(coordinates_data, list):
-            print(f"List length: {len(coordinates_data)}")
-            if len(coordinates_data) > 0:
-                print(f"First entry: {coordinates_data[0]}")
-                print(f"First entry type: {type(coordinates_data[0])}")
-        
-        # Show the complete structure for small files
-        if file_size < 2000:  # If file is small, show complete content
-            print("\n=== COMPLETE FILE CONTENT ===")
-            print(json.dumps(coordinates_data, indent=2))
-        
-        print("\n=== COORDINATE DATA VALIDATION ===")
-        # Look for coordinate patterns in the data
-        def find_coordinate_patterns(data, path=""):
-            """Recursively search for coordinate-like data structures"""
-            if isinstance(data, dict):
-                for key, value in data.items():
-                    current_path = f"{path}.{key}" if path else key
-                    
-                    # Check if this looks like coordinate data
-                    if isinstance(value, dict):
-                        coord_keys = set(str(k).lower() for k in value.keys())
-                        if any(coord_word in coord_keys for coord_word in ['lat', 'lng', 'lon', 'latitude', 'longitude']):
-                            print(f"Found coordinate-like structure at {current_path}: {value}")
-                        elif any(coord_word in str(key).lower() for coord_word in ['coord', 'location', 'position']):
-                            print(f"Found potential coordinate structure at {current_path}: {value}")
-                    
-                    # Recurse into nested structures
-                    find_coordinate_patterns(value, current_path)
-            
-            elif isinstance(data, list):
-                for i, item in enumerate(data[:3]):  # Check first 3 items
-                    find_coordinate_patterns(item, f"{path}[{i}]")
-        
-        find_coordinate_patterns(coordinates_data)
-        
-    except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON format - {e}")
-    except Exception as e:
-        print(f"Error reading coordinates file: {e}")
-        
-else:
-    print(f"Error: Coordinates file not found at {coordinates_file}")
-    print("\nLooking for alternative coordinate files in workspace...")
-    
-    if os.path.exists(workspace_dir):
-        all_files = os.listdir(workspace_dir)
-        json_files = [f for f in all_files if f.endswith('.json')]
-        coord_files = [f for f in all_files if 'coord' in f.lower() or 'asean' in f.lower()]
-        
-        print(f"JSON files in workspace: {json_files}")
-        print(f"Files with 'coord' or 'asean' in name: {coord_files}")
-        
-        if json_files:
-            print("\nInspecting other JSON files:")
-            for json_file in json_files:
-                file_path = os.path.join(workspace_dir, json_file)
-                file_size = os.path.getsize(file_path)
-                print(f"  {json_file}: {file_size} bytes")
-    
-    print("\nNext step: Need to create or locate ASEAN coordinate data")
-
-print("\n=== INSPECTION COMPLETE ===")
-print("File structure analysis complete. Ready for distance calculation once coordinate data is confirmed.")
-```
-
-### Development Step 1: Parse File Road Layout, Locate Houses, Mile Markers, Define Coordinates, Compute House-Tower Distances
-
-**Description**: Parse and analyze the attached file data/gaia/2023/validation/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt to understand the road layout, identify all house positions, and map their locations relative to mile markers. Extract the visual representation showing dashes (-) as mile markers and H symbols as houses, then determine the coordinate system and calculate distances between houses and potential tower locations.
-
-**Use Cases**:
-- Rural broadband deployment planning: parse the ASCII road layout to extract house locations by mile marker, then calculate optimal fiber cable routes to bring high-speed internet to each home.
-- Emergency medical services optimization: analyze the distances between mapped house positions and candidate ambulance station sites to determine the fastest response coverage along a remote highway.
-- Postal delivery route automation: ingest the text-based road map to pinpoint rural mailbox locations, then compute the shortest delivery loop for mail carriers using mile-marker coordinates.
-- Electric grid maintenance scheduling: map household positions relative to power line inspection crews’ depots to sequence pipeline or line checks by proximity and minimize downtime.
-- Mobile network coverage analysis: identify service gaps by measuring distances from village houses to existing cell towers and recommend new tower installations to fill black spots.
-- Environmental sensor network design: use the extracted house coordinates along farmland roads to position weather or soil-moisture sensors at optimal intervals for agricultural research.
-- Real estate site evaluation: chart the distribution of roadside properties via mile markers to spotlight high-density clusters for targeted development and marketing campaigns.
-
-```
-import os
-
-# First, let's examine the attached file to understand its structure and content
-file_path = 'data/gaia/2023/validation/389793a7-ca17-4e82-81cb-2b3a2391b4b9.txt'
-
-print("=== FILE ANALYSIS ===")
-print(f"Examining file: {file_path}")
-
-# Check if file exists
-if os.path.exists(file_path):
-    print(f"File exists: {file_path}")
-    
-    # Get file size
-    file_size = os.path.getsize(file_path)
-    print(f"File size: {file_size} bytes")
-    
-    # Read and display the entire content since it's likely a small text file
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    print(f"\nFile content length: {len(content)} characters")
-    print(f"Number of lines: {len(content.splitlines())}")
-    
-    print("\n=== FULL FILE CONTENT ===")
-    print(content)
-    print("=== END OF FILE CONTENT ===")
-    
-    # Analyze the content structure
-    lines = content.splitlines()
-    print(f"\n=== CONTENT ANALYSIS ===")
-    print(f"Total lines: {len(lines)}")
-    
-    # Look for patterns in each line
-    for i, line in enumerate(lines, 1):
-        print(f"Line {i}: '{line}' (length: {len(line)})")
-        
-        # Check for specific characters that might represent houses (H) and mile markers (-)
-        h_count = line.count('H')
-        dash_count = line.count('-')
-        space_count = line.count(' ')
-        
-        if h_count > 0 or dash_count > 0:
-            print(f"  -> Houses (H): {h_count}, Dashes (-): {dash_count}, Spaces: {space_count}")
-    
-    # Look for any numeric patterns that might indicate mile markers or coordinates
-    import re
-    numbers = re.findall(r'\d+', content)
-    if numbers:
-        print(f"\nNumbers found in content: {numbers}")
-    
-    # Save the content to workspace for further processing
-    with open('workspace/road_layout_raw.txt', 'w', encoding='utf-8') as f:
-        f.write(content)
-    
-    print(f"\nRaw content saved to: workspace/road_layout_raw.txt")
-    
-else:
-    print(f"Error: File not found at {file_path}")
-    print("Available files in data directory:")
-    if os.path.exists('data'):
-        for root, dirs, files in os.walk('data'):
-            for file in files:
-                print(f"  - {os.path.join(root, file)}")
-    else:
-        print("  - data directory not found")
 ```
 
 ### Development Step 25: Comma-Delimited Cities of Westernmost Santa Clara and Easternmost UMass Boston Universities
@@ -582,5 +151,162 @@ if __name__ == "__main__":
     main()
 ```
 
+### Development Step 22: Cities of Santa Clara University and UMass Boston in West-to-East Order
+
+**Description**: Determine the cities where the westernmost university (Santa Clara University) and easternmost university (University of Massachusetts Boston) identified in our research are located. Create a comma-separated list with the westernmost city listed first, followed by the easternmost city.
+
+**Use Cases**:
+- Campus visit itinerary automation for a higher education consulting firm, generating travel routes between Santa Clara and Boston campuses
+- Geospatial visualization in an academic research project, mapping the westernmost and easternmost university sites on a US longitudinal axis
+- Targeted marketing campaign setup in a university admissions office, using city list to segment email outreach for Californian and Massachusetts prospects
+- Student housing demand analysis by a real estate developer, assessing investment opportunities at the geographic extremes of university locations
+- Logistics planning for campus merchandise distribution, optimizing cross-country shipping routes between Santa Clara and Boston
+- State education department dashboard integration, displaying enrollment and funding comparisons for westernmost versus easternmost public universities
+- GIS database population for a location-based services startup, importing extreme campus city coordinates to enhance regional search results
+- Automated reporting in a business intelligence system, pulling westernmost and easternmost campus cities into quarterly higher education market trend summaries
+
+```
+import os
+import json
+
+def main():
+    print("Finding the cities of the westernmost and easternmost universities...")
+    
+    # Check if any files exist in the workspace that might contain the university data
+    print("Checking workspace directory for relevant files...")
+    workspace_files = os.listdir('workspace')
+    print(f"Files in workspace: {workspace_files}")
+    
+    # Since we don't have a specific file from HISTORY to work with, 
+    # we'll directly use the universities mentioned in the PLAN
+    westernmost_university = "Santa Clara University"
+    easternmost_university = "University of Massachusetts Boston"
+    
+    # Lookup the cities
+    westernmost_city = "Santa Clara"
+    easternmost_city = "Boston"
+    
+    print(f"\nWesternmost university: {westernmost_university}")
+    print(f"Located in: {westernmost_city}, California")
+    
+    print(f"\nEasternmost university: {easternmost_university}")
+    print(f"Located in: {easternmost_city}, Massachusetts")
+    
+    # Create the comma-separated list as specified
+    result = f"{westernmost_city}, {easternmost_city}"
+    print(f"\nFinal result (westernmost city listed first, followed by easternmost city):\n{result}")
+    
+    # Write the result to a file
+    output_file = os.path.join('workspace', 'university_cities.txt')
+    with open(output_file, 'w') as f:
+        f.write(result)
+    print(f"\nResult saved to {output_file}")
+
+if __name__ == "__main__":
+    main()
+```
+
+### Development Step 24: Cities of Westernmost and Easternmost Universities: Santa Clara University, UMass Boston
+
+**Description**: Determine the cities where the westernmost university (Santa Clara University) and easternmost university (University of Massachusetts Boston) identified in our research are located. Create a comma-separated list with the westernmost city listed first, followed by the easternmost city.
+
+**Use Cases**:
+- University admissions geospatial outreach optimization by automatically identifying the westernmost and easternmost campuses (Santa Clara, Boston) for region-specific marketing materials
+- Logistics planning for shipping orientation kits to farthest-west and farthest-east university locations, ensuring efficient routing and cost estimates
+- Campus tour mobile app backend setup that uses the two boundary cities to generate full cross-country campus visit itineraries
+- Academic research on longitudinal diversity trends using the script to pinpoint geographic extremes among participating universities
+- Marketing team regional ad spend allocation by targeting student populations at the westernmost and easternmost campuses
+- Data science course demonstration of real-world CSV parsing and coordinate-based sorting, using university longitude data as the example
+- State education department reporting tool to visualize the geographic spread of public universities, highlighting Santa Clara and Boston as boundary cases
+
+```
+import os
+import json
+import csv
+import re
+
+def main():
+    print("Determining the cities of the westernmost and easternmost universities...")
+    
+    # Check if any files exist in the workspace that might contain the university data
+    print("Checking workspace directory for relevant files...")
+    workspace_files = os.listdir('workspace')
+    print(f"Files in workspace: {workspace_files}")
+    
+    # From the HISTORY output, we can see the CSV file contains university location data
+    csv_file_path = 'workspace/secretary_universities.csv'
+    universities = []
+    
+    if 'secretary_universities.csv' in workspace_files:
+        print(f"\nReading data from {csv_file_path}")
+        with open(csv_file_path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Extract university and location information
+                university_name = row.get('University', '')
+                location = row.get('Location', '')
+                longitude = row.get('Longitude', '')
+                
+                # Parse the city from the location field (format appears to be "City, State")
+                city = location.split(',')[0].strip() if location and ',' in location else ''
+                
+                universities.append({
+                    'university': university_name,
+                    'city': city,
+                    'location': location,
+                    'longitude': float(longitude) if longitude else None
+                })
+                
+                print(f"Processed: {university_name} in {city} (Longitude: {longitude})")
+    
+    if not universities:
+        print("No university data found in CSV. Using default values.")
+        # Default values based on the PLAN
+        westernmost_city = "Santa Clara"
+        easternmost_city = "Boston"
+    else:
+        # Find westernmost (minimum longitude - most negative) and easternmost (maximum longitude - least negative)
+        # Filter out entries without longitude data
+        universities_with_coords = [u for u in universities if u['longitude'] is not None]
+        
+        if universities_with_coords:
+            # Sort by longitude
+            universities_with_coords.sort(key=lambda u: u['longitude'])
+            
+            # Westernmost is the first (smallest/most negative longitude in western hemisphere)
+            westernmost = universities_with_coords[0]
+            # Easternmost is the last (largest/least negative longitude in western hemisphere)
+            easternmost = universities_with_coords[-1]
+            
+            westernmost_city = westernmost['city']
+            easternmost_city = easternmost['city']
+            
+            print(f"\nWesternmost university: {westernmost['university']}")
+            print(f"Located in: {westernmost['location']}")
+            print(f"Longitude: {westernmost['longitude']}")
+            
+            print(f"\nEasternmost university: {easternmost['university']}")
+            print(f"Located in: {easternmost['location']}")
+            print(f"Longitude: {easternmost['longitude']}")
+        else:
+            print("No longitude data available. Using default values.")
+            # Default values based on the PLAN
+            westernmost_city = "Santa Clara"
+            easternmost_city = "Boston"
+    
+    # Create the comma-separated list as specified
+    result = f"{westernmost_city}, {easternmost_city}"
+    print(f"\nFinal result (westernmost city listed first, followed by easternmost city):\n{result}")
+    
+    # Write the result to a file
+    output_file = os.path.join('workspace', 'university_cities.txt')
+    with open(output_file, 'w') as f:
+        f.write(result)
+    print(f"\nResult saved to {output_file}")
+
+if __name__ == "__main__":
+    main()
+```
+
 ## Created Time
-2025-08-10 23:56:55
+2025-08-13 19:03:20

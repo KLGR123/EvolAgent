@@ -249,6 +249,23 @@ class BaseNode:
             
             if hasattr(response, "error"):
                 self.logger.error(f"{self.role} forward returned error: {response.error['message']}")
+
+                # Check if the error is about input being too long
+                if "input is too long for requested model" in response.error['message'].lower():
+                    # Log response content to a temporary file
+                    import tempfile
+                    from datetime import datetime
+                    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt', prefix='error_response_') as f:
+                        f.write(f"Error message: {response.error['message']}\n")
+                        f.write(f"Model: {self.model}\n")
+                        f.write(f"Role: {self.role}\n")
+                        f.write(f"Timestamp: {datetime.now().isoformat()}\n")
+                        f.write("=" * 50 + "\n")
+                        if hasattr(response, 'content'):
+                            f.write(response.content)
+                        temp_file_path = f.name
+                    self.logger.warning(f"Input too long error logged to temporary file: {temp_file_path}")
+                    
                 raise Exception(response.error['message'])
             
             result = response.choices[0].message.content

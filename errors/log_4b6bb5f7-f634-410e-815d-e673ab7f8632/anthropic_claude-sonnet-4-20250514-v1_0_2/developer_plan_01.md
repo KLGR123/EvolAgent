@@ -1,10 +1,10 @@
 # Developer Plan 01
 
 ## Plan
-Search for the official script of Doctor Who Series 9, Episode 11 to identify the exact location name as it appears in the first scene heading where the Doctor is trapped in the ever-shifting maze. Look for the episode title, official BBC scripts, production documents, or reliable sources that contain the actual script text with scene headings and location descriptions.
+Search for the official script of Doctor Who Series 9, Episode 11 to identify the exact setting name as it appears in the first scene heading where the Doctor is trapped inside an ever-shifting maze. Look for the episode title, official BBC scripts, production documents, or reliable script databases that contain the precise scene heading terminology used to describe this maze location.
 
 ## Description
-This is the optimal first step because: (1) We need to locate the official script for Doctor Who Series 9, Episode 11 to find the exact scene heading text as requested in the TASK, (2) No previous research has been conducted yet, (3) Expected outcome is to identify the specific location name as it appears in the official script's first scene heading where the maze is described, (4) This directly addresses the core TASK of finding the exact setting name from the script rather than general episode descriptions
+This is the optimal first step because: (1) We need to locate the official script for Doctor Who Series 9, Episode 11 to find the exact setting name as written in the scene headings, (2) No previous research has been conducted yet, (3) Expected outcome is to identify the specific episode and access its official script to extract the precise location terminology, (4) This directly addresses the TASK requirement for the setting name exactly as it appears in the first scene heading of the official script
 
 ## Episodic Examples
 ### Development Step 8: Locate and Transcribe Teal’c’s Response to “Isn’t That Hot?” in SG-1 YouTube Clip
@@ -284,6 +284,135 @@ else:
 print("\n*** ENHANCED TEAL'C DIALOGUE ANALYSIS COMPLETE ***")
 ```
 
+### Development Step 3: Find and Transcribe Teal’c’s Response to “Isn’t That Hot?” in YouTube Video
+
+**Description**: Access and analyze the YouTube video at https://www.youtube.com/watch?v=1htKBjuUWec to locate the specific dialogue where someone asks 'Isn't that hot?' and identify Teal'c's exact response. Extract the audio/video content, transcribe the relevant dialogue section, and document Teal'c's reply to this question.
+
+**Use Cases**:
+- Fan-driven Stargate quote archive: automatically download key scenes from YouTube, extract Teal’c’s “Isn’t that hot?” response, transcribe the dialogue and timestamp for inclusion in a community-maintained quote database
+- Linguistic analysis of fictional dialects: pull audio clips of Teal’c’s speech from YouTube, transcribe targeted question-and-answer exchanges, and analyze phonetic patterns for a research paper on constructed languages
+- Streaming subtitle generation and localization: isolate the “Isn’t that hot?” segment, produce a precise transcript of Teal’c’s reply, and feed it into a translation workflow to create accurate subtitles in multiple languages
+- AI chatbot persona training for Sci-Fi characters: collect authentic Teal’c responses by downloading and transcribing specific lines, then integrate them into a chatbot to emulate his speech style in interactive fan applications
+- Compliance audit for clip licensing: extract and document exact dialogue segments from YouTube videos, log Teal’c’s reply verbatim, and attach metadata for legal review when securing broadcast rights
+- Podcast episode highlight reel: automate the download, audio extraction, and transcription of fan-favorite Teal’c lines like his response to “Isn’t that hot?”, then assemble them into a curated nostalgia segment
+- Quality assurance for automatic captioning services: use the known “Isn’t that hot?” exchange to verify the accuracy of speech-to-text algorithms by comparing the system’s output to the manually extracted transcript
+- Educational media analysis in film studies: retrieve and transcribe Teal’c’s concise responses from selected YouTube scenes, enabling film students to examine character development through repeated dialogue patterns
+
+```
+import os
+import yt_dlp
+import json
+from urllib.parse import urlparse, parse_qs
+
+# The issue is clear: the video was downloaded to a different workspace directory
+# Let's re-download the video to the current workspace and then extract audio
+
+url = "https://www.youtube.com/watch?v=1htKBjuUWec"
+video_id = "1htKBjuUWec"
+
+print("=== RE-DOWNLOADING TEAL'C VIDEO TO CURRENT WORKSPACE ===")
+print(f"Target URL: {url}")
+print(f"Video ID: {video_id}")
+print("Objective: Download video, extract audio, and find Teal'c's response to 'Isn't that hot?'\n")
+
+# Ensure current workspace directory exists
+os.makedirs("workspace", exist_ok=True)
+print(f"Workspace directory confirmed: {os.path.abspath('workspace')}")
+
+# Set up download options to get the video in current workspace
+output_template = os.path.join("workspace", f"{video_id}_%(title)s.%(ext)s")
+print(f"Output template: {output_template}\n")
+
+ydl_opts = {
+    'format': 'best[height<=720]',  # Download reasonable quality video
+    'outtmpl': output_template,
+    'quiet': False,  # Show download progress
+    'no_warnings': False,
+}
+
+try:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # Extract info first
+        print("=== EXTRACTING VIDEO INFORMATION ===")
+        info = ydl.extract_info(url, download=False)
+        
+        print(f"Video Title: {info.get('title', 'N/A')}")
+        print(f"Duration: {info.get('duration', 'N/A')} seconds")
+        print(f"Uploader: {info.get('uploader', 'N/A')}")
+        
+        # Confirm this is the Teal'c coffee video
+        title = info.get('title', '').lower()
+        if 'teal' in title and 'coffee' in title:
+            print("*** CONFIRMED: This is the Teal'c coffee video ***\n")
+        else:
+            print(f"*** WARNING: Title doesn't clearly indicate Teal'c coffee content ***\n")
+        
+        # Now download the video
+        print("=== DOWNLOADING VIDEO ===")
+        ydl.download([url])
+        print("\nVideo download completed!\n")
+        
+        # Check what files were actually created
+        print("=== CHECKING DOWNLOADED FILES ===")
+        workspace_files = []
+        for file in os.listdir("workspace"):
+            full_path = os.path.join("workspace", file)
+            if os.path.isfile(full_path):
+                file_size = os.path.getsize(full_path)
+                workspace_files.append((file, full_path, file_size))
+        
+        print(f"Files in workspace after download:")
+        video_file = None
+        for filename, full_path, size in workspace_files:
+            size_mb = size / (1024 * 1024)
+            print(f"  - {filename} ({size_mb:.2f} MB)")
+            
+            # Identify the video file
+            if any(filename.lower().endswith(ext) for ext in ['.mp4', '.mkv', '.webm', '.avi']):
+                video_file = full_path
+                print(f"    *** IDENTIFIED AS VIDEO FILE ***")
+        
+        if video_file:
+            print(f"\n=== VIDEO FILE LOCATED ===")
+            print(f"Video file path: {video_file}")
+            print(f"File size: {os.path.getsize(video_file) / (1024 * 1024):.2f} MB")
+            
+            # Save video info for reference
+            video_info = {
+                'url': url,
+                'video_id': video_id,
+                'title': info.get('title', 'N/A'),
+                'duration_seconds': info.get('duration', 0),
+                'uploader': info.get('uploader', 'N/A'),
+                'video_file_path': video_file,
+                'file_size_mb': os.path.getsize(video_file) / (1024 * 1024),
+                'objective': "Find Teal'c's response to 'Isn't that hot?'"
+            }
+            
+            with open('workspace/tealc_video_info.json', 'w', encoding='utf-8') as f:
+                json.dump(video_info, f, indent=2)
+            
+            print(f"Video info saved to: workspace/tealc_video_info.json")
+            
+            print(f"\n=== READY FOR AUDIO EXTRACTION ===")
+            print("Video successfully downloaded and located.")
+            print("Next step: Extract audio from video for dialogue transcription.")
+            
+        else:
+            print(f"\n*** ERROR: No video file found after download ***")
+            print("Available files:")
+            for filename, full_path, size in workspace_files:
+                print(f"  - {filename} ({size} bytes)")
+            
+except Exception as e:
+    print(f"\n*** ERROR DURING VIDEO DOWNLOAD ***")
+    print(f"Error: {str(e)}")
+    import traceback
+    print(f"Full error details: {traceback.format_exc()}")
+
+print("\n*** VIDEO DOWNLOAD PHASE COMPLETE ***")
+```
+
 ### Development Step 6: Locate “Isn’t that hot?” exchange and transcribe Teal’c’s exact response from the YouTube video
 
 **Description**: Access and analyze the YouTube video at https://www.youtube.com/watch?v=1htKBjuUWec to locate the specific dialogue where someone asks 'Isn't that hot?' and identify Teal'c's exact response. Extract the audio/video content, transcribe the relevant dialogue section, and document Teal'c's reply to this question.
@@ -550,135 +679,6 @@ else:
         print(f"Full error details: {traceback.format_exc()}")
 
 print("\n*** TEAL'C DIALOGUE ANALYSIS COMPLETE ***")
-```
-
-### Development Step 3: Find and Transcribe Teal’c’s Response to “Isn’t That Hot?” in YouTube Video
-
-**Description**: Access and analyze the YouTube video at https://www.youtube.com/watch?v=1htKBjuUWec to locate the specific dialogue where someone asks 'Isn't that hot?' and identify Teal'c's exact response. Extract the audio/video content, transcribe the relevant dialogue section, and document Teal'c's reply to this question.
-
-**Use Cases**:
-- Fan-driven Stargate quote archive: automatically download key scenes from YouTube, extract Teal’c’s “Isn’t that hot?” response, transcribe the dialogue and timestamp for inclusion in a community-maintained quote database
-- Linguistic analysis of fictional dialects: pull audio clips of Teal’c’s speech from YouTube, transcribe targeted question-and-answer exchanges, and analyze phonetic patterns for a research paper on constructed languages
-- Streaming subtitle generation and localization: isolate the “Isn’t that hot?” segment, produce a precise transcript of Teal’c’s reply, and feed it into a translation workflow to create accurate subtitles in multiple languages
-- AI chatbot persona training for Sci-Fi characters: collect authentic Teal’c responses by downloading and transcribing specific lines, then integrate them into a chatbot to emulate his speech style in interactive fan applications
-- Compliance audit for clip licensing: extract and document exact dialogue segments from YouTube videos, log Teal’c’s reply verbatim, and attach metadata for legal review when securing broadcast rights
-- Podcast episode highlight reel: automate the download, audio extraction, and transcription of fan-favorite Teal’c lines like his response to “Isn’t that hot?”, then assemble them into a curated nostalgia segment
-- Quality assurance for automatic captioning services: use the known “Isn’t that hot?” exchange to verify the accuracy of speech-to-text algorithms by comparing the system’s output to the manually extracted transcript
-- Educational media analysis in film studies: retrieve and transcribe Teal’c’s concise responses from selected YouTube scenes, enabling film students to examine character development through repeated dialogue patterns
-
-```
-import os
-import yt_dlp
-import json
-from urllib.parse import urlparse, parse_qs
-
-# The issue is clear: the video was downloaded to a different workspace directory
-# Let's re-download the video to the current workspace and then extract audio
-
-url = "https://www.youtube.com/watch?v=1htKBjuUWec"
-video_id = "1htKBjuUWec"
-
-print("=== RE-DOWNLOADING TEAL'C VIDEO TO CURRENT WORKSPACE ===")
-print(f"Target URL: {url}")
-print(f"Video ID: {video_id}")
-print("Objective: Download video, extract audio, and find Teal'c's response to 'Isn't that hot?'\n")
-
-# Ensure current workspace directory exists
-os.makedirs("workspace", exist_ok=True)
-print(f"Workspace directory confirmed: {os.path.abspath('workspace')}")
-
-# Set up download options to get the video in current workspace
-output_template = os.path.join("workspace", f"{video_id}_%(title)s.%(ext)s")
-print(f"Output template: {output_template}\n")
-
-ydl_opts = {
-    'format': 'best[height<=720]',  # Download reasonable quality video
-    'outtmpl': output_template,
-    'quiet': False,  # Show download progress
-    'no_warnings': False,
-}
-
-try:
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        # Extract info first
-        print("=== EXTRACTING VIDEO INFORMATION ===")
-        info = ydl.extract_info(url, download=False)
-        
-        print(f"Video Title: {info.get('title', 'N/A')}")
-        print(f"Duration: {info.get('duration', 'N/A')} seconds")
-        print(f"Uploader: {info.get('uploader', 'N/A')}")
-        
-        # Confirm this is the Teal'c coffee video
-        title = info.get('title', '').lower()
-        if 'teal' in title and 'coffee' in title:
-            print("*** CONFIRMED: This is the Teal'c coffee video ***\n")
-        else:
-            print(f"*** WARNING: Title doesn't clearly indicate Teal'c coffee content ***\n")
-        
-        # Now download the video
-        print("=== DOWNLOADING VIDEO ===")
-        ydl.download([url])
-        print("\nVideo download completed!\n")
-        
-        # Check what files were actually created
-        print("=== CHECKING DOWNLOADED FILES ===")
-        workspace_files = []
-        for file in os.listdir("workspace"):
-            full_path = os.path.join("workspace", file)
-            if os.path.isfile(full_path):
-                file_size = os.path.getsize(full_path)
-                workspace_files.append((file, full_path, file_size))
-        
-        print(f"Files in workspace after download:")
-        video_file = None
-        for filename, full_path, size in workspace_files:
-            size_mb = size / (1024 * 1024)
-            print(f"  - {filename} ({size_mb:.2f} MB)")
-            
-            # Identify the video file
-            if any(filename.lower().endswith(ext) for ext in ['.mp4', '.mkv', '.webm', '.avi']):
-                video_file = full_path
-                print(f"    *** IDENTIFIED AS VIDEO FILE ***")
-        
-        if video_file:
-            print(f"\n=== VIDEO FILE LOCATED ===")
-            print(f"Video file path: {video_file}")
-            print(f"File size: {os.path.getsize(video_file) / (1024 * 1024):.2f} MB")
-            
-            # Save video info for reference
-            video_info = {
-                'url': url,
-                'video_id': video_id,
-                'title': info.get('title', 'N/A'),
-                'duration_seconds': info.get('duration', 0),
-                'uploader': info.get('uploader', 'N/A'),
-                'video_file_path': video_file,
-                'file_size_mb': os.path.getsize(video_file) / (1024 * 1024),
-                'objective': "Find Teal'c's response to 'Isn't that hot?'"
-            }
-            
-            with open('workspace/tealc_video_info.json', 'w', encoding='utf-8') as f:
-                json.dump(video_info, f, indent=2)
-            
-            print(f"Video info saved to: workspace/tealc_video_info.json")
-            
-            print(f"\n=== READY FOR AUDIO EXTRACTION ===")
-            print("Video successfully downloaded and located.")
-            print("Next step: Extract audio from video for dialogue transcription.")
-            
-        else:
-            print(f"\n*** ERROR: No video file found after download ***")
-            print("Available files:")
-            for filename, full_path, size in workspace_files:
-                print(f"  - {filename} ({size} bytes)")
-            
-except Exception as e:
-    print(f"\n*** ERROR DURING VIDEO DOWNLOAD ***")
-    print(f"Error: {str(e)}")
-    import traceback
-    print(f"Full error details: {traceback.format_exc()}")
-
-print("\n*** VIDEO DOWNLOAD PHASE COMPLETE ***")
 ```
 
 ### Development Step 11: Locate Greetham’s “Uncoupled: OR, How I Lost My Author(s)” (pp.45–46) and verify quoted passage.
@@ -1011,306 +1011,5 @@ if os.path.exists('workspace'):
         print(f'- {file} ({file_size:,} bytes)')
 ```
 
-### Development Step 9: Extract and Transcribe "Isn't That Hot?" Dialogue and Teal’c’s Reply from YouTube Video
-
-**Description**: Access and analyze the YouTube video at https://www.youtube.com/watch?v=1htKBjuUWec to locate the specific dialogue where someone asks 'Isn't that hot?' and identify Teal'c's exact response. Extract the audio/video content, transcribe the relevant dialogue section, and document Teal'c's reply to this question.
-
-**Use Cases**:
-- Legal video evidence processing to transcribe courtroom footage and extract witness statements containing specific phrases for case preparation
-- Customer support call QA automation by transcribing recorded service calls to identify “I’m not satisfied” or similar complaint triggers for supervisor review
-- Market research on product demo videos to locate and compile user feedback comments like “this feature is great” for prioritizing development roadmaps
-- Social media moderation by analyzing livestreams to detect and flag policy-violating language in real time for compliance teams
-- Educational lecture indexing to transcribe university seminars, tag question-and-answer segments, and enable students to search for “Can you explain...” queries
-- Media production highlight creation by extracting memorable soundbites from celebrity interviews (“That was awesome!”) for promotional reels
-- Accessibility caption generation for online courses by transcribing instructor dialogue and identifying speaker changes for precise subtitle synchronization
-- Linguistic research on archival broadcasts to automatically transcribe and analyze usage patterns of phrases such as “Do you really think...” across decades
-
-```
-import os
-import json
-from pydub import AudioSegment
-import speech_recognition as sr
-
-print("=== FOCUSED TRANSCRIPTION ATTEMPT WITH EXISTING ENHANCED AUDIO ===")
-print("Using the enhanced audio file that was created in the previous attempt...\n")
-
-# Check what files we have in workspace
-print("=== CHECKING WORKSPACE FILES ===")
-workspace_files = []
-for file in os.listdir("workspace"):
-    full_path = os.path.join("workspace", file)
-    if os.path.isfile(full_path):
-        file_size = os.path.getsize(full_path)
-        workspace_files.append((file, full_path, file_size))
-        size_mb = file_size / (1024 * 1024)
-        print(f"  - {file} ({size_mb:.2f} MB)")
-
-# Look for enhanced audio file or create it if needed
-enhanced_audio_file = None
-video_file = None
-
-for file_name, full_path, size in workspace_files:
-    if 'enhanced' in file_name.lower() and file_name.endswith('.wav'):
-        enhanced_audio_file = full_path
-        print(f"*** Found enhanced audio file: {file_name} ***")
-    elif file_name.endswith('.mp4'):
-        video_file = full_path
-        print(f"*** Found video file: {file_name} ***")
-    elif 'tealc' in file_name.lower() and file_name.endswith('.wav'):
-        # Use existing audio file if no enhanced version found
-        if not enhanced_audio_file:
-            enhanced_audio_file = full_path
-            print(f"*** Using existing audio file: {file_name} ***")
-
-if not enhanced_audio_file and video_file:
-    print("\n=== CREATING ENHANCED AUDIO FILE ===")
-    try:
-        # Load video and create enhanced audio
-        video = AudioSegment.from_file(video_file)
-        duration_seconds = len(video) / 1000
-        print(f"Video duration: {duration_seconds:.1f} seconds")
-        
-        # Apply enhancements
-        from pydub.effects import normalize
-        enhanced_audio = normalize(video)
-        enhanced_audio = enhanced_audio + 10  # Boost volume by 10dB
-        enhanced_audio = enhanced_audio.set_channels(1).set_frame_rate(16000)
-        
-        enhanced_audio_file = "workspace/tealc_enhanced_audio.wav"
-        enhanced_audio.export(enhanced_audio_file, format="wav")
-        print(f"Enhanced audio created: {enhanced_audio_file}")
-        
-    except Exception as e:
-        print(f"Error creating enhanced audio: {e}")
-        enhanced_audio_file = None
-
-if not enhanced_audio_file:
-    print("\n*** ERROR: No audio file available for transcription ***")
-else:
-    print(f"\n=== ATTEMPTING TRANSCRIPTION ===")
-    print(f"Using audio file: {os.path.basename(enhanced_audio_file)}")
-    
-    # Get audio file info
-    audio_size = os.path.getsize(enhanced_audio_file)
-    print(f"Audio file size: {audio_size} bytes")
-    
-    try:
-        # Load audio to check duration
-        audio_segment = AudioSegment.from_wav(enhanced_audio_file)
-        duration_ms = len(audio_segment)
-        duration_seconds = duration_ms / 1000
-        print(f"Audio duration: {duration_seconds:.1f} seconds")
-        
-        # Initialize speech recognizer with optimized settings
-        recognizer = sr.Recognizer()
-        recognizer.energy_threshold = 200  # Lower threshold for quiet speech
-        recognizer.dynamic_energy_threshold = True
-        recognizer.pause_threshold = 0.5  # Shorter pause detection
-        
-        print("Speech recognizer initialized with optimized settings")
-        
-        # Attempt transcription
-        with sr.AudioFile(enhanced_audio_file) as source:
-            print("Loading audio file for transcription...")
-            
-            # Adjust for ambient noise
-            recognizer.adjust_for_ambient_noise(source, duration=0.8)
-            print("Adjusted for ambient noise")
-            
-            # Record the audio data
-            audio_data = recognizer.record(source)
-            print("Audio data recorded successfully")
-            
-            # Try transcription with multiple approaches
-            transcription_methods = [
-                {'name': 'Standard English', 'lang': 'en-US', 'show_all': False},
-                {'name': 'English with alternatives', 'lang': 'en-US', 'show_all': True},
-                {'name': 'Generic English', 'lang': 'en', 'show_all': False}
-            ]
-            
-            successful_transcription = None
-            
-            for method in transcription_methods:
-                try:
-                    print(f"\nTrying method: {method['name']}")
-                    
-                    if method['show_all']:
-                        result = recognizer.recognize_google(audio_data, 
-                                                            language=method['lang'], 
-                                                            show_all=True)
-                        if result and 'alternative' in result and result['alternative']:
-                            best_alternative = result['alternative'][0]
-                            transcription = best_alternative.get('transcript', '')
-                            confidence = best_alternative.get('confidence', 0)
-                            print(f"Transcription with confidence {confidence:.2f}: '{transcription}'")
-                            if transcription.strip():
-                                successful_transcription = transcription
-                                break
-                    else:
-                        transcription = recognizer.recognize_google(audio_data, language=method['lang'])
-                        print(f"Transcription result: '{transcription}'")
-                        if transcription.strip():
-                            successful_transcription = transcription
-                            break
-                            
-                except sr.UnknownValueError:
-                    print(f"Method '{method['name']}' could not understand the audio")
-                    continue
-                except sr.RequestError as e:
-                    print(f"Method '{method['name']}' service error: {e}")
-                    continue
-                except Exception as e:
-                    print(f"Method '{method['name']}' unexpected error: {e}")
-                    continue
-            
-            if successful_transcription:
-                print(f"\n*** TRANSCRIPTION SUCCESSFUL ***")
-                print(f"Final transcription: '{successful_transcription}'")
-                
-                # Analyze the transcription for the specific dialogue
-                print(f"\n=== ANALYZING TRANSCRIPTION FOR 'ISN'T THAT HOT?' DIALOGUE ===")
-                
-                transcription_lower = successful_transcription.lower()
-                
-                # Search for hot-related patterns
-                hot_patterns = [
-                    "isn't that hot",
-                    "isnt that hot", 
-                    "is that hot",
-                    "isn't it hot",
-                    "that hot",
-                    "too hot",
-                    "very hot",
-                    "hot"
-                ]
-                
-                found_hot_patterns = []
-                hot_context = ""
-                
-                for pattern in hot_patterns:
-                    if pattern in transcription_lower:
-                        found_hot_patterns.append(pattern)
-                        # Get context around the pattern
-                        start_pos = transcription_lower.find(pattern)
-                        context_start = max(0, start_pos - 30)
-                        context_end = min(len(successful_transcription), start_pos + len(pattern) + 30)
-                        hot_context = successful_transcription[context_start:context_end]
-                        print(f"*** FOUND HOT PATTERN: '{pattern}' ***")
-                        print(f"Context: '{hot_context}'")
-                        break
-                
-                # Look for Teal'c's characteristic responses
-                print(f"\n=== IDENTIFYING TEAL'C'S RESPONSE PATTERNS ===")
-                
-                tealc_patterns = [
-                    "indeed",
-                    "it is",
-                    "extremely",
-                    "most",
-                    "negative",
-                    "affirmative",
-                    "i do not",
-                    "yes",
-                    "no"
-                ]
-                
-                found_tealc_patterns = []
-                for pattern in tealc_patterns:
-                    if pattern in transcription_lower:
-                        found_tealc_patterns.append(pattern)
-                        print(f"Found Teal'c response pattern: '{pattern}'")
-                
-                # Create comprehensive analysis
-                analysis_results = {
-                    'video_source': 'YouTube video: https://www.youtube.com/watch?v=1htKBjuUWec',
-                    'scene_description': "Teal'c trying coffee for the first time",
-                    'duration_seconds': duration_seconds,
-                    'transcription_successful': True,
-                    'full_transcription': successful_transcription,
-                    'hot_question_patterns_found': found_hot_patterns,
-                    'hot_question_context': hot_context,
-                    'tealc_response_patterns_found': found_tealc_patterns,
-                    'objective_completed': len(found_hot_patterns) > 0
-                }
-                
-                # Save detailed results
-                with open('workspace/tealc_dialogue_complete_analysis.json', 'w', encoding='utf-8') as f:
-                    json.dump(analysis_results, f, indent=2)
-                
-                # Create final answer file
-                with open('workspace/tealc_final_response.txt', 'w', encoding='utf-8') as f:
-                    f.write("TEAL'C'S RESPONSE TO 'ISN'T THAT HOT?'\n")
-                    f.write("=" * 50 + "\n\n")
-                    f.write(f"Source: YouTube video https://www.youtube.com/watch?v=1htKBjuUWec\n")
-                    f.write(f"Scene: Teal'c trying coffee for the first time (Stargate SG-1)\n")
-                    f.write(f"Duration: {duration_seconds:.1f} seconds\n\n")
-                    f.write(f"COMPLETE DIALOGUE TRANSCRIPTION:\n")
-                    f.write(f"'{successful_transcription}'\n\n")
-                    
-                    if found_hot_patterns:
-                        f.write(f"HOT QUESTION FOUND: Yes\n")
-                        f.write(f"Patterns detected: {', '.join(found_hot_patterns)}\n")
-                        f.write(f"Context: '{hot_context}'\n\n")
-                        
-                        f.write(f"TEAL'C'S EXACT RESPONSE:\n")
-                        f.write(f"Based on the transcription, when someone asks about the coffee being hot,\n")
-                        f.write(f"Teal'c's response is contained within this dialogue:\n")
-                        f.write(f"'{successful_transcription}'\n\n")
-                        
-                        if found_tealc_patterns:
-                            f.write(f"Teal'c's characteristic response patterns identified: {', '.join(found_tealc_patterns)}\n")
-                    else:
-                        f.write(f"HOT QUESTION FOUND: No direct 'isn't that hot?' pattern detected\n")
-                        f.write(f"However, the complete dialogue is: '{successful_transcription}'\n")
-                        f.write(f"Teal'c's response patterns found: {', '.join(found_tealc_patterns)}\n")
-                
-                print(f"\n*** ANALYSIS COMPLETE ***")
-                print(f"Complete transcription: '{successful_transcription}'")
-                print(f"Hot question patterns found: {found_hot_patterns}")
-                print(f"Teal'c response patterns found: {found_tealc_patterns}")
-                print(f"\nResults saved to:")
-                print(f"  - workspace/tealc_dialogue_complete_analysis.json")
-                print(f"  - workspace/tealc_final_response.txt")
-                
-                if found_hot_patterns:
-                    print(f"\n*** OBJECTIVE ACHIEVED ***")
-                    print(f"Successfully identified dialogue containing 'hot' question and Teal'c's response!")
-                else:
-                    print(f"\n*** PARTIAL SUCCESS ***")
-                    print(f"Transcription successful, but no direct 'isn't that hot?' pattern found.")
-                    print(f"The complete dialogue may still contain Teal'c's response in different wording.")
-                
-            else:
-                print(f"\n*** ALL TRANSCRIPTION METHODS FAILED ***")
-                print("The audio file may contain:")
-                print("- Only music/sound effects without speech")
-                print("- Very poor audio quality")
-                print("- Speech in a different language")
-                print("- Only background noise")
-                
-                # Create failure report
-                with open('workspace/transcription_final_failure.txt', 'w') as f:
-                    f.write("TRANSCRIPTION FINAL FAILURE REPORT\n")
-                    f.write("=" * 40 + "\n\n")
-                    f.write(f"Video: Teal'c coffee scene (29 seconds)\n")
-                    f.write(f"Audio file: {os.path.basename(enhanced_audio_file)}\n")
-                    f.write(f"Audio size: {audio_size} bytes\n")
-                    f.write(f"Duration: {duration_seconds:.1f} seconds\n\n")
-                    f.write("Methods attempted:\n")
-                    for method in transcription_methods:
-                        f.write(f"- {method['name']} ({method['lang']})\n")
-                    f.write("\nConclusion: Audio does not contain recognizable speech dialogue\n")
-                
-                print(f"Failure report saved to: workspace/transcription_final_failure.txt")
-        
-    except Exception as e:
-        print(f"\n*** ERROR DURING TRANSCRIPTION PROCESS ***")
-        print(f"Error: {str(e)}")
-        import traceback
-        print(f"Full error details: {traceback.format_exc()}")
-
-print("\n*** TEAL'C DIALOGUE TRANSCRIPTION ATTEMPT COMPLETE ***")
-```
-
 ## Created Time
-2025-08-11 04:59:13
+2025-08-13 21:57:24

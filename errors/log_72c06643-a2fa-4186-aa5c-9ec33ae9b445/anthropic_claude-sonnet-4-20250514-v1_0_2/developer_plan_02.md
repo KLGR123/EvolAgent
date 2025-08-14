@@ -1,1128 +1,1205 @@
 # Developer Plan 02
 
 ## Plan
-Research the environmental conditions at the bottom of the Marianas Trench, specifically focusing on the maximum depth, pressure at that depth, and the peak temperature mentioned in the TASK. Look for authoritative oceanographic sources that provide precise measurements of temperature and pressure conditions at the deepest point of the Marianas Trench (Challenger Deep).
+Research the thermodynamic properties of Freon-12 (dichlorodifluoromethane, CCl2F2) refrigerant, including its equation of state, critical properties, and phase behavior under extreme pressure and temperature conditions. Find reliable sources for Freon-12 property data such as density, compressibility factor, or specific volume correlations that can be used to calculate the volume of 0.312 kg at the Marianas Trench conditions (400°C peak temperature and 1,086 bars pressure).
 
 ## Description
-This is the necessary next step because: (1) We have successfully obtained comprehensive thermodynamic properties for Freon-12 including critical temperature (368.52 K), critical pressure (40.73 bar), and critical density (596.4 kg/m³), (2) To calculate the volume of Freon-12 under these extreme conditions, we need the specific environmental parameters at the bottom of the Marianas Trench including depth, pressure, and peak temperature, (3) Expected outcome is to obtain precise measurements of pressure (likely around 1000+ bar) and temperature at the deepest point of the trench, (4) This environmental data combined with the Freon-12 properties will enable us to determine the phase state and calculate the specific volume using appropriate equations of state
+This is the necessary next step because: (1) We have successfully obtained the Marianas Trench conditions (peak temperature 400°C and pressure 1,086 bars), (2) To calculate the volume of 0.312 kg Freon-12 under these extreme conditions, we need the refrigerant's thermodynamic properties and equation of state data, (3) Expected outcome is to find Freon-12 property correlations, critical constants, or density equations that can handle the extreme pressure and temperature conditions, (4) This will enable the calculation of specific volume and total volume for the given mass of Freon-12 refrigerant.
 
 ## Episodic Examples
-### Development Step 3: Identifying Coastal and Sea Access Status of 13 Asian Monarchies
+### Development Step 2: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification (2020 Wikipedia Reference)
 
-**Description**: Research the coastal geography and sea access status for each of the 13 Asian monarchies identified in 2021. Determine which of these monarchical countries have direct access to seas, oceans, or other major water bodies by examining their geographic boundaries, coastlines, and maritime borders. Cross-reference this information with the previously identified list of Asian monarchies to count how many countries satisfy both criteria: having a monarchy AND having sea access.
+**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
 
 **Use Cases**:
-- Maritime shipping route optimization for logistics companies transporting cargo through coastal Asian monarchies
-- Port development feasibility studies for international trade agencies assessing sea-access capabilities of monarchical states
-- Coastal flood risk modeling for insurance underwriters pricing policies in low-lying Asian monarchies
-- Marine biodiversity monitoring for environmental NGOs tracking ecosystem health along the coastlines of Asian monarchies
-- Naval base site selection strategy for defense departments evaluating strategic positions in sea-bordering monarchies
-- Beach tourism market analysis for travel operators identifying new resort opportunities in coastal monarchies
-- Maritime boundary dispute resolution support for legal consultancies handling sovereignty cases in monarchical regions
-- Sustainable fisheries management planning for government agencies regulating harvests in sea-access Asian monarchies
+- Regulatory compliance verification for food manufacturers ensuring their ice cream products meet US federal butterfat standards before distribution
+- Automated quality control checks in dairy processing plants to validate product recipes against legal definitions of ice cream
+- Market research analysis for food industry consultants comparing international ice cream standards for product localization
+- Academic research projects in food science departments studying the evolution of US ice cream regulations over time
+- Development of consumer-facing mobile apps that educate users about food labeling and legal definitions of dairy products
+- Legal due diligence for import/export businesses verifying that imported frozen desserts comply with US classification standards
+- Automated content generation for food bloggers or nutrition websites explaining regulatory requirements for ice cream labeling
+- Internal auditing tools for large food brands to periodically scrape and update regulatory data for compliance documentation
 
 ```
-import os
-import json
 import requests
 from bs4 import BeautifulSoup
-import time
-
-# Create workspace directory if it doesn't exist
-if not os.path.exists('workspace'):
-    os.makedirs('workspace')
-    print("Created workspace directory")
-
-print("=== ASIAN MONARCHIES SEA ACCESS RESEARCH ===\n")
-print("Objective: Research coastal geography and sea access for 13 Asian monarchies identified in 2021")
-print("Goal: Count monarchies with both monarchy status AND sea access\n")
-
-# First, let's check if we have any existing data about Asian monarchies
-print("Step 1: Checking workspace for existing monarchy data...")
-
-workspace_files = os.listdir('workspace') if os.path.exists('workspace') else []
-print(f"Files in workspace: {workspace_files}")
-
-# Look for any existing monarchy-related files
-monarchy_files = [f for f in workspace_files if 'monarch' in f.lower() or 'kingdom' in f.lower() or 'asian' in f.lower()]
-print(f"Monarchy-related files found: {monarchy_files}")
-
-# Since we need to identify the 13 Asian monarchies first, let's research this
-print("\nStep 2: Researching Asian monarchies as of 2021...")
-
-# Headers for web requests
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
-
-# Search for Asian monarchies information
-print("Accessing Wikipedia page on Asian monarchies...")
-
-try:
-    # Try the main monarchies page first
-    monarchy_url = "https://en.wikipedia.org/wiki/List_of_current_monarchies"
-    
-    response = requests.get(monarchy_url, headers=headers, timeout=30)
-    response.raise_for_status()
-    
-    print(f"✓ Successfully accessed monarchies Wikipedia page")
-    print(f"Response status: {response.status_code}")
-    print(f"Content length: {len(response.text):,} characters")
-    
-    # Save the page content
-    with open('workspace/current_monarchies_page.html', 'w', encoding='utf-8') as f:
-        f.write(response.text)
-    
-    # Parse the content
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Extract page title
-    title = soup.find('title')
-    page_title = title.get_text().strip() if title else 'No title found'
-    print(f"Page title: {page_title}")
-    
-    print("\n=== SEARCHING FOR ASIAN MONARCHIES SECTION ===\n")
-    
-    # Look for Asia-related sections
-    headings = soup.find_all(['h1', 'h2', 'h3', 'h4'])
-    asia_sections = []
-    
-    for heading in headings:
-        heading_text = heading.get_text().lower()
-        if any(keyword in heading_text for keyword in ['asia', 'asian', 'east asia', 'southeast asia', 'south asia', 'west asia']):
-            asia_sections.append({
-                'heading': heading.get_text().strip(),
-                'tag': heading.name,
-                'text': heading_text
-            })
-    
-    print(f"Found {len(asia_sections)} Asia-related sections:")
-    for i, section in enumerate(asia_sections, 1):
-        print(f"  {i}. {section['heading']} ({section['tag']})")
-    
-    # Look for tables that might contain monarchy information
-    tables = soup.find_all('table')
-    print(f"\nFound {len(tables)} tables on the page")
-    
-    # Analyze tables for Asian monarchy data
-    asian_monarchy_tables = []
-    
-    # Known Asian countries that might be monarchies
-    potential_asian_monarchies = [
-        'japan', 'thailand', 'cambodia', 'malaysia', 'brunei', 'bhutan', 'saudi arabia',
-        'jordan', 'kuwait', 'bahrain', 'qatar', 'oman', 'united arab emirates', 'nepal',
-        'maldives', 'afghanistan', 'iran', 'myanmar', 'laos', 'vietnam'
-    ]
-    
-    for i, table in enumerate(tables):
-        table_text = table.get_text().lower()
-        
-        # Check if table contains Asian countries and monarchy indicators
-        asian_countries_found = [country for country in potential_asian_monarchies if country in table_text]
-        monarchy_indicators = ['king', 'queen', 'emperor', 'sultan', 'emir', 'monarch', 'kingdom', 'empire', 'sultanate', 'emirate']
-        monarchy_terms_found = [term for term in monarchy_indicators if term in table_text]
-        
-        if len(asian_countries_found) >= 2 and len(monarchy_terms_found) >= 2:
-            asian_monarchy_tables.append({
-                'table_index': i,
-                'asian_countries_found': asian_countries_found,
-                'monarchy_terms_found': monarchy_terms_found,
-                'table_text_sample': table_text[:400]
-            })
-            print(f"\n*** PROMISING TABLE {i} FOR ASIAN MONARCHIES ***")
-            print(f"Asian countries found: {asian_countries_found[:5]}...")  # Show first 5
-            print(f"Monarchy terms found: {monarchy_terms_found[:5]}...")  # Show first 5
-    
-    print(f"\nIdentified {len(asian_monarchy_tables)} promising tables with Asian monarchy data")
-    
-    # Extract detailed information from the most promising table
-    if asian_monarchy_tables:
-        best_table = max(asian_monarchy_tables, key=lambda x: len(x['asian_countries_found']) + len(x['monarchy_terms_found']))
-        table_index = best_table['table_index']
-        target_table = tables[table_index]
-        
-        print(f"\n=== ANALYZING BEST TABLE (Index {table_index}) ===\n")
-        
-        # Extract table rows and cells
-        rows = target_table.find_all('tr')
-        print(f"Table has {len(rows)} rows")
-        
-        # Process table data
-        table_data = []
-        
-        for row_idx, row in enumerate(rows):
-            cells = row.find_all(['th', 'td'])
-            if cells:
-                cell_data = [cell.get_text().strip() for cell in cells]
-                table_data.append({
-                    'row_index': row_idx,
-                    'cells': cell_data,
-                    'cell_count': len(cell_data)
-                })
-                
-                # Show first few rows for analysis
-                if row_idx < 5:
-                    print(f"Row {row_idx}: {cell_data}")
-        
-        print(f"\nExtracted {len(table_data)} data rows from table")
-        
-        # Look for Asian monarchy patterns
-        asian_monarchies_found = []
-        
-        for row_data in table_data:
-            cells = row_data['cells']
-            
-            # Skip empty rows
-            if not cells or len(cells) < 2:
-                continue
-            
-            # Look for Asian countries in cells
-            row_text = ' '.join(cells).lower()
-            
-            # Check for known Asian monarchies (as of 2021)
-            known_asian_monarchies = {
-                'japan': ['japan', 'empire of japan'],
-                'thailand': ['thailand', 'kingdom of thailand'],
-                'cambodia': ['cambodia', 'kingdom of cambodia'],
-                'malaysia': ['malaysia'],
-                'brunei': ['brunei', 'brunei darussalam', 'sultanate of brunei'],
-                'bhutan': ['bhutan', 'kingdom of bhutan'],
-                'saudi_arabia': ['saudi arabia', 'kingdom of saudi arabia'],
-                'jordan': ['jordan', 'hashemite kingdom of jordan'],
-                'kuwait': ['kuwait', 'state of kuwait'],
-                'bahrain': ['bahrain', 'kingdom of bahrain'],
-                'qatar': ['qatar', 'state of qatar'],
-                'oman': ['oman', 'sultanate of oman'],
-                'uae': ['united arab emirates', 'uae', 'emirates']
-            }
-            
-            for country_key, country_variants in known_asian_monarchies.items():
-                if any(variant in row_text for variant in country_variants):
-                    # Check if this row also contains monarchy indicators
-                    monarchy_indicators = ['constitutional monarchy', 'absolute monarchy', 'kingdom', 'sultanate', 'emirate', 'empire']
-                    monarchy_type = 'Unknown'
-                    
-                    for indicator in monarchy_indicators:
-                        if indicator in row_text:
-                            monarchy_type = indicator.title()
-                            break
-                    
-                    asian_monarchies_found.append({
-                        'country_key': country_key,
-                        'country_name': country_key.replace('_', ' ').title(),
-                        'monarchy_type': monarchy_type,
-                        'row_data': cells,
-                        'row_index': row_data['row_index']
-                    })
-                    print(f"Found Asian monarchy: {country_key.replace('_', ' ').title()} - {monarchy_type}")
-                    break
-        
-        print(f"\n=== ASIAN MONARCHIES IDENTIFIED ===\n")
-        print(f"Found {len(asian_monarchies_found)} Asian monarchies:")
-        
-        for i, monarchy in enumerate(asian_monarchies_found, 1):
-            print(f"{i}. {monarchy['country_name']} ({monarchy['monarchy_type']})")
-    
-    # If we didn't find enough from tables, let's also check the text content
-    print("\n=== SEARCHING PAGE TEXT FOR ADDITIONAL MONARCHIES ===\n")
-    
-    # Get all text content
-    page_text = soup.get_text().lower()
-    
-    # Comprehensive list of Asian monarchies as of 2021
-    comprehensive_asian_monarchies = {
-        'japan': 'Japan (Constitutional Monarchy)',
-        'thailand': 'Thailand (Constitutional Monarchy)',
-        'cambodia': 'Cambodia (Constitutional Monarchy)',
-        'malaysia': 'Malaysia (Federal Constitutional Monarchy)',
-        'brunei': 'Brunei (Absolute Monarchy)',
-        'bhutan': 'Bhutan (Constitutional Monarchy)',
-        'saudi_arabia': 'Saudi Arabia (Absolute Monarchy)',
-        'jordan': 'Jordan (Constitutional Monarchy)',
-        'kuwait': 'Kuwait (Constitutional Monarchy)',
-        'bahrain': 'Bahrain (Constitutional Monarchy)',
-        'qatar': 'Qatar (Absolute Monarchy)',
-        'oman': 'Oman (Absolute Monarchy)',
-        'uae': 'United Arab Emirates (Federal Absolute Monarchy)'
-    }
-    
-    print("Comprehensive list of 13 Asian monarchies (as of 2021):")
-    for i, (key, name) in enumerate(comprehensive_asian_monarchies.items(), 1):
-        print(f"{i}. {name}")
-    
-    # Save the monarchy data
-    monarchy_data = {
-        'research_timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'source_url': monarchy_url,
-        'page_title': page_title,
-        'asian_monarchies_count': len(comprehensive_asian_monarchies),
-        'asian_monarchies': comprehensive_asian_monarchies,
-        'table_analysis': {
-            'total_tables': len(tables),
-            'promising_tables': len(asian_monarchy_tables),
-            'monarchies_from_table': asian_monarchies_found if 'asian_monarchies_found' in locals() else []
-        }
-    }
-    
-    with open('workspace/asian_monarchies_2021.json', 'w') as f:
-        json.dump(monarchy_data, f, indent=2)
-    
-    print(f"\nAsian monarchies data saved to: workspace/asian_monarchies_2021.json")
-    print(f"Total Asian monarchies identified: {len(comprehensive_asian_monarchies)}")
-    
-except Exception as e:
-    print(f"✗ Error accessing monarchies Wikipedia page: {str(e)}")
-    
-    # If web access fails, use known data
-    print("\nUsing known Asian monarchies data (as of 2021):")
-    
-    comprehensive_asian_monarchies = {
-        'japan': 'Japan (Constitutional Monarchy)',
-        'thailand': 'Thailand (Constitutional Monarchy)', 
-        'cambodia': 'Cambodia (Constitutional Monarchy)',
-        'malaysia': 'Malaysia (Federal Constitutional Monarchy)',
-        'brunei': 'Brunei (Absolute Monarchy)',
-        'bhutan': 'Bhutan (Constitutional Monarchy)',
-        'saudi_arabia': 'Saudi Arabia (Absolute Monarchy)',
-        'jordan': 'Jordan (Constitutional Monarchy)',
-        'kuwait': 'Kuwait (Constitutional Monarchy)',
-        'bahrain': 'Bahrain (Constitutional Monarchy)',
-        'qatar': 'Qatar (Absolute Monarchy)',
-        'oman': 'Oman (Absolute Monarchy)',
-        'uae': 'United Arab Emirates (Federal Absolute Monarchy)'
-    }
-    
-    monarchy_data = {
-        'research_timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'source': 'Known data (web access failed)',
-        'asian_monarchies_count': len(comprehensive_asian_monarchies),
-        'asian_monarchies': comprehensive_asian_monarchies
-    }
-    
-    with open('workspace/asian_monarchies_2021.json', 'w') as f:
-        json.dump(monarchy_data, f, indent=2)
-    
-    print(f"Asian monarchies data saved to: workspace/asian_monarchies_2021.json")
-    
-print(f"\n=== STEP 1 COMPLETE ===\n")
-print(f"✓ Identified 13 Asian monarchies as of 2021")
-print(f"Next: Research coastal geography and sea access for each monarchy")
-```
-
-### Development Step 5: Assess Sea Access Among 13 Asian Monarchies via Coastal Geography and Maritime Boundaries
-
-**Description**: Research the coastal geography and sea access status for each of the 13 Asian monarchies identified in 2021. Determine which of these monarchical countries have direct access to seas, oceans, or other major water bodies by examining their geographic boundaries, coastlines, and maritime borders. Cross-reference this information with the previously identified list of Asian monarchies to count how many countries satisfy both criteria: having a monarchy AND having sea access.
-
-**Use Cases**:
-- Maritime infrastructure planning and port development budgeting for Asian transportation ministries by identifying which monarchies have direct sea access
-- Shipping route optimization and diplomatic compliance checks for maritime logistics firms by leveraging the list of coastal monarchies in Asia
-- Coastal flood risk modelling and insurance premium calculation for underwriters focusing on properties in monarchical countries with shorelines
-- Political geography research and statistical correlation analysis for academic studies examining links between monarchy governance and maritime trade access
-- Yacht tourism itinerary design and destination marketing for travel agencies targeting the seaside attractions of coastal monarchies
-- Naval defense strategy assessment and coastline vulnerability mapping for defense intelligence units monitoring Asian monarchies
-- Coastal conservation prioritization and environmental impact assessments for NGOs working on marine protection in monarchical states
-- Data journalism visualization and interactive mapping for newsrooms reporting on how political regimes align with maritime boundaries in Asia
-
-```
 import os
 import json
-import requests
-from bs4 import BeautifulSoup
-import time
+from datetime import datetime
+import re
 
-print("=== ASIAN MONARCHIES SEA ACCESS RESEARCH ===\n")
-print("Phase 2: Research coastal geography and sea access for each of the 13 Asian monarchies")
-print("Goal: Determine which monarchies have direct access to seas, oceans, or major water bodies\n")
+print("=== RESEARCHING US FEDERAL ICE CREAM BUTTERFAT STANDARDS FROM WIKIPEDIA 2020 ===")
+print("Objective: Find minimum butterfat percentage required by federal regulations for ice cream classification")
+print("Target: Wikipedia information as reported in 2020\n")
 
-# Load the comprehensive monarchy data
-with open('workspace/asian_monarchies_2021_comprehensive.json', 'r', encoding='utf-8') as f:
-    monarchy_data = json.load(f)
-
-# Extract the complete list of 13 Asian monarchies
-monarchies_list = monarchy_data['complete_list']
-print(f"Loaded {len(monarchies_list)} Asian monarchies for sea access analysis:\n")
-
-for i, monarchy in enumerate(monarchies_list, 1):
-    print(f"{i:2d}. {monarchy['country']} ({monarchy['region']})")
-
-print("\n=== RESEARCHING SEA ACCESS FOR EACH MONARCHY ===\n")
-
-# Headers for web requests
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
-
-# Initialize results tracking
-sea_access_results = []
-coastal_monarchies = []
-landlocked_monarchies = []
-
-# Research each monarchy's coastal geography
-for monarchy in monarchies_list:
-    country_name = monarchy['country']
-    print(f"\n--- Researching {country_name} ---")
-    
-    # Known geographical facts about each country's sea access
-    # This approach ensures accuracy and avoids web scraping issues
-    sea_access_data = {
-        'Bahrain': {
-            'has_sea_access': True,
-            'water_bodies': ['Persian Gulf', 'Arabian Gulf'],
-            'geography_type': 'Island nation',
-            'coastline_length': '161 km',
-            'details': 'Archipelago of 33 islands in the Persian Gulf'
-        },
-        'Bhutan': {
-            'has_sea_access': False,
-            'water_bodies': [],
-            'geography_type': 'Landlocked',
-            'coastline_length': '0 km',
-            'details': 'Landlocked between China and India in the Himalayas'
-        },
-        'Brunei': {
-            'has_sea_access': True,
-            'water_bodies': ['South China Sea'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '161 km',
-            'details': 'Located on the northern coast of Borneo island'
-        },
-        'Cambodia': {
-            'has_sea_access': True,
-            'water_bodies': ['Gulf of Thailand', 'South China Sea'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '443 km',
-            'details': 'Southwestern coastline along the Gulf of Thailand'
-        },
-        'Japan': {
-            'has_sea_access': True,
-            'water_bodies': ['Pacific Ocean', 'Sea of Japan', 'East China Sea', 'Philippine Sea'],
-            'geography_type': 'Island nation',
-            'coastline_length': '29,751 km',
-            'details': 'Archipelago of 6,852 islands surrounded by multiple seas and ocean'
-        },
-        'Jordan': {
-            'has_sea_access': True,
-            'water_bodies': ['Red Sea', 'Gulf of Aqaba'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '26 km',
-            'details': 'Short coastline at the port city of Aqaba on the Red Sea'
-        },
-        'Kuwait': {
-            'has_sea_access': True,
-            'water_bodies': ['Persian Gulf', 'Arabian Gulf'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '499 km',
-            'details': 'Located at the northern tip of the Persian Gulf'
-        },
-        'Malaysia': {
-            'has_sea_access': True,
-            'water_bodies': ['South China Sea', 'Strait of Malacca', 'Celebes Sea', 'Sulu Sea'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '4,675 km',
-            'details': 'Peninsular Malaysia and East Malaysia (Borneo) both have extensive coastlines'
-        },
-        'Oman': {
-            'has_sea_access': True,
-            'water_bodies': ['Arabian Sea', 'Gulf of Oman', 'Persian Gulf'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '2,092 km',
-            'details': 'Extensive coastline along the Arabian Peninsula'
-        },
-        'Qatar': {
-            'has_sea_access': True,
-            'water_bodies': ['Persian Gulf', 'Arabian Gulf'],
-            'geography_type': 'Peninsula',
-            'coastline_length': '563 km',
-            'details': 'Peninsula extending into the Persian Gulf'
-        },
-        'Saudi Arabia': {
-            'has_sea_access': True,
-            'water_bodies': ['Red Sea', 'Persian Gulf', 'Arabian Gulf'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '2,640 km',
-            'details': 'Coastlines on both the Red Sea (west) and Persian Gulf (east)'
-        },
-        'Thailand': {
-            'has_sea_access': True,
-            'water_bodies': ['Gulf of Thailand', 'Andaman Sea', 'South China Sea', 'Indian Ocean'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '3,219 km',
-            'details': 'Coastlines on both the Gulf of Thailand and Andaman Sea'
-        },
-        'United Arab Emirates': {
-            'has_sea_access': True,
-            'water_bodies': ['Persian Gulf', 'Arabian Gulf', 'Gulf of Oman'],
-            'geography_type': 'Coastal nation',
-            'coastline_length': '1,318 km',
-            'details': 'Federation of emirates along the Persian Gulf and Gulf of Oman'
-        }
-    }
-    
-    # Get data for current country
-    country_geo_data = sea_access_data.get(country_name, {})
-    
-    if country_geo_data:
-        has_sea_access = country_geo_data['has_sea_access']
-        water_bodies = country_geo_data['water_bodies']
-        coastline = country_geo_data['coastline_length']
-        geography_type = country_geo_data['geography_type']
-        details = country_geo_data['details']
-        
-        print(f"✓ {country_name}: {'HAS' if has_sea_access else 'NO'} sea access")
-        print(f"  Geography: {geography_type}")
-        print(f"  Coastline: {coastline}")
-        if water_bodies:
-            print(f"  Water bodies: {', '.join(water_bodies)}")
-        print(f"  Details: {details}")
-        
-        # Create result record
-        result_record = {
-            'country': country_name,
-            'official_name': monarchy['official_name'],
-            'region': monarchy['region'],
-            'capital': monarchy['capital'],
-            'government_type': monarchy['government_type'],
-            'has_sea_access': has_sea_access,
-            'water_bodies': water_bodies,
-            'geography_type': geography_type,
-            'coastline_length': coastline,
-            'geographical_details': details
-        }
-        
-        sea_access_results.append(result_record)
-        
-        # Categorize by sea access
-        if has_sea_access:
-            coastal_monarchies.append(result_record)
-        else:
-            landlocked_monarchies.append(result_record)
-    
-    else:
-        print(f"✗ No geographical data available for {country_name}")
-    
-    # Brief pause to avoid overwhelming output
-    time.sleep(0.1)
-
-print(f"\n=== SEA ACCESS ANALYSIS RESULTS ===\n")
-
-print(f"COASTAL MONARCHIES (with sea access): {len(coastal_monarchies)}")
-for i, monarchy in enumerate(coastal_monarchies, 1):
-    water_list = ', '.join(monarchy['water_bodies']) if monarchy['water_bodies'] else 'N/A'
-    print(f"{i:2d}. {monarchy['country']} - {monarchy['geography_type']} ({water_list})")
-
-print(f"\nLANDLOCKED MONARCHIES (no sea access): {len(landlocked_monarchies)}")
-for i, monarchy in enumerate(landlocked_monarchies, 1):
-    print(f"{i:2d}. {monarchy['country']} - {monarchy['geography_type']}")
-
-print(f"\n=== FINAL ANSWER ===\n")
-print(f"Total Asian monarchies in 2021: {len(monarchies_list)}")
-print(f"Monarchies with sea access: {len(coastal_monarchies)}")
-print(f"Monarchies without sea access: {len(landlocked_monarchies)}")
-print(f"\n*** COUNTRIES WITH BOTH MONARCHY AND SEA ACCESS: {len(coastal_monarchies)} ***")
-
-# Save detailed results
-final_results = {
-    'analysis_timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-    'research_objective': 'Count Asian monarchies with sea access in 2021',
-    'total_asian_monarchies': len(monarchies_list),
-    'monarchies_with_sea_access': len(coastal_monarchies),
-    'monarchies_without_sea_access': len(landlocked_monarchies),
-    'final_answer': len(coastal_monarchies),
-    'coastal_monarchies': coastal_monarchies,
-    'landlocked_monarchies': landlocked_monarchies,
-    'complete_analysis': sea_access_results
-}
-
-with open('workspace/asian_monarchies_sea_access_analysis.json', 'w') as f:
-    json.dump(final_results, f, indent=2)
-
-print(f"\nDetailed analysis saved to: workspace/asian_monarchies_sea_access_analysis.json")
-
-# Create summary report
-summary_report = f"""ASIAN MONARCHIES SEA ACCESS RESEARCH SUMMARY
-=============================================
-
-Research Question: How many of the 13 Asian monarchies identified in 2021 have direct access to seas, oceans, or major water bodies?
-
-METHODOLOGY:
-- Identified 13 Asian monarchies active in 2021
-- Researched coastal geography for each country
-- Determined sea access based on coastlines and maritime borders
-
-RESULTS:
-Total Asian Monarchies: 13
-With Sea Access: {len(coastal_monarchies)}
-Without Sea Access: {len(landlocked_monarchies)}
-
-COASTAL MONARCHIES ({len(coastal_monarchies)}):
-"""
-
-for monarchy in coastal_monarchies:
-    summary_report += f"- {monarchy['country']} ({monarchy['geography_type']})\n"
-
-summary_report += f"\nLANDLOCKED MONARCHIES ({len(landlocked_monarchies)}):\n"
-for monarchy in landlocked_monarchies:
-    summary_report += f"- {monarchy['country']} ({monarchy['geography_type']})\n"
-
-summary_report += f"\nFINAL ANSWER: {len(coastal_monarchies)} Asian monarchies have both monarchy status AND sea access."
-
-with open('workspace/sea_access_summary_report.txt', 'w') as f:
-    f.write(summary_report)
-
-print(f"\nSummary report saved to: workspace/sea_access_summary_report.txt")
-print(f"\n=== RESEARCH COMPLETE ===\n")
-print(f"Answer: {len(coastal_monarchies)} Asian monarchies satisfy both criteria (monarchy + sea access)")
-```
-
-### Development Step 4: Assessing Sea Access of 13 Asian Monarchies Identified in 2021
-
-**Description**: Research the coastal geography and sea access status for each of the 13 Asian monarchies identified in 2021. Determine which of these monarchical countries have direct access to seas, oceans, or other major water bodies by examining their geographic boundaries, coastlines, and maritime borders. Cross-reference this information with the previously identified list of Asian monarchies to count how many countries satisfy both criteria: having a monarchy AND having sea access.
-
-**Use Cases**:
-- Logistics route optimization and automated port selection for shipping companies navigating Asian monarchies with coastal access
-- Investment feasibility assessment and site analysis for beachfront resort development in Southeast Asian monarchies
-- Marine border security planning and patrol scheduling for defense ministries of monarchical states with sea borders
-- Environmental impact modeling and marine conservation strategy design for coral reef protection off coastal monarchies
-- Historical geography research and academic mapping of coastline shifts in Asian monarchies over the last century
-- Insurance underwriting risk analysis for storm surge and flood exposure at port cities in monarchical countries
-- Government infrastructure project prioritization and budget allocation for modernizing ports in sea-access monarchies
-- Tourism itinerary automation and cruise route design for travel agencies targeting coastal excursions in monarchies
-
-```
-import os
-import json
-
-print("=== WORKSPACE FILE INSPECTION ===\n")
-print("Checking existing monarchy data files before proceeding with sea access research...")
-
-# Check workspace directory
+# Ensure workspace directory exists
 workspace_dir = 'workspace'
+os.makedirs(workspace_dir, exist_ok=True)
+
+# Search strategy: Look for Wikipedia pages about ice cream, food standards, FDA regulations
+search_targets = [
+    'Ice cream',
+    'Ice cream (United States)',
+    'Food and Drug Administration',
+    'FDA food standards',
+    'Dairy product standards',
+    'Frozen dessert standards'
+]
+
+print("=== STEP 1: SEARCHING WIKIPEDIA FOR ICE CREAM STANDARDS PAGES ===")
+
+# Wikipedia search API to find relevant pages
+wikipedia_search_results = []
+
+for target in search_targets:
+    print(f"\nSearching Wikipedia for: '{target}'")
+    
+    # Use Wikipedia search API
+    search_url = 'https://en.wikipedia.org/api/rest_v1/page/search'
+    params = {
+        'q': target,
+        'limit': 5
+    }
+    
+    try:
+        response = requests.get(search_url, params=params, timeout=10)
+        response.raise_for_status()
+        
+        search_data = response.json()
+        
+        if 'pages' in search_data:
+            print(f"Found {len(search_data['pages'])} results:")
+            
+            for page in search_data['pages']:
+                title = page.get('title', 'Unknown')
+                description = page.get('description', 'No description')
+                page_id = page.get('pageid', 'Unknown')
+                
+                print(f"  - {title} (ID: {page_id})")
+                print(f"    Description: {description}")
+                
+                wikipedia_search_results.append({
+                    'search_term': target,
+                    'title': title,
+                    'description': description,
+                    'page_id': page_id,
+                    'relevance_score': 0  # Will calculate based on keywords
+                })
+        else:
+            print(f"No results found for '{target}'")
+    
+    except Exception as e:
+        print(f"Error searching for '{target}': {e}")
+        continue
+
+print(f"\nTotal Wikipedia pages found: {len(wikipedia_search_results)}")
+
+# Calculate relevance scores based on keywords related to ice cream standards
+relevant_keywords = [
+    'ice cream', 'butterfat', 'fat content', 'federal', 'fda', 'regulation', 
+    'standard', 'minimum', 'percentage', 'dairy', 'frozen dessert', 'food standards'
+]
+
+for result in wikipedia_search_results:
+    title_lower = result['title'].lower()
+    desc_lower = result['description'].lower()
+    combined_text = f"{title_lower} {desc_lower}"
+    
+    # Count relevant keywords
+    score = sum(1 for keyword in relevant_keywords if keyword in combined_text)
+    result['relevance_score'] = score
+    
+    # Boost score for exact 'ice cream' matches
+    if 'ice cream' in title_lower:
+        result['relevance_score'] += 5
+
+# Sort by relevance score
+wikipedia_search_results.sort(key=lambda x: x['relevance_score'], reverse=True)
+
+print("\n=== TOP RELEVANT WIKIPEDIA PAGES (BY RELEVANCE SCORE) ===")
+for i, result in enumerate(wikipedia_search_results[:10], 1):
+    print(f"{i}. {result['title']} (Score: {result['relevance_score']})")
+    print(f"   Description: {result['description']}")
+    print(f"   Page ID: {result['page_id']}")
+    print(f"   Search term: {result['search_term']}")
+
+# Save search results
+search_results_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_search_results.json')
+with open(search_results_file, 'w') as f:
+    json.dump({
+        'search_date': datetime.now().isoformat(),
+        'search_targets': search_targets,
+        'total_results': len(wikipedia_search_results),
+        'relevant_keywords': relevant_keywords,
+        'results': wikipedia_search_results
+    }, f, indent=2)
+
+print(f"\nSearch results saved to: {search_results_file}")
+
+# Focus on the most promising pages for detailed analysis
+top_pages = wikipedia_search_results[:5]  # Top 5 most relevant
+
+print(f"\n=== STEP 2: ANALYZING TOP {len(top_pages)} WIKIPEDIA PAGES FOR BUTTERFAT STANDARDS ===")
+
+found_butterfat_info = []
+
+for i, page_info in enumerate(top_pages, 1):
+    page_title = page_info['title']
+    page_id = page_info['page_id']
+    
+    print(f"\n{i}. Analyzing: '{page_title}' (ID: {page_id})")
+    
+    try:
+        # Get the full Wikipedia page content
+        page_url = f'https://en.wikipedia.org/api/rest_v1/page/summary/{page_title.replace(" ", "_")}'
+        
+        response = requests.get(page_url, timeout=15)
+        response.raise_for_status()
+        
+        page_data = response.json()
+        
+        # Get the full page content using the content API
+        content_url = f'https://en.wikipedia.org/w/api.php'
+        content_params = {
+            'action': 'query',
+            'format': 'json',
+            'titles': page_title,
+            'prop': 'extracts',
+            'exintro': False,  # Get full content, not just intro
+            'explaintext': True,  # Get plain text
+            'exsectionformat': 'wiki'
+        }
+        
+        content_response = requests.get(content_url, params=content_params, timeout=15)
+        content_response.raise_for_status()
+        
+        content_data = content_response.json()
+        
+        if 'query' in content_data and 'pages' in content_data['query']:
+            pages = content_data['query']['pages']
+            
+            for page_id_key, page_content in pages.items():
+                if 'extract' in page_content:
+                    full_text = page_content['extract']
+                    
+                    print(f"   Page content length: {len(full_text):,} characters")
+                    
+                    # Search for butterfat content information
+                    butterfat_patterns = [
+                        r'butterfat[^.]*?(\d+(?:\.\d+)?)\s*(?:percent|%)',
+                        r'(\d+(?:\.\d+)?)\s*(?:percent|%)\s*butterfat',
+                        r'minimum[^.]*?butterfat[^.]*?(\d+(?:\.\d+)?)\s*(?:percent|%)',
+                        r'(\d+(?:\.\d+)?)\s*(?:percent|%)\s*[^.]*?butterfat[^.]*?minimum',
+                        r'federal[^.]*?butterfat[^.]*?(\d+(?:\.\d+)?)\s*(?:percent|%)',
+                        r'FDA[^.]*?butterfat[^.]*?(\d+(?:\.\d+)?)\s*(?:percent|%)',
+                        r'ice cream[^.]*?butterfat[^.]*?(\d+(?:\.\d+)?)\s*(?:percent|%)',
+                        r'(\d+(?:\.\d+)?)\s*(?:percent|%)\s*[^.]*?ice cream[^.]*?butterfat'
+                    ]
+                    
+                    # Look for sentences containing butterfat information
+                    sentences = full_text.split('.')
+                    
+                    butterfat_sentences = []
+                    for sentence in sentences:
+                        sentence_lower = sentence.lower()
+                        if 'butterfat' in sentence_lower and any(keyword in sentence_lower for keyword in ['percent', '%', 'minimum', 'federal', 'fda', 'standard', 'regulation']):
+                            butterfat_sentences.append(sentence.strip())
+                    
+                    if butterfat_sentences:
+                        print(f"   *** FOUND BUTTERFAT INFORMATION ***")
+                        print(f"   Relevant sentences: {len(butterfat_sentences)}")
+                        
+                        for j, sentence in enumerate(butterfat_sentences, 1):
+                            print(f"   {j}. {sentence[:200]}{'...' if len(sentence) > 200 else ''}")
+                            
+                            # Extract percentage values from sentences
+                            percentage_matches = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+                            if percentage_matches:
+                                print(f"      Percentages found: {percentage_matches}")
+                        
+                        found_butterfat_info.append({
+                            'page_title': page_title,
+                            'page_id': page_id,
+                            'sentences': butterfat_sentences,
+                            'full_text_preview': full_text[:500] + '...' if len(full_text) > 500 else full_text
+                        })
+                    
+                    else:
+                        print(f"   No butterfat information found in this page")
+                        
+                        # Check for general ice cream standards
+                        if 'ice cream' in full_text.lower():
+                            ice_cream_sentences = []
+                            for sentence in sentences:
+                                sentence_lower = sentence.lower()
+                                if 'ice cream' in sentence_lower and any(keyword in sentence_lower for keyword in ['standard', 'regulation', 'federal', 'fda', 'minimum', 'percent', '%']):
+                                    ice_cream_sentences.append(sentence.strip())
+                            
+                            if ice_cream_sentences:
+                                print(f"   Found {len(ice_cream_sentences)} sentences about ice cream standards:")
+                                for sentence in ice_cream_sentences[:3]:  # Show first 3
+                                    print(f"     - {sentence[:150]}{'...' if len(sentence) > 150 else ''}")
+                else:
+                    print(f"   No content extract available for this page")
+        else:
+            print(f"   Error: Could not retrieve page content")
+    
+    except Exception as e:
+        print(f"   Error analyzing page '{page_title}': {e}")
+        continue
+
+print(f"\n=== BUTTERFAT INFORMATION ANALYSIS RESULTS ===")
+print(f"Pages with butterfat information: {len(found_butterfat_info)}")
+
+if found_butterfat_info:
+    # Save detailed butterfat information
+    butterfat_file = os.path.join(workspace_dir, 'wikipedia_butterfat_standards.json')
+    with open(butterfat_file, 'w') as f:
+        json.dump({
+            'analysis_date': datetime.now().isoformat(),
+            'objective': 'Find US federal butterfat content standards for ice cream as reported by Wikipedia in 2020',
+            'pages_analyzed': len(top_pages),
+            'pages_with_butterfat_info': len(found_butterfat_info),
+            'butterfat_information': found_butterfat_info
+        }, f, indent=2)
+    
+    print(f"\nDetailed butterfat information saved to: {butterfat_file}")
+    
+    # Display summary of findings
+    for i, info in enumerate(found_butterfat_info, 1):
+        print(f"\n{i}. Page: {info['page_title']}")
+        print(f"   Butterfat sentences found: {len(info['sentences'])}")
+        
+        # Look for specific percentage values
+        all_percentages = []
+        for sentence in info['sentences']:
+            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+            all_percentages.extend(percentages)
+        
+        if all_percentages:
+            print(f"   Percentage values mentioned: {list(set(all_percentages))}")
+        
+        # Show most relevant sentence
+        if info['sentences']:
+            best_sentence = max(info['sentences'], key=lambda s: len(s))  # Longest sentence likely has most detail
+            print(f"   Key sentence: {best_sentence[:300]}{'...' if len(best_sentence) > 300 else ''}")
+else:
+    print("\nNo specific butterfat information found in the analyzed pages.")
+    print("Will try direct search for 'Ice cream' Wikipedia page with more specific analysis.")
+
+print(f"\n=== WIKIPEDIA SEARCH PHASE COMPLETE ===")
+print(f"Next: Direct analysis of main 'Ice cream' Wikipedia page for federal standards")
+```
+
+### Development Step 4: US Federal Minimum Butterfat Requirement for Ice Cream: 10% per 2020 Wikipedia Standards
+
+**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
+
+**Use Cases**:
+- Quality assurance in a US ice cream manufacturing plant to verify products meet federal butterfat standards before distribution
+- Regulatory compliance checks by food safety consultants auditing new frozen dessert products for legal classification as "ice cream"
+- Automated labeling system for a food packaging company to ensure only qualifying products are marketed as "ice cream" under US law
+- Competitive market analysis by a food industry analyst comparing butterfat content claims across brands using verified federal standards
+- Academic research on the evolution of food standards, referencing historical butterfat regulations for publications or theses
+- Consumer advocacy group investigations into mislabeled frozen desserts, using extracted standards to support complaints or reports
+- Development of a nutrition-tracking app that flags products not meeting federal ice cream definitions for health-conscious users
+- Automated content verification for online grocery platforms to ensure product listings accurately reflect legal definitions and standards
+
+```
+import requests
+from bs4 import BeautifulSoup
+import os
+import json
+from datetime import datetime
+import re
+
+print("=== COMPREHENSIVE WIKIPEDIA ICE CREAM ANALYSIS FOR FEDERAL BUTTERFAT STANDARDS ===")
+print("Objective: Extract US federal minimum butterfat percentage from complete Wikipedia content")
+print("Strategy: Multiple approaches to get full article content and detailed section analysis\n")
+
+# Ensure workspace directory exists
+workspace_dir = 'workspace'
+os.makedirs(workspace_dir, exist_ok=True)
+
+# First, let's inspect the existing workspace files to understand what we already have
+print("=== STEP 1: INSPECTING EXISTING WORKSPACE FILES ===")
+
 if os.path.exists(workspace_dir):
-    files = os.listdir(workspace_dir)
-    print(f"Files in workspace: {files}")
+    workspace_files = os.listdir(workspace_dir)
+    print(f"Files in workspace: {len(workspace_files)}")
+    
+    for file in workspace_files:
+        file_path = os.path.join(workspace_dir, file)
+        file_size = os.path.getsize(file_path)
+        print(f"  - {file} ({file_size:,} bytes)")
+    
+    # Check if we have the previous Wikipedia content
+    wiki_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_full_content.txt')
+    if os.path.exists(wiki_content_file):
+        print(f"\nInspecting previous Wikipedia content...")
+        with open(wiki_content_file, 'r', encoding='utf-8') as f:
+            previous_content = f.read()
+        
+        print(f"Previous content length: {len(previous_content):,} characters")
+        print(f"Content preview (first 300 chars):\n{previous_content[:300]}...")
+        
+        # Check if this is just the intro or full content
+        if len(previous_content) < 10000:  # Likely just intro/summary
+            print("\n*** Previous content appears to be summary only - need full article ***")
 else:
     print("No workspace directory found")
-    exit()
 
-# Look for monarchy-related files
-monarchy_files = [f for f in files if 'monarch' in f.lower() or 'asian' in f.lower()]
-print(f"\nMonarchy-related files found: {monarchy_files}")
+# Now try to get the COMPLETE Wikipedia Ice cream article
+print("\n=== STEP 2: ACCESSING COMPLETE WIKIPEDIA ICE CREAM ARTICLE ===")
 
-# Inspect each monarchy file to understand structure
-for monarchy_file in monarchy_files:
-    file_path = os.path.join(workspace_dir, monarchy_file)
-    file_size = os.path.getsize(file_path)
-    print(f"\n=== INSPECTING {monarchy_file} ({file_size} bytes) ===\n")
+try:
+    # Method 1: Try to get full content without intro restriction
+    api_url = 'https://en.wikipedia.org/w/api.php'
     
-    if monarchy_file.endswith('.json'):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            print(f"JSON structure type: {type(data)}")
-            
-            if isinstance(data, dict):
-                print(f"Top-level keys: {list(data.keys())}")
-                
-                # Inspect each key
-                for key in data.keys():
-                    value = data[key]
-                    print(f"\nKey '{key}':")
-                    print(f"  Type: {type(value)}")
-                    
-                    if isinstance(value, dict):
-                        print(f"  Dict keys: {list(value.keys())}")
-                        # Show first few entries
-                        for i, (sub_key, sub_value) in enumerate(value.items()):
-                            if i < 3:  # Show first 3 entries
-                                print(f"    '{sub_key}': {sub_value}")
-                            elif i == 3:
-                                print(f"    ... and {len(value) - 3} more entries")
-                                break
-                    elif isinstance(value, list):
-                        print(f"  List length: {len(value)}")
-                        if len(value) > 0:
-                            print(f"  First entry: {value[0]}")
-                    else:
-                        # For simple values, show them directly
-                        if len(str(value)) < 200:
-                            print(f"  Value: {value}")
-                        else:
-                            print(f"  Value (truncated): {str(value)[:200]}...")
-            
-            elif isinstance(data, list):
-                print(f"List length: {len(data)}")
-                if len(data) > 0:
-                    print(f"First entry type: {type(data[0])}")
-                    print(f"First entry: {data[0]}")
-            
-            # Show complete content for small files
-            if file_size < 1000:
-                print(f"\nComplete file content:")
-                print(json.dumps(data, indent=2))
-                
-        except json.JSONDecodeError as e:
-            print(f"Error: Invalid JSON format - {e}")
-        except Exception as e:
-            print(f"Error reading JSON file: {e}")
-    
-    elif monarchy_file.endswith('.txt'):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            print(f"Text file content ({len(content)} characters):")
-            print(content)
-            
-        except Exception as e:
-            print(f"Error reading text file: {e}")
-
-print(f"\n=== FILE INSPECTION COMPLETE ===\n")
-print("Now I understand the structure of existing monarchy data.")
-print("Next: Extract the monarchy list and begin sea access research.")
-```
-
-### Development Step 8: Extract 2020 Chinstrap Penguin Population Count and Methodology from Nature.com Study for Comparison
-
-**Description**: Search for and access the Nature.com article titled 'global population assessment of the Chinstrap penguin' from 2020. Extract the specific population figure from this study, noting whether it's provided as breeding pairs or individual penguins. Document the exact methodology and population count to enable accurate comparison with the Wikipedia 2018 data.
-
-**Use Cases**:
-- Conservation NGO population tracking dashboards and policy recommendation reports for Antarctic wildlife management
-- Government environmental agency species status assessments and legislative drafting for marine protection
-- Academic meta-analysis combining multi-decade seabird population studies for climate change impact research
-- Automated update of biodiversity informatics platforms (e.g., GBIF) with standardized species counts and confidence intervals
-- Ecotourism operator planning and risk assessment for Antarctic expeditions based on up-to-date penguin colony sizes
-- Science education module development and interactive visualizations for university ecology courses
-- Journalistic data-driven articles on wildlife biodiversity trends for environmental news outlets
-- Environmental consultancy feasibility studies and impact assessments for proposed Antarctic infrastructure projects
-
-```
-import os
-import json
-
-print("=== FINAL EXTRACTION: 2020 NATURE STUDY POPULATION DATA ===\n")
-
-# Locate workspace directory
-workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
-if not workspace_dirs:
-    print("No workspace directory found.")
-    exit()
-
-workspace_dir = workspace_dirs[0]
-print(f"Using workspace directory: {workspace_dir}\n")
-
-# First, inspect the analysis file structure before accessing it
-analysis_file = os.path.join(workspace_dir, 'nature_2020_population_analysis.json')
-if not os.path.exists(analysis_file):
-    print(f"Analysis file not found: {analysis_file}")
-    exit()
-
-print("=== INSPECTING ANALYSIS FILE STRUCTURE ===\n")
-print(f"Reading analysis file: {os.path.basename(analysis_file)}")
-
-with open(analysis_file, 'r') as f:
-    analysis_data = json.load(f)
-
-print("Top-level keys in analysis data:")
-for key, value in analysis_data.items():
-    if isinstance(value, dict):
-        print(f"  {key}: Dictionary with {len(value)} keys")
-    elif isinstance(value, list):
-        print(f"  {key}: List with {len(value)} items")
-    else:
-        print(f"  {key}: {type(value).__name__} - {str(value)[:100]}...")
-
-print("\n=== EXTRACTING KEY POPULATION DATA FROM ANALYSIS ===\n")
-
-# Extract the main population figure from abstract
-if 'abstract_text' in analysis_data:
-    abstract_text = analysis_data['abstract_text']
-    print("Abstract text (key excerpt):")
-    print(abstract_text[:500] + "...")
-    
-    # Extract the specific population figure mentioned
-    print("\n*** KEY FINDING FROM ABSTRACT ***")
-    print("Global population: 3.42 million breeding pairs")
-    print("95th-percentile CI: [2.98, 4.00] million breeding pairs")
-    print("Number of colonies: 375 extant colonies")
-    print("Data collection year: 2020")
-else:
-    print("Abstract text not found in analysis")
-
-# Extract methodology information
-print("\n=== METHODOLOGY FROM 2020 STUDY ===\n")
-
-if 'methods_text' in analysis_data:
-    methods_text = analysis_data['methods_text']
-    print("Methodology approach (from abstract and methods):")
-    print("1. Satellite imagery analysis")
-    print("2. Drone (UAS) imagery counts")
-    print("3. Ground counting of individual occupied nests or chicks")
-    print("4. Guano coverage area estimation from satellite imagery")
-    print("5. High-resolution commercial imagery prioritized")
-    
-    print("\nMethodology details (excerpt from methods section):")
-    print(methods_text[:800] + "...")
-else:
-    print("Methods text not available")
-
-# Compare measurement types and provide summary
-print("\n=== POPULATION MEASUREMENT SPECIFICATIONS ===\n")
-
-print("2020 Nature Study Specifications:")
-print("• Population Count: 3.42 million")
-print("• Measurement Unit: BREEDING PAIRS")
-print("• Confidence Interval: 95th-percentile CI [2.98, 4.00] million")
-print("• Total Colonies Assessed: 375 extant colonies")
-print("• Data Collection Methods: Satellite + Drone + Ground surveys")
-print("• Survey Scope: Global comprehensive assessment")
-print("• Publication Year: 2020")
-print("• Data Collection Period: Multi-year (referenced from 1980s to 2020)")
-
-# Create final comparison dataset
-final_results = {
-    "nature_2020_study": {
-        "title": "A global population assessment of the Chinstrap penguin (Pygoscelis antarctica)",
-        "publication_year": 2020,
-        "journal": "Nature Scientific Reports",
-        "population_figure": "3.42 million",
-        "measurement_unit": "breeding pairs",
-        "confidence_interval": "95th-percentile CI: [2.98, 4.00] million breeding pairs",
-        "number_of_colonies": 375,
-        "methodology": {
-            "primary_methods": [
-                "Satellite imagery analysis",
-                "Drone (UAS) imagery", 
-                "Ground counting of nests/chicks",
-                "Guano coverage estimation"
-            ],
-            "imagery_sources": [
-                "High-resolution commercial imagery",
-                "Planet imagery",
-                "Landsat imagery"
-            ],
-            "survey_approach": "Comprehensive global assessment",
-            "data_prioritization": "Direct census methods prioritized over satellite estimates"
-        },
-        "key_findings": {
-            "extirpated_colonies": 23,
-            "new_colonies_identified": 5,
-            "previously_unreported_colonies": 21,
-            "colonies_with_historical_comparison": "65% of all colonies",
-            "declining_colonies_percentage": "45% probably or certainly declined",
-            "increasing_colonies_percentage": "18% probably or certainly increased"
-        },
-        "data_quality_notes": [
-            "Limited historical data at 35% of colonies prohibit population change assessment",
-            "Most historical comparisons made against 1980s baseline data",
-            "Large colonies in South Sandwich Islands lack historical benchmark"
-        ]
-    },
-    "comparison_ready": {
-        "measurement_type": "breeding pairs",
-        "population_value": 3.42,
-        "population_unit": "million breeding pairs", 
-        "confidence_range_low": 2.98,
-        "confidence_range_high": 4.00,
-        "year": 2020,
-        "methodology_summary": "Multi-method global survey using satellite, drone, and ground-based counting",
-        "coverage": "Comprehensive global assessment of 375 colonies"
+    # Parameters to get the complete article content
+    params = {
+        'action': 'query',
+        'format': 'json',
+        'titles': 'Ice cream',
+        'prop': 'extracts',
+        'exintro': False,  # Get full content, not just intro
+        'explaintext': True,  # Get plain text
+        'exsectionformat': 'wiki',
+        'exlimit': 1
     }
-}
+    
+    print("Requesting COMPLETE Ice cream article from Wikipedia...")
+    response = requests.get(api_url, params=params, timeout=30)
+    response.raise_for_status()
+    
+    data = response.json()
+    print(f"API response received (Status: {response.status_code})")
+    
+    full_article_text = None
+    
+    if 'query' in data and 'pages' in data['query']:
+        pages = data['query']['pages']
+        
+        for page_id, page_info in pages.items():
+            if 'extract' in page_info:
+                page_title = page_info.get('title', 'Unknown')
+                full_article_text = page_info['extract']
+                
+                print(f"\nSuccessfully retrieved COMPLETE article: '{page_title}'")
+                print(f"Full article length: {len(full_article_text):,} characters")
+                
+                # Save the complete article content
+                complete_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_complete_article.txt')
+                with open(complete_content_file, 'w', encoding='utf-8') as f:
+                    f.write(f"COMPLETE WIKIPEDIA ICE CREAM ARTICLE\n")
+                    f.write(f"Retrieved: {datetime.now().isoformat()}\n")
+                    f.write(f"Page: {page_title}\n")
+                    f.write(f"Content Length: {len(full_article_text):,} characters\n")
+                    f.write("=" * 80 + "\n\n")
+                    f.write(full_article_text)
+                
+                print(f"Complete article saved to: {complete_content_file}")
+                break
+    
+    # If API didn't give us enough content, try HTML scraping
+    if not full_article_text or len(full_article_text) < 10000:
+        print("\n=== STEP 3: HTML SCRAPING FOR COMPLETE CONTENT ===")
+        
+        wiki_url = 'https://en.wikipedia.org/wiki/Ice_cream'
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        print(f"Scraping complete Wikipedia page: {wiki_url}")
+        response = requests.get(wiki_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        print(f"HTML content retrieved (Status: {response.status_code})")
+        print(f"HTML content length: {len(response.content):,} bytes")
+        
+        # Parse HTML content
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove unwanted elements
+        for element in soup(['script', 'style', 'nav', 'footer', 'header']):
+            element.decompose()
+        
+        # Get the main content area
+        main_content = soup.find('div', {'id': 'mw-content-text'})
+        if main_content:
+            full_article_text = main_content.get_text()
+            print(f"Extracted text from HTML: {len(full_article_text):,} characters")
+            
+            # Save HTML-scraped content
+            html_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_html_scraped.txt')
+            with open(html_content_file, 'w', encoding='utf-8') as f:
+                f.write(f"WIKIPEDIA ICE CREAM ARTICLE (HTML SCRAPED)\n")
+                f.write(f"Retrieved: {datetime.now().isoformat()}\n")
+                f.write(f"Source: {wiki_url}\n")
+                f.write(f"Content Length: {len(full_article_text):,} characters\n")
+                f.write("=" * 80 + "\n\n")
+                f.write(full_article_text)
+            
+            print(f"HTML-scraped content saved to: {html_content_file}")
+        else:
+            print("Could not find main content area in HTML")
+    
+    # Now analyze the complete content for butterfat standards
+    if full_article_text and len(full_article_text) > 1000:
+        print(f"\n=== STEP 4: COMPREHENSIVE BUTTERFAT STANDARDS ANALYSIS ===")
+        print(f"Analyzing {len(full_article_text):,} characters of content...")
+        
+        # Convert to lowercase for searching
+        text_lower = full_article_text.lower()
+        
+        # Search for butterfat and related terms
+        butterfat_terms = ['butterfat', 'butter fat', 'milk fat', 'milkfat', 'fat content']
+        regulatory_terms = ['federal', 'fda', 'regulation', 'standard', 'minimum', 'require', 'law', 'legal', 'government']
+        
+        print(f"\nSearching for butterfat terms: {butterfat_terms}")
+        print(f"Searching for regulatory terms: {regulatory_terms}")
+        
+        # Find all relevant sentences
+        sentences = re.split(r'[.!?]+', full_article_text)
+        
+        butterfat_sentences = []
+        federal_standard_sentences = []
+        percentage_sentences = []
+        
+        for sentence in sentences:
+            sentence_clean = sentence.strip()
+            sentence_lower = sentence_clean.lower()
+            
+            if len(sentence_clean) < 10:  # Skip very short sentences
+                continue
+            
+            # Check for butterfat terms
+            has_butterfat = any(term in sentence_lower for term in butterfat_terms)
+            has_regulatory = any(term in sentence_lower for term in regulatory_terms)
+            has_percentage = re.search(r'\d+(?:\.\d+)?\s*(?:percent|%)', sentence_lower)
+            
+            if has_butterfat:
+                butterfat_sentences.append(sentence_clean)
+                
+                if has_regulatory:
+                    federal_standard_sentences.append(sentence_clean)
+                
+                if has_percentage:
+                    percentage_sentences.append(sentence_clean)
+        
+        print(f"\nAnalysis results:")
+        print(f"  Sentences mentioning butterfat terms: {len(butterfat_sentences)}")
+        print(f"  Sentences with butterfat + regulatory terms: {len(federal_standard_sentences)}")
+        print(f"  Sentences with butterfat + percentages: {len(percentage_sentences)}")
+        
+        # Display the most relevant sentences
+        if federal_standard_sentences:
+            print(f"\n=== FEDERAL STANDARD SENTENCES (MOST RELEVANT) ===")
+            
+            federal_percentages_found = []
+            
+            for i, sentence in enumerate(federal_standard_sentences, 1):
+                print(f"\n{i}. {sentence}")
+                
+                # Extract all percentages from this sentence
+                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+                
+                if percentages:
+                    print(f"   *** PERCENTAGES FOUND: {percentages} ***")
+                    
+                    # Check for minimum/requirement context
+                    if any(keyword in sentence.lower() for keyword in ['minimum', 'at least', 'must contain', 'required', 'shall contain']):
+                        print(f"   *** MINIMUM REQUIREMENT CONTEXT DETECTED ***")
+                        
+                        for pct in percentages:
+                            federal_percentages_found.append({
+                                'percentage': pct,
+                                'sentence': sentence,
+                                'context': 'minimum_requirement'
+                            })
+                    else:
+                        for pct in percentages:
+                            federal_percentages_found.append({
+                                'percentage': pct,
+                                'sentence': sentence,
+                                'context': 'general_standard'
+                            })
+        
+        elif percentage_sentences:
+            print(f"\n=== SENTENCES WITH BUTTERFAT PERCENTAGES ===")
+            
+            federal_percentages_found = []
+            
+            for i, sentence in enumerate(percentage_sentences, 1):
+                print(f"\n{i}. {sentence}")
+                
+                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+                
+                if percentages:
+                    print(f"   Percentages: {percentages}")
+                    
+                    # Check if this mentions US/United States
+                    if any(term in sentence.lower() for term in ['united states', 'us ', 'america', 'federal']):
+                        print(f"   *** US-SPECIFIC STANDARD ***")
+                        
+                        for pct in percentages:
+                            federal_percentages_found.append({
+                                'percentage': pct,
+                                'sentence': sentence,
+                                'context': 'us_specific'
+                            })
+        
+        elif butterfat_sentences:
+            print(f"\n=== ALL BUTTERFAT SENTENCES ===")
+            
+            federal_percentages_found = []
+            
+            for i, sentence in enumerate(butterfat_sentences[:10], 1):  # Show first 10
+                print(f"\n{i}. {sentence}")
+                
+                # Look for any percentages
+                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+                
+                if percentages:
+                    print(f"   Percentages found: {percentages}")
+                    
+                    for pct in percentages:
+                        federal_percentages_found.append({
+                            'percentage': pct,
+                            'sentence': sentence,
+                            'context': 'general_butterfat'
+                        })
+        
+        # Analyze and extract the federal minimum
+        if 'federal_percentages_found' in locals() and federal_percentages_found:
+            print(f"\n=== FEDERAL BUTTERFAT PERCENTAGE EXTRACTION ===")
+            print(f"Total percentage values found: {len(federal_percentages_found)}")
+            
+            # Group by percentage value
+            from collections import Counter
+            
+            all_percentages = [float(item['percentage']) for item in federal_percentages_found]
+            percentage_counts = Counter(all_percentages)
+            
+            print(f"\nUnique percentages found: {list(percentage_counts.keys())}")
+            
+            # Find the most likely federal minimum (look for common values in minimum contexts)
+            minimum_context_percentages = []
+            for item in federal_percentages_found:
+                if item['context'] in ['minimum_requirement', 'us_specific']:
+                    minimum_context_percentages.append(float(item['percentage']))
+            
+            if minimum_context_percentages:
+                most_likely_minimum = Counter(minimum_context_percentages).most_common(1)[0][0]
+                print(f"\n*** US FEDERAL MINIMUM BUTTERFAT PERCENTAGE: {most_likely_minimum}% ***")
+                
+                # Find the supporting sentence
+                supporting_sentence = None
+                for item in federal_percentages_found:
+                    if float(item['percentage']) == most_likely_minimum and item['context'] in ['minimum_requirement', 'us_specific']:
+                        supporting_sentence = item['sentence']
+                        break
+                
+                if supporting_sentence:
+                    print(f"\nSupporting evidence: {supporting_sentence}")
+            
+            else:
+                # Fall back to most common percentage overall
+                most_common = percentage_counts.most_common(1)[0]
+                most_likely_minimum = most_common[0]
+                frequency = most_common[1]
+                
+                print(f"\n*** MOST COMMONLY MENTIONED BUTTERFAT PERCENTAGE: {most_likely_minimum}% ***")
+                print(f"Mentioned {frequency} time(s) in butterfat contexts")
+                
+                # Find supporting sentence
+                supporting_sentence = None
+                for item in federal_percentages_found:
+                    if float(item['percentage']) == most_likely_minimum:
+                        supporting_sentence = item['sentence']
+                        break
+                
+                if supporting_sentence:
+                    print(f"\nSupporting evidence: {supporting_sentence}")
+            
+            # Save the final analysis
+            final_result = {
+                'analysis_date': datetime.now().isoformat(),
+                'source': 'Wikipedia Ice cream page (complete article)',
+                'objective': 'US federal minimum butterfat percentage for ice cream classification',
+                'content_analyzed': f'{len(full_article_text):,} characters',
+                'butterfat_sentences_found': len(butterfat_sentences),
+                'federal_standard_sentences': len(federal_standard_sentences) if 'federal_standard_sentences' in locals() else 0,
+                'percentage_extractions': federal_percentages_found,
+                'federal_minimum_butterfat_percentage': most_likely_minimum if 'most_likely_minimum' in locals() else None,
+                'supporting_evidence': supporting_sentence if 'supporting_sentence' in locals() else None,
+                'all_percentages_found': list(percentage_counts.keys()) if 'percentage_counts' in locals() else []
+            }
+            
+            result_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_final.json')
+            with open(result_file, 'w') as f:
+                json.dump(final_result, f, indent=2)
+            
+            print(f"\nFinal analysis saved to: {result_file}")
+            
+            if 'most_likely_minimum' in locals():
+                print(f"\n=== PLAN OBJECTIVE COMPLETED ===")
+                print(f"US Federal Minimum Butterfat Content for Ice cream: {most_likely_minimum}%")
+                print(f"Source: Wikipedia Ice cream page (2020 information)")
+                print(f"Analysis: Complete article content ({len(full_article_text):,} characters)")
+        
+        else:
+            print(f"\nNo specific federal butterfat percentages found in the complete article.")
+            print(f"The Wikipedia page may not contain detailed US federal standards.")
+            print(f"Consider searching for more specific regulatory sources.")
+    
+    else:
+        print(f"\nInsufficient content retrieved for analysis.")
+        print(f"Content length: {len(full_article_text) if full_article_text else 0} characters")
 
-# Save final extraction results
-final_file = os.path.join(workspace_dir, 'nature_2020_final_population_data.json')
-with open(final_file, 'w') as f:
-    json.dump(final_results, f, indent=2)
+except Exception as e:
+    print(f"Error during comprehensive Wikipedia analysis: {e}")
+    import traceback
+    traceback.print_exc()
 
-print(f"\n=== FINAL DATA EXTRACTION COMPLETE ===\n")
-print(f"Comprehensive population data saved to: {final_file}")
-
-print("\n=== SUMMARY FOR WIKIPEDIA COMPARISON ===\n")
-print("Nature 2020 Study Results:")
-print(f"• Global Population: 3.42 million breeding pairs")
-print(f"• Confidence Interval: 2.98 - 4.00 million breeding pairs")
-print(f"• Total Colonies: 375 extant breeding sites")
-print(f"• Methodology: Satellite + Drone + Ground surveys (comprehensive global assessment)")
-print(f"• Data Quality: High precision with 95th-percentile confidence intervals")
-print(f"• Study Scope: First comprehensive global population assessment")
-
-print("\nReady for comparison with Wikipedia 2018 data:")
-print("✓ Population figure extracted: 3.42 million breeding pairs")
-print("✓ Measurement unit identified: breeding pairs (not individuals)")
-print("✓ Methodology documented: multi-source survey approach")
-print("✓ Confidence intervals provided: [2.98, 4.00] million")
-print("✓ Publication year confirmed: 2020")
-
-print("\nThis 2020 Nature study provides the specific population assessment")
-print("needed for comparison with Wikipedia's 2018 population data.")
+print("\n=== COMPREHENSIVE WIKIPEDIA ANALYSIS COMPLETE ===")
 ```
 
-### Development Step 3: Confirm 2011 Extractive Metallurgy of Ni, Co, PGM Includes Lithium Calcination and Two-Stage Bioleaching
+### Development Step 6: Title:  
+Calculate Ice Cream Butterfat %, Compare to 10% US Standard, and Find % Difference (+/-)
 
-**Description**: Verify the identified 2011 Elsevier publication 'Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals' by conducting a targeted search to confirm it specifically covers both the calcination process with lithium salts for recovering metals from spent automotive catalysts AND the two-stage bioleaching method using Acidithiobacillus thiooxidans for low-grade cobalt ores. Search for the book's table of contents, chapter summaries, or detailed reviews that explicitly mention these two specific processes. Cross-reference with academic databases, publisher catalogs, and technical literature citations to ensure this publication contains both required methodologies described in the TASK.
+**Description**: Calculate the actual butterfat percentage of the ice cream product from the extracted nutritional data (21g total fat per 144g serving) and compare it against the US federal standard of 10% minimum butterfat content. Determine the percentage difference above or below the federal standard and express the answer as +/- a number rounded to one decimal place as requested in the TASK.
 
 **Use Cases**:
-- Patent due diligence for materials science: verifying that a 2022 WO patent application covers both reinforced polymer composites and flame-retardant additive processing steps by targeted SerpAPI queries to patent office and scholarly sources
-- Pharmaceutical guideline confirmation: ensuring the 2020 WHO monograph explicitly includes renal dosage adjustment protocols and adverse reaction monitoring procedures by searching chapter summaries and section titles
-- Automotive supplier audit: confirming an ISO/TS 16949 supplier manual online covers both heat-treatment procedures for chassis parts and corrosion-resistance testing protocols using focused Google searches
-- Open-source software compliance check: verifying that a cryptography library’s documentation details both RSA key generation methods and AES-GCM encryption usage via structured search queries on GitHub Pages and developer blogs
-- Market intelligence white-paper analysis: ensuring a competitor’s 2021 market study contains consumer behavior segmentation for North America and side-by-side feature comparisons with key rivals by scanning executive summaries and table of contents
-- Academic textbook syllabus alignment: confirming a 2023 engineering thermodynamics textbook includes both entropy analysis chapters and exergy efficiency case studies as mandated by a university course outline
-- GDPR compliance verification: checking that the EU’s official GDPR guidelines PDF addresses both data subject access rights and data breach notification requirements by targeted searches of section headings and legal commentary
-- Environmental impact report validation: verifying that a 2019 EPA assessment document covers both greenhouse gas emission quantification methods and carbon capture technology evaluations through focused online catalog and summary searches
+- Quality assurance testing in a dairy manufacturing plant to verify ice cream batches meet federal butterfat standards before shipment
+- Regulatory compliance audits by food safety inspectors to assess whether retail ice cream products adhere to FDA butterfat requirements
+- Product development in an R&D lab, where food scientists compare new ice cream formulations against legal butterfat thresholds
+- Automated nutritional labeling systems in packaging facilities to ensure accurate butterfat percentage is printed and compliant
+- Competitive market analysis by consumer advocacy groups to benchmark butterfat content across brands and report non-compliance
+- Procurement decision-making for grocery chains, using butterfat analysis to select suppliers whose products exceed federal standards
+- Custom recipe validation for artisanal ice cream shops, confirming homemade products meet minimum butterfat content for legal sale
+- Academic research projects in food science departments, analyzing the impact of butterfat levels on texture and regulatory status
 
 ```
 import os
-import requests
 import json
 from datetime import datetime
 
-# Get SerpAPI key from environment variables
-api_key = os.getenv("SERPAPI_API_KEY")
+print("=== CALCULATING ICE CREAM BUTTERFAT PERCENTAGE AND FEDERAL COMPLIANCE ===")
+print("Objective: Calculate actual butterfat percentage and compare against 10% federal standard")
+print("Data: 21g total fat per 144g serving vs 10% federal minimum\n")
 
-if api_key is None:
-    print("Error: Missing API key. Make sure you have SERPAPI_API_KEY in your environment variables.")
-else:
-    print("API key found, proceeding with targeted verification search...")
-    print("=" * 80)
-    print("VERIFYING 2011 ELSEVIER PUBLICATION: 'Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals'")
-    print("=" * 80)
+# Ensure workspace directory exists
+workspace_dir = 'workspace'
+os.makedirs(workspace_dir, exist_ok=True)
+
+# First, let's inspect existing workspace files to understand what data we have
+print("=== STEP 1: INSPECTING EXISTING WORKSPACE DATA ===")
+
+if os.path.exists(workspace_dir):
+    workspace_files = os.listdir(workspace_dir)
+    print(f"Files in workspace: {len(workspace_files)}")
     
-    # Define highly specific search queries to verify the publication contains both required processes
-    verification_queries = [
-        '"Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals" 2011 Elsevier calcination lithium salts automotive catalysts',
-        '"Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals" 2011 bioleaching Acidithiobacillus thiooxidans cobalt',
-        '"Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals" table of contents chapters',
-        '"Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals" 2011 Elsevier review summary',
-        'Elsevier 2011 "calcination process lithium salts" "spent automotive catalysts" nickel cobalt platinum',
-        'Elsevier 2011 "two-stage bioleaching" "Acidithiobacillus thiooxidans" "low-grade cobalt ores"',
-        '"Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals" publisher catalog description',
-        'ScienceDirect "Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals" 2011 chapters'
-    ]
+    for file in workspace_files:
+        file_path = os.path.join(workspace_dir, file)
+        file_size = os.path.getsize(file_path)
+        print(f"  - {file} ({file_size:,} bytes)")
     
-    print(f"Executing {len(verification_queries)} targeted verification searches...\n")
+    # Check if we have the ice cream product analysis
+    product_analysis_file = os.path.join(workspace_dir, 'ice_cream_product_analysis.txt')
+    if os.path.exists(product_analysis_file):
+        print(f"\nFound product analysis file: {product_analysis_file}")
+        with open(product_analysis_file, 'r', encoding='utf-8') as f:
+            analysis_content = f.read()
+        print(f"Analysis content length: {len(analysis_content):,} characters")
+        print(f"Preview (first 300 chars): {analysis_content[:300]}...")
     
-    # Store all verification results
-    verification_results = []
-    
-    for i, query in enumerate(verification_queries, 1):
-        print(f"Verification Search {i}/{len(verification_queries)}: {query}")
-        print("-" * 60)
+    # Check if we have the federal standard data
+    federal_standard_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_corrected.json')
+    if os.path.exists(federal_standard_file):
+        print(f"\nFound federal standard file: {federal_standard_file}")
         
-        # Prepare API request parameters
-        params = {
-            "q": query,
-            "api_key": api_key,
-            "engine": "google",
-            "google_domain": "google.com",
-            "safe": "off",
-            "num": 15,  # Increased number for better coverage
-            "type": "search"
+        # Inspect the JSON structure first
+        with open(federal_standard_file, 'r') as f:
+            federal_data = json.load(f)
+        
+        print("Federal standard file structure:")
+        for key, value in federal_data.items():
+            if isinstance(value, list):
+                print(f"  {key}: List with {len(value)} items")
+            elif isinstance(value, dict):
+                print(f"  {key}: Dictionary with {len(value)} keys")
+            else:
+                print(f"  {key}: {value}")
+        
+        # Extract the federal minimum percentage
+        federal_minimum = federal_data.get('corrected_federal_minimum_butterfat_percentage')
+        print(f"\nFederal minimum butterfat percentage: {federal_minimum}%")
+else:
+    print("No workspace directory found")
+
+# Now calculate the actual butterfat percentage from the extracted nutritional data
+print("\n=== STEP 2: CALCULATING ACTUAL BUTTERFAT PERCENTAGE ===")
+
+# From the extracted nutritional data:
+# - Serving size: 2/3 cup (144g)
+# - Total fat per serving: 21g
+
+serving_size_grams = 144
+total_fat_grams = 21
+
+print(f"Nutritional data from ice cream product:")
+print(f"  Serving size: {serving_size_grams}g")
+print(f"  Total fat per serving: {total_fat_grams}g")
+
+# Calculate the fat percentage
+actual_fat_percentage = (total_fat_grams / serving_size_grams) * 100
+
+print(f"\nCalculation:")
+print(f"  Fat percentage = (Total fat ÷ Serving size) × 100")
+print(f"  Fat percentage = ({total_fat_grams}g ÷ {serving_size_grams}g) × 100")
+print(f"  Fat percentage = {actual_fat_percentage:.4f}%")
+print(f"  Fat percentage = {actual_fat_percentage:.1f}% (rounded to 1 decimal place)")
+
+print(f"\n*** ACTUAL BUTTERFAT PERCENTAGE: {actual_fat_percentage:.1f}% ***")
+
+# Compare against the federal standard
+print("\n=== STEP 3: COMPARING AGAINST US FEDERAL STANDARD ===")
+
+# Use the federal minimum we extracted (10%)
+federal_minimum_percentage = 10.0
+
+print(f"US Federal minimum butterfat standard: {federal_minimum_percentage}%")
+print(f"Actual ice cream butterfat percentage: {actual_fat_percentage:.1f}%")
+
+# Calculate the difference
+percentage_difference = actual_fat_percentage - federal_minimum_percentage
+
+print(f"\nComparison:")
+print(f"  Difference = Actual percentage - Federal minimum")
+print(f"  Difference = {actual_fat_percentage:.1f}% - {federal_minimum_percentage}%")
+print(f"  Difference = {percentage_difference:.1f} percentage points")
+
+# Determine if it meets the standard
+if actual_fat_percentage >= federal_minimum_percentage:
+    compliance_status = "EXCEEDS"
+    difference_sign = "+"
+else:
+    compliance_status = "BELOW"
+    difference_sign = "-"
+    percentage_difference = abs(percentage_difference)  # Make positive for display
+
+print(f"\n*** FEDERAL COMPLIANCE ANALYSIS ***")
+print(f"Ice cream product {compliance_status} federal standard")
+print(f"Difference: {difference_sign}{percentage_difference:.1f} percentage points")
+
+# Express as requested format (+/- number rounded to one decimal place)
+final_answer = f"{difference_sign}{percentage_difference:.1f}"
+
+print(f"\n=== FINAL ANSWER ===")
+print(f"Actual butterfat percentage: {actual_fat_percentage:.1f}%")
+print(f"Federal standard: {federal_minimum_percentage}%")
+print(f"Difference from federal standard: {final_answer}")
+
+# Save the complete analysis
+analysis_result = {
+    'analysis_date': datetime.now().isoformat(),
+    'objective': 'Calculate actual butterfat percentage and compare against US federal standard',
+    'nutritional_data': {
+        'serving_size_grams': serving_size_grams,
+        'total_fat_grams': total_fat_grams,
+        'source': 'Ice cream product nutrition label analysis'
+    },
+    'calculations': {
+        'actual_butterfat_percentage': round(actual_fat_percentage, 1),
+        'calculation_method': '(total_fat_grams / serving_size_grams) * 100',
+        'raw_percentage': actual_fat_percentage
+    },
+    'federal_standard': {
+        'minimum_butterfat_percentage': federal_minimum_percentage,
+        'source': 'US FDA regulations (Wikipedia 2020)',
+        'regulatory_authority': 'FDA (Food and Drug Administration)'
+    },
+    'compliance_analysis': {
+        'meets_federal_standard': actual_fat_percentage >= federal_minimum_percentage,
+        'compliance_status': compliance_status,
+        'percentage_difference': round(actual_fat_percentage - federal_minimum_percentage, 1),
+        'difference_from_standard': final_answer
+    },
+    'final_answer': {
+        'format_requested': '+/- number rounded to one decimal place',
+        'result': final_answer,
+        'interpretation': f'Ice cream {compliance_status.lower()} federal standard by {abs(percentage_difference):.1f} percentage points'
+    }
+}
+
+result_file = os.path.join(workspace_dir, 'ice_cream_butterfat_compliance_analysis.json')
+with open(result_file, 'w') as f:
+    json.dump(analysis_result, f, indent=2)
+
+print(f"\nComplete analysis saved to: {result_file}")
+
+# Also create a summary text file
+summary_file = os.path.join(workspace_dir, 'butterfat_analysis_summary.txt')
+with open(summary_file, 'w') as f:
+    f.write("ICE CREAM BUTTERFAT PERCENTAGE ANALYSIS\n")
+    f.write("=" * 50 + "\n\n")
+    f.write(f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+    f.write("NUTRITIONAL DATA:\n")
+    f.write(f"  Serving Size: {serving_size_grams}g\n")
+    f.write(f"  Total Fat: {total_fat_grams}g\n\n")
+    f.write("CALCULATIONS:\n")
+    f.write(f"  Actual Butterfat Percentage: {actual_fat_percentage:.1f}%\n")
+    f.write(f"  Calculation: ({total_fat_grams}g ÷ {serving_size_grams}g) × 100\n\n")
+    f.write("FEDERAL STANDARD:\n")
+    f.write(f"  US Federal Minimum: {federal_minimum_percentage}%\n")
+    f.write(f"  Regulatory Authority: FDA\n\n")
+    f.write("COMPLIANCE ANALYSIS:\n")
+    f.write(f"  Status: {compliance_status} federal standard\n")
+    f.write(f"  Difference: {final_answer} percentage points\n\n")
+    f.write("FINAL ANSWER:\n")
+    f.write(f"  {final_answer}\n")
+
+print(f"Summary saved to: {summary_file}")
+
+print(f"\n=== PLAN OBJECTIVE COMPLETED ===")
+print(f"The ice cream product contains {actual_fat_percentage:.1f}% butterfat")
+print(f"This is {final_answer} percentage points relative to the 10% federal standard")
+print(f"Answer format: {final_answer} (as requested: +/- number rounded to one decimal place)")
+```
+
+### Development Step 3: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification (2020 Wikipedia Data)
+
+**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
+
+**Use Cases**:
+- Regulatory compliance verification for food manufacturers ensuring their ice cream products meet US federal butterfat standards before market release
+- Automated quality assurance checks in dairy production facilities to validate product labeling against legal ice cream definitions
+- Food import/export documentation review for customs brokers to confirm imported ice cream products comply with US classification requirements
+- Academic research on historical changes in food standards, using extracted butterfat regulations as part of a longitudinal analysis
+- Consumer advocacy investigations to identify and report brands mislabeling frozen desserts as ice cream without meeting federal butterfat minimums
+- Development of nutrition and ingredient databases for food delivery apps, ensuring accurate product categorization based on federal standards
+- Legal case preparation for attorneys representing clients in food labeling disputes, using extracted Wikipedia data as supporting evidence
+- Automated content curation for food bloggers or journalists reporting on industry trends and regulatory updates in the US ice cream market
+
+```
+import requests
+from bs4 import BeautifulSoup
+import os
+import json
+from datetime import datetime
+import re
+
+print("=== DIRECT ACCESS TO WIKIPEDIA ICE CREAM PAGE FOR BUTTERFAT STANDARDS ===")
+print("Objective: Find US federal minimum butterfat percentage for ice cream classification")
+print("Strategy: Direct Wikipedia page access using correct API endpoints\n")
+
+# Ensure workspace directory exists
+workspace_dir = 'workspace'
+os.makedirs(workspace_dir, exist_ok=True)
+
+# First, let's try the correct Wikipedia API endpoint to get the Ice cream page
+print("=== STEP 1: ACCESSING WIKIPEDIA ICE CREAM PAGE DIRECTLY ===")
+
+try:
+    # Use the correct Wikipedia API endpoint
+    api_url = 'https://en.wikipedia.org/w/api.php'
+    
+    # Get the Ice cream page content
+    params = {
+        'action': 'query',
+        'format': 'json',
+        'titles': 'Ice cream',
+        'prop': 'extracts',
+        'exintro': False,  # Get full content
+        'explaintext': True,  # Get plain text
+        'exsectionformat': 'wiki'
+    }
+    
+    print("Requesting Ice cream page from Wikipedia...")
+    response = requests.get(api_url, params=params, timeout=30)
+    response.raise_for_status()
+    
+    data = response.json()
+    print(f"API response received (Status: {response.status_code})")
+    
+    # Extract page content
+    if 'query' in data and 'pages' in data['query']:
+        pages = data['query']['pages']
+        
+        for page_id, page_info in pages.items():
+            if 'extract' in page_info:
+                page_title = page_info.get('title', 'Unknown')
+                full_text = page_info['extract']
+                
+                print(f"\nSuccessfully retrieved: '{page_title}'")
+                print(f"Content length: {len(full_text):,} characters")
+                
+                # Save the full Wikipedia content for reference
+                wiki_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_full_content.txt')
+                with open(wiki_content_file, 'w', encoding='utf-8') as f:
+                    f.write(f"WIKIPEDIA ICE CREAM PAGE CONTENT\n")
+                    f.write(f"Retrieved: {datetime.now().isoformat()}\n")
+                    f.write(f"Page: {page_title}\n")
+                    f.write(f"Content Length: {len(full_text):,} characters\n")
+                    f.write("=" * 80 + "\n\n")
+                    f.write(full_text)
+                
+                print(f"Full content saved to: {wiki_content_file}")
+                
+                # Now search for butterfat content information
+                print("\n=== STEP 2: ANALYZING CONTENT FOR BUTTERFAT STANDARDS ===")
+                
+                # Convert to lowercase for case-insensitive searching
+                text_lower = full_text.lower()
+                
+                # Look for butterfat-related content
+                if 'butterfat' in text_lower:
+                    print("*** BUTTERFAT CONTENT FOUND ***")
+                    
+                    # Split into sentences for detailed analysis
+                    sentences = full_text.split('.')
+                    
+                    butterfat_sentences = []
+                    federal_standard_sentences = []
+                    
+                    for sentence in sentences:
+                        sentence_clean = sentence.strip()
+                        sentence_lower = sentence_clean.lower()
+                        
+                        # Look for sentences containing butterfat
+                        if 'butterfat' in sentence_lower:
+                            butterfat_sentences.append(sentence_clean)
+                            
+                            # Check if it mentions federal standards, FDA, or regulations
+                            if any(keyword in sentence_lower for keyword in ['federal', 'fda', 'regulation', 'standard', 'minimum', 'require']):
+                                federal_standard_sentences.append(sentence_clean)
+                    
+                    print(f"\nSentences mentioning butterfat: {len(butterfat_sentences)}")
+                    print(f"Sentences about federal standards: {len(federal_standard_sentences)}")
+                    
+                    # Display butterfat sentences
+                    if butterfat_sentences:
+                        print("\n=== BUTTERFAT CONTENT ANALYSIS ===")
+                        
+                        for i, sentence in enumerate(butterfat_sentences, 1):
+                            print(f"\n{i}. {sentence}")
+                            
+                            # Extract percentage values from each sentence
+                            percentage_patterns = [
+                                r'(\d+(?:\.\d+)?)\s*(?:percent|%)',
+                                r'(\d+(?:\.\d+)?)\s*(?:per cent)',
+                                r'(\d+(?:\.\d+)?)\s*(?:pct)'
+                            ]
+                            
+                            found_percentages = []
+                            for pattern in percentage_patterns:
+                                matches = re.findall(pattern, sentence, re.IGNORECASE)
+                                found_percentages.extend(matches)
+                            
+                            if found_percentages:
+                                print(f"   Percentages found: {found_percentages}")
+                                
+                                # Check for context indicating minimum federal standard
+                                if any(keyword in sentence.lower() for keyword in ['minimum', 'federal', 'fda', 'standard', 'regulation', 'require']):
+                                    print(f"   *** POTENTIAL FEDERAL STANDARD: {found_percentages} ***")
+                    
+                    # Focus on federal standard sentences
+                    if federal_standard_sentences:
+                        print("\n=== FEDERAL STANDARD SENTENCES ===")
+                        
+                        federal_standards_found = []
+                        
+                        for i, sentence in enumerate(federal_standard_sentences, 1):
+                            print(f"\n{i}. {sentence}")
+                            
+                            # Extract percentages from federal standard sentences
+                            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+                            
+                            if percentages:
+                                print(f"   Federal standard percentages: {percentages}")
+                                
+                                federal_standards_found.append({
+                                    'sentence': sentence,
+                                    'percentages': percentages,
+                                    'context': 'federal_standard'
+                                })
+                        
+                        # Save federal standards analysis
+                        if federal_standards_found:
+                            standards_file = os.path.join(workspace_dir, 'federal_butterfat_standards.json')
+                            with open(standards_file, 'w') as f:
+                                json.dump({
+                                    'analysis_date': datetime.now().isoformat(),
+                                    'source': 'Wikipedia Ice cream page',
+                                    'objective': 'US federal minimum butterfat percentage for ice cream',
+                                    'federal_standards_found': len(federal_standards_found),
+                                    'standards_data': federal_standards_found,
+                                    'all_butterfat_sentences': butterfat_sentences
+                                }, f, indent=2)
+                            
+                            print(f"\nFederal standards analysis saved to: {standards_file}")
+                            
+                            # Extract the most likely federal minimum percentage
+                            print("\n=== FEDERAL MINIMUM BUTTERFAT PERCENTAGE EXTRACTION ===")
+                            
+                            all_federal_percentages = []
+                            for standard in federal_standards_found:
+                                all_federal_percentages.extend(standard['percentages'])
+                            
+                            if all_federal_percentages:
+                                # Convert to float and find common values
+                                percentage_values = []
+                                for pct in all_federal_percentages:
+                                    try:
+                                        percentage_values.append(float(pct))
+                                    except ValueError:
+                                        continue
+                                
+                                if percentage_values:
+                                    unique_percentages = list(set(percentage_values))
+                                    print(f"Unique federal percentages found: {unique_percentages}")
+                                    
+                                    # Look for the most commonly mentioned percentage
+                                    from collections import Counter
+                                    percentage_counts = Counter(percentage_values)
+                                    most_common = percentage_counts.most_common(1)
+                                    
+                                    if most_common:
+                                        federal_minimum = most_common[0][0]
+                                        frequency = most_common[0][1]
+                                        
+                                        print(f"\n*** FEDERAL MINIMUM BUTTERFAT PERCENTAGE: {federal_minimum}% ***")
+                                        print(f"Mentioned {frequency} time(s) in federal standard contexts")
+                                        
+                                        # Find the specific sentence with this percentage
+                                        for standard in federal_standards_found:
+                                            if str(federal_minimum) in standard['percentages'] or str(int(federal_minimum)) in standard['percentages']:
+                                                print(f"\nSource sentence: {standard['sentence']}")
+                                                break
+                                        
+                                        # Save the final result
+                                        result_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard.json')
+                                        with open(result_file, 'w') as f:
+                                            json.dump({
+                                                'analysis_date': datetime.now().isoformat(),
+                                                'source': 'Wikipedia Ice cream page (2020 information)',
+                                                'federal_minimum_butterfat_percentage': federal_minimum,
+                                                'percentage_unit': 'percent',
+                                                'context': 'US federal regulations for ice cream classification',
+                                                'frequency_mentioned': frequency,
+                                                'supporting_evidence': [s['sentence'] for s in federal_standards_found if str(federal_minimum) in s['percentages'] or str(int(federal_minimum)) in s['percentages']],
+                                                'all_federal_percentages_found': unique_percentages
+                                            }, f, indent=2)
+                                        
+                                        print(f"\nFinal result saved to: {result_file}")
+                                        
+                                        print(f"\n=== PLAN OBJECTIVE COMPLETED ===")
+                                        print(f"US Federal Minimum Butterfat Content for Ice Cream: {federal_minimum}%")
+                                        print(f"Source: Wikipedia (2020 information)")
+                                        print(f"Context: Federal regulations for legal ice cream classification")
+                
+                else:
+                    print("No butterfat content found in the Wikipedia Ice cream page.")
+                    print("Searching for alternative terms...")
+                    
+                    # Search for alternative terms
+                    alternative_terms = ['fat content', 'milk fat', 'dairy fat', 'cream content', 'fat percentage']
+                    
+                    for term in alternative_terms:
+                        if term in text_lower:
+                            print(f"Found alternative term: '{term}'")
+                            
+                            # Extract sentences with alternative terms
+                            sentences = full_text.split('.')
+                            relevant_sentences = []
+                            
+                            for sentence in sentences:
+                                if term in sentence.lower():
+                                    relevant_sentences.append(sentence.strip())
+                            
+                            if relevant_sentences:
+                                print(f"Sentences with '{term}': {len(relevant_sentences)}")
+                                for i, sentence in enumerate(relevant_sentences[:3], 1):  # Show first 3
+                                    print(f"  {i}. {sentence[:200]}{'...' if len(sentence) > 200 else ''}")
+            else:
+                print("No content extract available from the Wikipedia page.")
+    else:
+        print("Error: Could not retrieve Wikipedia page data.")
+        print(f"API response structure: {list(data.keys()) if isinstance(data, dict) else 'Not a dictionary'}")
+
+except requests.exceptions.RequestException as e:
+    print(f"Error accessing Wikipedia API: {e}")
+    print("Will try alternative approach...")
+    
+    # Alternative approach: Direct HTML scraping
+    print("\n=== ALTERNATIVE APPROACH: DIRECT HTML SCRAPING ===")
+    
+    try:
+        # Direct access to Wikipedia Ice cream page
+        wiki_url = 'https://en.wikipedia.org/wiki/Ice_cream'
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
         
-        try:
-            # Make API request to SerpAPI
-            response = requests.get("https://serpapi.com/search.json", params=params, timeout=30)
-            
-            if response.status_code == 200:
-                results = response.json()
-                
-                if results.get("organic_results"):
-                    print(f"Found {len(results['organic_results'])} results")
-                    
-                    # Store results with query context
-                    query_results = {
-                        'query': query,
-                        'results': results['organic_results'],
-                        'search_number': i,
-                        'timestamp': datetime.now().isoformat()
-                    }
-                    verification_results.append(query_results)
-                    
-                    # Display and analyze top results for this query
-                    relevant_found = False
-                    for j, result in enumerate(results['organic_results'][:8], 1):
-                        title = result.get('title', 'No title')
-                        link = result.get('link', 'No URL')
-                        snippet = result.get('snippet', 'No snippet')
-                        
-                        # Check for highly relevant indicators
-                        title_lower = title.lower()
-                        snippet_lower = snippet.lower()
-                        combined_text = f"{title_lower} {snippet_lower}"
-                        
-                        # Key indicators for the specific publication
-                        key_indicators = [
-                            'extractive metallurgy of nickel, cobalt and platinum-group metals',
-                            'calcination process',
-                            'lithium salts',
-                            'automotive catalysts',
-                            'bioleaching',
-                            'acidithiobacillus thiooxidans',
-                            'cobalt ores',
-                            'elsevier',
-                            '2011'
-                        ]
-                        
-                        matching_indicators = [ind for ind in key_indicators if ind in combined_text]
-                        
-                        print(f"\n  Result {j}:")
-                        print(f"    Title: {title}")
-                        print(f"    URL: {link}")
-                        print(f"    Snippet: {snippet[:300]}{'...' if len(snippet) > 300 else ''}")
-                        
-                        if matching_indicators:
-                            print(f"    ⭐ MATCHING INDICATORS: {', '.join(matching_indicators)}")
-                            relevant_found = True
-                            
-                            # Special attention to publisher sites, academic databases, and book catalogs
-                            if any(domain in link.lower() for domain in ['elsevier', 'sciencedirect', 'springer', 'wiley', 'worldcat', 'amazon', 'google.com/books']):
-                                print(f"    🎯 HIGH-PRIORITY SOURCE: Publisher/Academic database result")
-                    
-                    if not relevant_found:
-                        print("    No highly relevant results found for this query")
-                        
-                else:
-                    print("No organic results found for this query")
-                    verification_results.append({
-                        'query': query,
-                        'results': [],
-                        'search_number': i,
-                        'timestamp': datetime.now().isoformat()
-                    })
-            else:
-                print(f"Error: API request failed with status {response.status_code}: {response.text}")
-                
-        except Exception as e:
-            print(f"Error during verification search {i}: {str(e)}")
-            continue
+        print(f"Accessing Wikipedia Ice cream page directly: {wiki_url}")
+        response = requests.get(wiki_url, headers=headers, timeout=30)
+        response.raise_for_status()
         
-        print("\n")
-    
-    print("\n" + "=" * 80)
-    print("VERIFICATION ANALYSIS SUMMARY")
-    print("=" * 80)
-    
-    # Save all verification results to workspace for detailed analysis
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = f"workspace/elsevier_2011_verification_results_{timestamp}.json"
-    
-    with open(results_file, 'w', encoding='utf-8') as f:
-        json.dump({
-            'publication_title': 'Extractive Metallurgy of Nickel, Cobalt and Platinum-Group Metals',
-            'publication_year': '2011',
-            'publisher': 'Elsevier',
-            'verification_timestamp': timestamp,
-            'total_queries': len(verification_queries),
-            'queries_executed': verification_queries,
-            'verification_results': verification_results
-        }, f, indent=2, ensure_ascii=False)
-    
-    print(f"Verification results saved to: {results_file}")
-    
-    # Analyze findings
-    total_results = sum(len(query_result['results']) for query_result in verification_results)
-    print(f"Total verification results collected: {total_results}")
-    
-    # Look for direct publication matches
-    direct_matches = []
-    calcination_mentions = []
-    bioleaching_mentions = []
-    elsevier_2011_matches = []
-    
-    for query_result in verification_results:
-        for result in query_result['results']:
-            title = result.get('title', '').lower()
-            snippet = result.get('snippet', '').lower()
-            link = result.get('link', '').lower()
-            combined = f"{title} {snippet} {link}"
+        print(f"Successfully accessed Wikipedia page (Status: {response.status_code})")
+        print(f"Content length: {len(response.content):,} bytes")
+        
+        # Parse HTML content
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Extract text content
+        page_text = soup.get_text()
+        
+        print(f"Extracted text length: {len(page_text):,} characters")
+        
+        # Search for butterfat content
+        if 'butterfat' in page_text.lower():
+            print("\n*** BUTTERFAT CONTENT FOUND VIA HTML SCRAPING ***")
             
-            # Direct publication title matches
-            if 'extractive metallurgy of nickel, cobalt and platinum-group metals' in combined:
-                direct_matches.append({
-                    'query': query_result['query'],
-                    'title': result.get('title'),
-                    'link': result.get('link'),
-                    'snippet': result.get('snippet')
-                })
+            # Split into paragraphs for analysis
+            paragraphs = page_text.split('\n')
             
-            # Calcination process mentions
-            if 'calcination' in combined and ('lithium' in combined or 'automotive' in combined or 'catalyst' in combined):
-                calcination_mentions.append({
-                    'query': query_result['query'],
-                    'title': result.get('title'),
-                    'link': result.get('link'),
-                    'snippet': result.get('snippet')
-                })
+            butterfat_paragraphs = []
+            for paragraph in paragraphs:
+                if 'butterfat' in paragraph.lower() and len(paragraph.strip()) > 20:
+                    butterfat_paragraphs.append(paragraph.strip())
             
-            # Bioleaching mentions
-            if 'bioleaching' in combined and ('acidithiobacillus' in combined or 'thiooxidans' in combined or 'cobalt' in combined):
-                bioleaching_mentions.append({
-                    'query': query_result['query'],
-                    'title': result.get('title'),
-                    'link': result.get('link'),
-                    'snippet': result.get('snippet')
-                })
+            print(f"Paragraphs mentioning butterfat: {len(butterfat_paragraphs)}")
             
-            # Elsevier 2011 matches
-            if 'elsevier' in combined and '2011' in combined:
-                elsevier_2011_matches.append({
-                    'query': query_result['query'],
-                    'title': result.get('title'),
-                    'link': result.get('link'),
-                    'snippet': result.get('snippet')
-                })
+            for i, paragraph in enumerate(butterfat_paragraphs, 1):
+                print(f"\n{i}. {paragraph[:300]}{'...' if len(paragraph) > 300 else ''}")
+                
+                # Look for percentages
+                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', paragraph, re.IGNORECASE)
+                if percentages:
+                    print(f"   Percentages: {percentages}")
+                    
+                    # Check for federal context
+                    if any(keyword in paragraph.lower() for keyword in ['federal', 'fda', 'regulation', 'standard', 'minimum']):
+                        print(f"   *** POTENTIAL FEDERAL STANDARD: {percentages} ***")
+        
+        else:
+            print("No butterfat content found via HTML scraping either.")
+            print("The Wikipedia page may not contain the specific federal butterfat standards.")
     
-    print(f"\n📊 VERIFICATION FINDINGS:")
-    print(f"Direct publication title matches: {len(direct_matches)}")
-    print(f"Calcination process mentions: {len(calcination_mentions)}")
-    print(f"Bioleaching process mentions: {len(bioleaching_mentions)}")
-    print(f"Elsevier 2011 matches: {len(elsevier_2011_matches)}")
-    
-    if direct_matches:
-        print(f"\n🎯 DIRECT PUBLICATION MATCHES FOUND:")
-        for i, match in enumerate(direct_matches[:5], 1):
-            print(f"  {i}. {match['title']}")
-            print(f"     URL: {match['link']}")
-            print(f"     Query: {match['query']}")
-            print(f"     Snippet: {match['snippet'][:200]}...")
-            print()
-    
-    if calcination_mentions:
-        print(f"\n⚗️ CALCINATION PROCESS MENTIONS:")
-        for i, mention in enumerate(calcination_mentions[:3], 1):
-            print(f"  {i}. {mention['title']}")
-            print(f"     Snippet: {mention['snippet'][:150]}...")
-            print()
-    
-    if bioleaching_mentions:
-        print(f"\n🦠 BIOLEACHING PROCESS MENTIONS:")
-        for i, mention in enumerate(bioleaching_mentions[:3], 1):
-            print(f"  {i}. {mention['title']}")
-            print(f"     Snippet: {mention['snippet'][:150]}...")
-            print()
-    
-    print(f"\n📋 VERIFICATION STATUS:")
-    if direct_matches and (calcination_mentions or bioleaching_mentions):
-        print("✅ PUBLICATION IDENTIFIED with some process mentions")
-        print("   - Direct publication matches found")
-        print("   - Some relevant process mentions detected")
-        print("   - Requires deeper analysis of specific chapters/content")
-    elif direct_matches:
-        print("⚠️ PUBLICATION IDENTIFIED but limited process verification")
-        print("   - Direct publication matches found")
-        print("   - Limited specific process mentions")
-        print("   - May require access to full publication content")
-    else:
-        print("❌ LIMITED VERIFICATION RESULTS")
-        print("   - No direct publication title matches")
-        print("   - May need alternative search strategies")
-        print("   - Publication may not be widely indexed or accessible")
-    
-    print(f"\nDetailed verification data saved to: {results_file}")
-    print("Ready for next phase: detailed content analysis if publication is confirmed.")
+    except Exception as scraping_error:
+        print(f"HTML scraping also failed: {scraping_error}")
+
+except Exception as e:
+    print(f"Unexpected error during Wikipedia analysis: {e}")
+    import traceback
+    traceback.print_exc()
+
+print("\n=== WIKIPEDIA ANALYSIS COMPLETE ===")
 ```
 
 ## Created Time
-2025-08-11 10:39:22
+2025-08-14 03:13:15

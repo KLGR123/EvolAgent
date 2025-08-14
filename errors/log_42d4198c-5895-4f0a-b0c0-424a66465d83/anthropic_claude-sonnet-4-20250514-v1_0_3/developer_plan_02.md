@@ -1,10 +1,10 @@
 # Developer Plan 02
 
 ## Plan
-Access the Wikipedia page for 'God of War (2018 video game)' and extract the complete revision history from the page's creation until the month before the game's official release date as listed on that Wikipedia page. Use the most recent Wikipedia entry from 2022 as the reference point for determining the release date, then count all revisions that occurred before that release month. Also extract the exact release date information from the Wikipedia page to ensure accurate timeline analysis.
+Access the Wikipedia page for God of War (2018 video game) and extract its complete revision history from creation until March 2018 (the month before its April 2018 release date as listed on the Wikipedia page). Use Wikipedia's revision history API to retrieve all revisions, count the total number of edits made before April 2018, and analyze the pre-release editing activity pattern. Also verify the exact release date format shown on the current Wikipedia page to ensure we're using the correct cutoff month.
 
 ## Description
-This is the necessary next step because: (1) We have identified God of War as the 2019 BAFTA Games Awards winner, but need to analyze its Wikipedia page specifically, (2) The previous search established the game details but we need the Wikipedia revision history and release date as it appears on Wikipedia, (3) Expected outcome is to obtain the complete revision count before the game's release month using 2022 Wikipedia data as reference, (4) This directly addresses the TASK requirement to analyze pre-release Wikipedia information availability for this award-winning game
+This is the necessary next step because: (1) We have successfully identified God of War (2018) as the 2019 BAFTA Games Awards winner and located its Wikipedia page, (2) The previous analysis established the game's April 20, 2018 release date, so we need to count revisions before April 2018, (3) Expected outcome is to obtain the complete pre-release revision count and verify the release date format on the Wikipedia page, (4) This directly addresses the TASK requirement to analyze how much information was available before the game's release by counting Wikipedia revisions prior to the release month.
 
 ## Episodic Examples
 ### Development Step 9: Filter Wikipedia Revisions from Inception to June 30, 2023, and Count All Edits
@@ -1136,658 +1136,363 @@ else:
     print(f"💾 Multiple output formats created: JSON (structured), TXT (summary), CSV (spreadsheet)")
 ```
 
-### Development Step 6: Extract Revision History and Metadata for Wikipedia’s "Antidisestablishmentarianism" Page Through June 2023
+### Development Step 1: Antidisestablishmentarianism Wikipedia Revision Log Compilation Through June 2023
 
 **Description**: Search for and access the Wikipedia page on 'Antidisestablishmentarianism' to locate its edit history or revision log. Extract comprehensive information about all edits made to this page from its creation until June 2023, including the total number of revisions, edit timestamps, and any available metadata about the page's editing activity over time.
 
 **Use Cases**:
-- Academic linguistics research tracking the evolution of the Antidisestablishmentarianism entry to study semantic shifts in complex English terms over decades
-- Brand reputation management monitoring corporate Wikipedia pages for unauthorized edits and ensuring immediate reverts to protect brand image
-- Political analysis auditing revision logs of election and policy articles to detect shifts in narrative and influence public opinion studies
-- Healthcare compliance auditing the edit history of pharmaceutical entries to document safety information changes and maintain accurate public health guidance
-- SEO competitive analysis extracting revision histories of competitor product pages to identify feature updates and adjust marketing strategies
-- Cultural heritage archiving building comprehensive archives of historical topic pages to preserve versioned content in digital libraries
-- Cybersecurity misinformation detection analyzing edit patterns on crisis event pages to flag potential coordinated misinformation campaigns
-- Investigative journalism reconstructing chronological edit trails of controversial topic pages to fact-check allegations and track source shifts
+- Brand reputation monitoring and automated alerting for changes to a company’s Wikipedia page to detect unauthorized edits and respond proactively
+- Academic research on the evolution of political terminology by extracting and analyzing the complete revision history of contested Wikipedia entries
+- Digital humanities project mapping semantic shifts in philosophical concept articles by aggregating edit metadata and timestamps
+- Journalism fact-checking and source verification by tracking contributor patterns and edit summaries on high-impact historical event pages
+- SEO competitive analysis by monitoring revisions and backlink changes on industry-related Wikipedia pages to identify emerging trends
+- Vandalism detection automation for educational resource pages by scheduling regular scrapes of the revision log and flagging anomalous edit patterns
+- Historical data preservation and archiving for legislation pages by compiling all revisions into time-stamped snapshots in a secure database
+- Machine learning model training for edit-prediction algorithms using user behavior and revision metadata harvested from comprehensive Wikipedia edit histories
 
 ```
-import os
 import requests
 from bs4 import BeautifulSoup
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 import time
+import os
 from urllib.parse import urljoin, quote
-from collections import Counter
 
-print("=== ANTIDISESTABLISHMENTARIANISM REVISION EXTRACTION - FIXED APPROACH ===\n")
-print("Objective: Extract ALL revisions from creation until June 2023 using Wikipedia API\n")
+print("=== ACCESSING ANTIDISESTABLISHMENTARIANISM WIKIPEDIA PAGE ===\n")
+print("Objective: Extract comprehensive edit history and revision data until June 2023\n")
 
-# First, check if we have any existing workspace data
-print("=== CHECKING FOR EXISTING WORKSPACE DATA ===\n")
-workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
-if workspace_dirs:
-    print(f"Found existing workspace directories: {workspace_dirs}")
-    for ws_dir in workspace_dirs:
-        files = os.listdir(ws_dir)
-        if files:
-            print(f"\n{ws_dir} contains {len(files)} files:")
-            for f in files:
-                file_path = os.path.join(ws_dir, f)
-                file_size = os.path.getsize(file_path)
-                print(f"  - {f} ({file_size:,} bytes)")
-                
-                # Check if this looks like our target data
-                if 'antidisestablishmentarianism' in f.lower() or 'debug' in f.lower():
-                    print(f"    *** Potentially relevant file ***")
-        else:
-            print(f"\n{ws_dir} is empty")
-else:
-    print("No existing workspace directories found")
-
-# Create new workspace directory
+# Create workspace directory
 workspace_dir = f"workspace_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 os.makedirs(workspace_dir, exist_ok=True)
-print(f"\nCreated new workspace directory: {workspace_dir}\n")
+print(f"Created workspace directory: {workspace_dir}\n")
 
-# DEFINE ALL CONSTANTS AND CONFIGURATION
-PAGE_TITLE = "Antidisestablishmentarianism"
-CUTOFF_DATE = "2023-06-30T23:59:59Z"  # End of June 2023
-API_ENDPOINT = "https://en.wikipedia.org/w/api.php"  # Pass as parameter to avoid scope issues
-MAX_REQUESTS = 100
-REQUEST_DELAY = 1.5
+# Define the target page
+page_title = "Antidisestablishmentarianism"
+base_url = "https://en.wikipedia.org"
+page_url = f"{base_url}/wiki/{page_title}"
+history_url = f"{base_url}/w/index.php?title={page_title}&action=history"
 
-print(f"Configuration:")
-print(f"  Target page: {PAGE_TITLE}")
-print(f"  Cutoff date: {CUTOFF_DATE}")
-print(f"  API endpoint: {API_ENDPOINT}")
-print(f"  Max requests: {MAX_REQUESTS}")
-print(f"  Request delay: {REQUEST_DELAY} seconds\n")
+print(f"Target page: {page_title}")
+print(f"Page URL: {page_url}")
+print(f"History URL: {history_url}\n")
 
 # Set up headers for requests
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
 
-# Function to make API request - PASS API_URL AS PARAMETER TO AVOID SCOPE ISSUES
-def make_api_request(api_endpoint, params, request_headers, delay=1.0):
-    """Make API request with rate limiting and error handling"""
-    try:
-        print(f"  Making API request to: {api_endpoint}")
-        print(f"  Parameters: {list(params.keys())}")
+# First, check if the main page exists and get basic information
+print("=== CHECKING MAIN PAGE ACCESSIBILITY ===\n")
+
+try:
+    response = requests.get(page_url, headers=headers, timeout=30)
+    
+    if response.status_code == 200:
+        print(f"✅ Successfully accessed main page")
+        print(f"Content length: {len(response.content):,} bytes")
         
-        time.sleep(delay)  # Respectful rate limiting
-        response = requests.get(api_endpoint, params=params, headers=request_headers, timeout=30)
+        # Parse main page for basic info
+        soup = BeautifulSoup(response.content, 'html.parser')
         
-        print(f"  API response status: {response.status_code}")
+        # Get page title
+        title_element = soup.find('title')
+        actual_title = title_element.get_text().strip() if title_element else 'Unknown'
+        print(f"Page title: {actual_title}")
         
-        if response.status_code == 200:
-            try:
-                data = response.json()
-                print(f"  API response received and parsed successfully")
-                return data
-            except json.JSONDecodeError as e:
-                print(f"❌ JSON parsing error: {str(e)}")
-                print(f"Raw response: {response.text[:500]}")
-                return None
+        # Look for last modified information
+        last_modified = soup.find('li', {'id': 'footer-info-lastmod'})
+        if last_modified:
+            print(f"Last modified: {last_modified.get_text().strip()}")
+        
+        # Save main page HTML for reference
+        main_page_file = os.path.join(workspace_dir, 'antidisestablishmentarianism_main.html')
+        with open(main_page_file, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+        print(f"✅ Main page saved to: {os.path.basename(main_page_file)}")
+        
+    else:
+        print(f"❌ Failed to access main page: HTTP {response.status_code}")
+        if response.status_code == 404:
+            print("Page may not exist or may have been moved")
+        
+except Exception as e:
+    print(f"❌ Error accessing main page: {str(e)}")
+
+# Now access the edit history page
+print(f"\n=== ACCESSING EDIT HISTORY PAGE ===\n")
+
+try:
+    history_response = requests.get(history_url, headers=headers, timeout=30)
+    
+    if history_response.status_code == 200:
+        print(f"✅ Successfully accessed edit history page")
+        print(f"Content length: {len(history_response.content):,} bytes")
+        
+        # Parse history page
+        history_soup = BeautifulSoup(history_response.content, 'html.parser')
+        
+        # Save history page HTML for detailed analysis
+        history_page_file = os.path.join(workspace_dir, 'antidisestablishmentarianism_history.html')
+        with open(history_page_file, 'w', encoding='utf-8') as f:
+            f.write(history_response.text)
+        print(f"✅ History page saved to: {os.path.basename(history_page_file)}")
+        
+        # Extract edit history information
+        print(f"\n=== EXTRACTING EDIT HISTORY DATA ===\n")
+        
+        # Look for revision entries in the history page
+        # Wikipedia history pages typically use <li> elements with revision data
+        revision_entries = []
+        
+        # Find the revision list container
+        revision_list = history_soup.find('ul', {'id': 'pagehistory'})
+        if not revision_list:
+            # Alternative selector
+            revision_list = history_soup.find('ul', class_='mw-contributions-list')
+        if not revision_list:
+            # Look for any list that might contain revisions
+            revision_list = history_soup.find('div', {'id': 'mw-content-text'})
+        
+        if revision_list:
+            print(f"Found revision list container: {revision_list.name}")
+            
+            # Extract individual revision entries
+            revisions = revision_list.find_all('li')
+            print(f"Found {len(revisions)} potential revision entries")
+            
+            for i, revision in enumerate(revisions[:10], 1):  # Process first 10 for inspection
+                revision_text = revision.get_text().strip()
+                if revision_text:  # Skip empty entries
+                    print(f"\nRevision {i}:")
+                    print(f"  Text preview: {revision_text[:200]}..." if len(revision_text) > 200 else f"  Text: {revision_text}")
+                    
+                    # Look for specific elements within each revision
+                    timestamp_elem = revision.find('a', class_='mw-changeslist-date')
+                    if timestamp_elem:
+                        print(f"  Timestamp found: {timestamp_elem.get_text().strip()}")
+                    
+                    user_elem = revision.find('a', class_='mw-userlink')
+                    if user_elem:
+                        print(f"  User found: {user_elem.get_text().strip()}")
+                    
+                    # Look for edit summary
+                    summary_elem = revision.find('span', class_='comment')
+                    if summary_elem:
+                        print(f"  Summary: {summary_elem.get_text().strip()}")
         else:
-            print(f"❌ API request failed: HTTP {response.status_code}")
-            print(f"Response text: {response.text[:500]}")
-            return None
-    except Exception as e:
-        print(f"❌ API request error: {str(e)}")
-        return None
+            print("❌ Could not find revision list container")
+            print("Attempting alternative extraction methods...")
+            
+            # Alternative: look for any elements that might contain revision data
+            potential_revisions = history_soup.find_all(['li', 'tr', 'div'], class_=lambda x: x and ('revision' in x.lower() or 'history' in x.lower() or 'change' in x.lower()))
+            print(f"Found {len(potential_revisions)} potential revision elements with alternative method")
+            
+            if potential_revisions:
+                for i, elem in enumerate(potential_revisions[:5], 1):
+                    print(f"\nAlternative revision {i}:")
+                    text = elem.get_text().strip()
+                    print(f"  Text: {text[:150]}..." if len(text) > 150 else f"  Text: {text}")
+        
+        # Look for pagination or "show more" links to get complete history
+        print(f"\n=== CHECKING FOR PAGINATION ===\n")
+        
+        pagination_links = history_soup.find_all('a', href=True)
+        next_links = []
+        prev_links = []
+        
+        for link in pagination_links:
+            href = link.get('href', '')
+            link_text = link.get_text().strip().lower()
+            
+            if 'offset' in href and ('next' in link_text or 'older' in link_text):
+                next_links.append({
+                    'text': link.get_text().strip(),
+                    'href': href,
+                    'full_url': urljoin(base_url, href)
+                })
+            elif 'offset' in href and ('prev' in link_text or 'newer' in link_text):
+                prev_links.append({
+                    'text': link.get_text().strip(),
+                    'href': href,
+                    'full_url': urljoin(base_url, href)
+                })
+        
+        print(f"Found {len(next_links)} 'next/older' pagination links")
+        print(f"Found {len(prev_links)} 'prev/newer' pagination links")
+        
+        if next_links:
+            print("\nNext/Older links:")
+            for i, link in enumerate(next_links[:3], 1):
+                print(f"  {i}. {link['text']} -> {link['full_url']}")
+        
+        # Extract any visible statistics about the page
+        print(f"\n=== EXTRACTING PAGE STATISTICS ===\n")
+        
+        # Look for revision count information
+        stats_text = history_soup.get_text()
+        
+        # Common patterns for revision counts
+        import re
+        
+        # Look for patterns like "showing X of Y revisions"
+        revision_count_patterns = [
+            r'showing\s+(\d+)\s+of\s+(\d+)\s+revision',
+            r'(\d+)\s+revision[s]?\s+total',
+            r'page\s+has\s+(\d+)\s+revision'
+        ]
+        
+        for pattern in revision_count_patterns:
+            matches = re.findall(pattern, stats_text, re.IGNORECASE)
+            if matches:
+                print(f"Found revision count pattern: {pattern}")
+                print(f"Matches: {matches}")
+        
+        # Look for date ranges
+        date_patterns = [
+            r'(\d{1,2}\s+\w+\s+\d{4})',  # "1 January 2023"
+            r'(\d{4}-\d{2}-\d{2})',      # "2023-01-01"
+        ]
+        
+        dates_found = []
+        for pattern in date_patterns:
+            matches = re.findall(pattern, stats_text)
+            dates_found.extend(matches)
+        
+        if dates_found:
+            print(f"\nDates found in history: {len(dates_found)} total")
+            # Show first and last few dates
+            unique_dates = list(set(dates_found))
+            unique_dates.sort()
+            print(f"Date range sample: {unique_dates[:3]} ... {unique_dates[-3:] if len(unique_dates) > 6 else unique_dates[3:]}")
+        
+    else:
+        print(f"❌ Failed to access edit history page: HTTP {history_response.status_code}")
+        
+except Exception as e:
+    print(f"❌ Error accessing edit history page: {str(e)}")
 
-# Function to parse timestamp and check if it's before cutoff
-def is_before_cutoff(timestamp_str, cutoff_str):
-    """Check if timestamp is before the cutoff date"""
-    try:
-        timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-        cutoff = datetime.fromisoformat(cutoff_str.replace('Z', '+00:00'))
-        return timestamp <= cutoff
-    except Exception as e:
-        print(f"  Warning: timestamp parsing error for {timestamp_str}: {e}")
-        return True  # If parsing fails, include the revision
+# Try Wikipedia API approach for more structured data
+print(f"\n=== ATTEMPTING WIKIPEDIA API ACCESS ===\n")
 
-# Start comprehensive revision extraction
-print("=== STARTING COMPREHENSIVE REVISION EXTRACTION ===\n")
+# Wikipedia API endpoint for revision history
+api_url = "https://en.wikipedia.org/w/api.php"
 
-all_revisions = []
-continue_token = None
-total_requests = 0
-revisions_after_cutoff = 0
+# Parameters for getting revision history
+api_params = {
+    'action': 'query',
+    'format': 'json',
+    'titles': page_title,
+    'prop': 'revisions',
+    'rvlimit': '50',  # Get first 50 revisions
+    'rvprop': 'timestamp|user|comment|size|ids',
+    'rvdir': 'older'  # Start from newest
+}
 
-print(f"Starting extraction with max {MAX_REQUESTS} API requests...\n")
-
-while total_requests < MAX_REQUESTS:
-    total_requests += 1
+try:
+    print(f"API URL: {api_url}")
+    print(f"Parameters: {api_params}")
     
-    # Build API parameters
-    api_params = {
-        'action': 'query',
-        'format': 'json',
-        'titles': PAGE_TITLE,
-        'prop': 'revisions',
-        'rvlimit': '500',  # Maximum allowed per request
-        'rvprop': 'timestamp|user|comment|size|ids|flags',
-        'rvdir': 'older'  # Start from newest and go backwards
-    }
+    api_response = requests.get(api_url, params=api_params, headers=headers, timeout=30)
     
-    # Add continuation token if we have one
-    if continue_token:
-        api_params.update(continue_token)
-        print(f"  Using continuation: {continue_token}")
-    
-    print(f"Request {total_requests}: Fetching up to 500 revisions...")
-    
-    # Make the API request - PASS ALL PARAMETERS TO AVOID SCOPE ISSUES
-    api_data = make_api_request(API_ENDPOINT, api_params, headers, delay=REQUEST_DELAY)
-    
-    if not api_data:
-        print(f"❌ Failed to get API response, stopping extraction")
-        break
-    
-    print(f"  Processing API response...")
-    
-    # Process the response
-    if 'query' not in api_data or 'pages' not in api_data['query']:
-        print(f"❌ Unexpected API response structure")
+    if api_response.status_code == 200:
+        print(f"✅ Successfully accessed Wikipedia API")
+        
+        api_data = api_response.json()
         print(f"API response keys: {list(api_data.keys())}")
-        if 'query' in api_data:
-            print(f"Query keys: {list(api_data['query'].keys())}")
-        break
-    
-    pages = api_data['query']['pages']
-    page_found = False
-    
-    print(f"  Found {len(pages)} pages in response")
-    
-    for page_id, page_data in pages.items():
-        print(f"  Processing page ID: {page_id}")
         
-        if 'missing' in page_data:
-            print(f"❌ Page '{PAGE_TITLE}' not found")
-            break
-        
-        if 'revisions' not in page_data:
-            print(f"❌ No revisions found in response")
-            print(f"Page data keys: {list(page_data.keys())}")
-            break
-        
-        page_found = True
-        revisions = page_data['revisions']
-        print(f"  Retrieved {len(revisions)} revisions")
-        
-        # Process each revision
-        revisions_before_cutoff_batch = 0
-        revisions_after_cutoff_batch = 0
-        oldest_timestamp = None
-        newest_timestamp = None
-        
-        for revision in revisions:
-            timestamp = revision.get('timestamp', '')
+        if 'query' in api_data and 'pages' in api_data['query']:
+            pages = api_data['query']['pages']
+            print(f"Pages in response: {list(pages.keys())}")
             
-            # Track date range
-            if not oldest_timestamp or timestamp < oldest_timestamp:
-                oldest_timestamp = timestamp
-            if not newest_timestamp or timestamp > newest_timestamp:
-                newest_timestamp = timestamp
-            
-            # Check if revision is before cutoff date
-            if is_before_cutoff(timestamp, CUTOFF_DATE):
-                all_revisions.append(revision)
-                revisions_before_cutoff_batch += 1
-            else:
-                revisions_after_cutoff += 1
-                revisions_after_cutoff_batch += 1
-        
-        print(f"  Date range: {oldest_timestamp} to {newest_timestamp}")
-        print(f"  Revisions before June 2023 (this batch): {revisions_before_cutoff_batch}")
-        print(f"  Revisions after June 2023 (this batch): {revisions_after_cutoff_batch}")
-        print(f"  Total collected so far: {len(all_revisions)}")
-        
-        # Check if we should continue
-        if 'continue' in api_data:
-            continue_token = api_data['continue']
-            print(f"  More data available, continuing...")
-        else:
-            print(f"  ✅ Reached end of revision history")
-            break
-    
-    if not page_found:
-        print(f"❌ No valid page data found")
-        break
-    
-    # If no continuation token, we're done
-    if 'continue' not in api_data:
-        print(f"\n✅ Complete revision history extracted!")
-        break
-    
-    print()  # Empty line for readability
-
-print(f"\n=== EXTRACTION COMPLETE ===\n")
-print(f"Total API requests made: {total_requests}")
-print(f"Total revisions collected: {len(all_revisions)}")
-print(f"Revisions after June 2023 (excluded): {revisions_after_cutoff}")
-
-if len(all_revisions) == 0:
-    print("❌ No revisions were collected")
-    print("This could indicate:")
-    print("  - API access issues")
-    print("  - Page doesn't exist")
-    print("  - All revisions are after June 2023")
-    print("  - Network connectivity problems")
-    
-    # Save empty result for debugging
-    debug_data = {
-        'extraction_metadata': {
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'target_page': PAGE_TITLE,
-            'cutoff_date': CUTOFF_DATE,
-            'api_requests_made': total_requests,
-            'total_revisions_collected': 0,
-            'status': 'failed - no revisions collected'
-        }
-    }
-    
-    debug_file = os.path.join(workspace_dir, 'extraction_debug.json')
-    with open(debug_file, 'w', encoding='utf-8') as f:
-        json.dump(debug_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n📁 Debug data saved to: {os.path.basename(debug_file)}")
-    
-else:
-    # Sort revisions by timestamp (oldest first)
-    all_revisions.sort(key=lambda x: x.get('timestamp', ''))
-    
-    print(f"\n=== REVISION ANALYSIS ===\n")
-    
-    # Extract key statistics
-    timestamps = [rev.get('timestamp', '') for rev in all_revisions if rev.get('timestamp')]
-    users = [rev.get('user', 'Unknown') for rev in all_revisions]
-    sizes = [rev.get('size', 0) for rev in all_revisions if isinstance(rev.get('size'), int)]
-    comments = [rev.get('comment', '') for rev in all_revisions]
-    revision_ids = [rev.get('revid', 0) for rev in all_revisions if rev.get('revid')]
-    
-    # Basic statistics
-    print(f"📊 Basic Statistics:")
-    print(f"  Total revisions: {len(all_revisions)}")
-    if timestamps:
-        print(f"  Date range: {min(timestamps)} to {max(timestamps)}")
-        print(f"  Page creation date: {min(timestamps)}")
-        print(f"  Last edit before June 2023: {max(timestamps)}")
-    print(f"  Unique users: {len(set(users))}")
-    if sizes:
-        print(f"  Average page size: {sum(sizes) // len(sizes)} bytes")
-        print(f"  Size range: {min(sizes)} to {max(sizes)} bytes")
-    if revision_ids:
-        print(f"  Revision ID range: {min(revision_ids)} to {max(revision_ids)}")
-    
-    # User activity analysis
-    user_counts = Counter(users)
-    top_users = user_counts.most_common(10)
-    
-    print(f"\n👥 Top 10 Most Active Users:")
-    for i, (user, count) in enumerate(top_users, 1):
-        print(f"  {i:2d}. {user}: {count} edits")
-    
-    # Temporal analysis
-    years = {}
-    months = {}
-    for timestamp in timestamps:
-        if timestamp:
-            year = timestamp[:4]
-            month = timestamp[:7]  # YYYY-MM
-            years[year] = years.get(year, 0) + 1
-            months[month] = months.get(month, 0) + 1
-    
-    print(f"\n📅 Edits by Year:")
-    for year in sorted(years.keys()):
-        print(f"  {year}: {years[year]} edits")
-    
-    # Show most active months
-    top_months = sorted(months.items(), key=lambda x: x[1], reverse=True)[:5]
-    print(f"\n📅 Top 5 Most Active Months:")
-    for month, count in top_months:
-        print(f"  {month}: {count} edits")
-    
-    # Sample revisions
-    print(f"\n📝 Sample Revisions:")
-    print(f"\nFirst revision (page creation):")
-    first_rev = all_revisions[0]
-    for key, value in first_rev.items():
-        print(f"  {key}: {value}")
-    
-    if len(all_revisions) > 1:
-        print(f"\nMost recent revision (before June 2023):")
-        last_rev = all_revisions[-1]
-        for key, value in last_rev.items():
-            print(f"  {key}: {value}")
-    
-    # Save comprehensive data
-    print(f"\n=== SAVING COMPREHENSIVE DATA ===\n")
-    
-    # Create comprehensive dataset
-    comprehensive_data = {
-        'extraction_metadata': {
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'target_page': PAGE_TITLE,
-            'cutoff_date': CUTOFF_DATE,
-            'api_requests_made': total_requests,
-            'total_revisions_collected': len(all_revisions),
-            'revisions_after_cutoff_excluded': revisions_after_cutoff,
-            'date_range': {
-                'earliest': min(timestamps) if timestamps else None,
-                'latest': max(timestamps) if timestamps else None
-            },
-            'extraction_method': 'Wikipedia API with pagination'
-        },
-        'statistics': {
-            'total_revisions': len(all_revisions),
-            'unique_users': len(set(users)),
-            'average_size': sum(sizes) // len(sizes) if sizes else 0,
-            'size_range': {
-                'min': min(sizes) if sizes else 0,
-                'max': max(sizes) if sizes else 0
-            },
-            'revision_id_range': {
-                'min': min(revision_ids) if revision_ids else 0,
-                'max': max(revision_ids) if revision_ids else 0
-            },
-            'edits_by_year': years,
-            'edits_by_month': dict(top_months),
-            'top_users': dict(top_users)
-        },
-        'all_revisions': all_revisions
-    }
-    
-    # Save main data file
-    data_file = os.path.join(workspace_dir, 'antidisestablishmentarianism_complete_history.json')
-    with open(data_file, 'w', encoding='utf-8') as f:
-        json.dump(comprehensive_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"✅ Complete revision data saved to: {os.path.basename(data_file)}")
-    print(f"   File size: {os.path.getsize(data_file):,} bytes")
-    
-    # Create summary report
-    summary_file = os.path.join(workspace_dir, 'revision_summary.txt')
-    with open(summary_file, 'w', encoding='utf-8') as f:
-        f.write(f"ANTIDISESTABLISHMENTARIANISM - COMPLETE REVISION HISTORY\n")
-        f.write(f"={'='*60}\n\n")
-        f.write(f"Extraction Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Target Page: {PAGE_TITLE}\n")
-        f.write(f"Cutoff Date: {CUTOFF_DATE}\n\n")
-        
-        f.write(f"EXTRACTION RESULTS:\n")
-        f.write(f"- Total API requests: {total_requests}\n")
-        f.write(f"- Total revisions collected: {len(all_revisions)}\n")
-        f.write(f"- Revisions excluded (after June 2023): {revisions_after_cutoff}\n")
-        if timestamps:
-            f.write(f"- Date range: {min(timestamps)} to {max(timestamps)}\n")
-        f.write(f"- Unique contributors: {len(set(users))}\n\n")
-        
-        f.write(f"TEMPORAL DISTRIBUTION:\n")
-        for year in sorted(years.keys()):
-            f.write(f"- {year}: {years[year]} edits\n")
-        
-        f.write(f"\nTOP CONTRIBUTORS:\n")
-        for i, (user, count) in enumerate(top_users[:5], 1):
-            f.write(f"- {i}. {user}: {count} edits\n")
-        
-        f.write(f"\nPAGE EVOLUTION:\n")
-        if timestamps:
-            f.write(f"- Created: {min(timestamps)}\n")
-            f.write(f"- Last edit before June 2023: {max(timestamps)}\n")
-        if sizes:
-            f.write(f"- Size evolution: {min(sizes)} to {max(sizes)} bytes\n")
-    
-    print(f"✅ Summary report saved to: {os.path.basename(summary_file)}")
-    
-    # Create CSV export for easy analysis
-    csv_file = os.path.join(workspace_dir, 'revisions_export.csv')
-    with open(csv_file, 'w', encoding='utf-8') as f:
-        f.write('revision_id,parent_id,timestamp,user,size,comment\n')
-        for rev in all_revisions:
-            # Escape commas and quotes in comments
-            comment = rev.get('comment', '').replace('"', '""')
-            f.write(f"{rev.get('revid', '')},{rev.get('parentid', '')},{rev.get('timestamp', '')},{rev.get('user', '')},{rev.get('size', '')},\"{comment}\"\n")
-    
-    print(f"✅ CSV export saved to: {os.path.basename(csv_file)}")
-    
-    print(f"\n=== EXTRACTION SUCCESS ===\n")
-    print(f"🎉 Successfully extracted complete revision history!")
-    print(f"📊 {len(all_revisions)} revisions from {min(timestamps) if timestamps else 'unknown'} to {max(timestamps) if timestamps else 'unknown'}")
-    print(f"👥 {len(set(users))} unique contributors")
-    print(f"📁 All data saved to workspace: {workspace_dir}")
-    print(f"✅ Ready for detailed analysis and reporting")
-    
-    # Final summary for the PLAN
-    print(f"\n=== PLAN COMPLETION SUMMARY ===\n")
-    print(f"✅ OBJECTIVE ACHIEVED: Comprehensive edit history extracted")
-    print(f"📋 Total revisions from creation until June 2023: {len(all_revisions)}")
-    print(f"📅 Complete temporal coverage: {min(timestamps) if timestamps else 'N/A'} to {max(timestamps) if timestamps else 'N/A'}")
-    print(f"🔍 Comprehensive metadata extracted: timestamps, users, comments, sizes, revision IDs")
-    print(f"📊 Statistical analysis completed: user activity, temporal distribution, page evolution")
-    print(f"💾 Multiple output formats created: JSON (structured), TXT (summary), CSV (spreadsheet)")
-```
-
-### Development Step 10: Filter Wikipedia revision history to count page edits through June 30, 2023
-
-**Description**: Filter the extracted revision data from the comprehensive Wikipedia history to count only the edits made from the page's inception until the end of June 2023. Exclude any revisions that occurred after June 30, 2023, and provide the exact count of edits within the specified timeframe.
-
-**Use Cases**:
-- Digital humanities research on cultural heritage: counting edits to historical monument Wikipedia pages through June 2023 to gauge community-driven documentation growth
-- Political journalism analytics: measuring the volume of revisions on election-related articles up to June 2023 to identify periods of peak editorial activity
-- Corporate brand compliance audit: auditing all edits on a company’s Wikipedia page until mid-2023 to verify no unauthorized content changes occurred
-- Machine learning dataset preparation: filtering Wikipedia revision histories before July 2023 to build a time-bounded corpus for change-detection model training
-- Educational content stability assessment: evaluating the number of edits on science and math topic pages until June 2023 to select stable resources for textbook references
-- NGO transparency reporting: quantifying community edits on environmental policy articles through June 2023 to demonstrate stakeholder engagement over time
-- SEO and digital marketing performance review: tracking cumulative edits on product and service Wikipedia pages before July 2023 to inform content strategy adjustments
-- Fact-checking and misinformation studies: analyzing revision counts on high-profile news event pages up to June 2023 to correlate editorial activity with misinformation spikes
-
-```
-import os
-import json
-from datetime import datetime
-
-print("=== INSPECTING EXISTING REVISION DATA FILES ===\n")
-
-# Check all workspace directories for revision data
-workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
-print(f"Found workspace directories: {workspace_dirs}\n")
-
-revision_files = []
-for workspace_dir in workspace_dirs:
-    files = os.listdir(workspace_dir)
-    for file in files:
-        if 'revision' in file.lower() or 'wikipedia' in file.lower():
-            file_path = os.path.join(workspace_dir, file)
-            file_size = os.path.getsize(file_path)
-            revision_files.append({
-                'path': file_path,
-                'name': file,
-                'size': file_size,
-                'workspace': workspace_dir
-            })
-            print(f"Found revision file: {file} ({file_size:,} bytes) in {workspace_dir}")
-
-if not revision_files:
-    print("❌ No revision data files found in any workspace")
-else:
-    # Use the largest/most comprehensive file
-    largest_file = max(revision_files, key=lambda x: x['size'])
-    print(f"\nUsing largest revision file: {largest_file['name']} ({largest_file['size']:,} bytes)")
-    
-    # First, inspect the file structure before loading
-    print(f"\n=== INSPECTING FILE STRUCTURE: {largest_file['name']} ===\n")
-    
-    try:
-        with open(largest_file['path'], 'r', encoding='utf-8') as f:
-            # Read just the beginning to understand structure
-            content_preview = f.read(1000)
-            print(f"File preview (first 1000 chars):\n{content_preview}\n")
-            
-            # Reset and load as JSON to inspect structure
-            f.seek(0)
-            data = json.load(f)
-            
-        print("JSON structure analysis:")
-        if isinstance(data, dict):
-            print(f"  Root type: Dictionary with {len(data)} keys")
-            for key, value in data.items():
-                if isinstance(value, list):
-                    print(f"    {key}: List with {len(value)} items")
-                    if len(value) > 0:
-                        print(f"      Sample item type: {type(value[0]).__name__}")
-                        if isinstance(value[0], dict):
-                            sample_keys = list(value[0].keys())
-                            print(f"      Sample item keys: {sample_keys}")
-                elif isinstance(value, dict):
-                    print(f"    {key}: Dictionary with {len(value)} keys")
-                    nested_keys = list(value.keys())
-                    print(f"      Keys: {nested_keys}")
+            for page_id, page_data in pages.items():
+                print(f"\nPage ID: {page_id}")
+                print(f"Page data keys: {list(page_data.keys())}")
+                
+                if 'revisions' in page_data:
+                    revisions = page_data['revisions']
+                    print(f"Found {len(revisions)} revisions in API response")
+                    
+                    # Save API data
+                    api_data_file = os.path.join(workspace_dir, 'api_revisions_sample.json')
+                    with open(api_data_file, 'w', encoding='utf-8') as f:
+                        json.dump(api_data, f, indent=2, ensure_ascii=False)
+                    print(f"✅ API data saved to: {os.path.basename(api_data_file)}")
+                    
+                    # Display sample revisions
+                    print(f"\nSample revisions:")
+                    for i, rev in enumerate(revisions[:5], 1):
+                        print(f"\n  Revision {i}:")
+                        for key, value in rev.items():
+                            print(f"    {key}: {value}")
+                    
+                    # Check if we can get more revisions
+                    if len(revisions) == 50:  # We hit the limit
+                        print(f"\n⚠️ Retrieved maximum of 50 revisions. More data available.")
+                        print(f"Need to implement pagination to get complete history.")
+                    
                 else:
-                    print(f"    {key}: {type(value).__name__} = {str(value)[:100]}")
-        
-        print(f"\n=== FILTERING REVISIONS TO COUNT EDITS UNTIL JUNE 30, 2023 ===\n")
-        
-        # Now that I understand the structure, extract revisions safely
-        revisions = []
-        metadata = {}
-        
-        # Check different possible structures
-        if 'revisions' in data:
-            revisions = data['revisions']
-            print(f"Found 'revisions' key with {len(revisions)} items")
-        elif 'filtered_revisions' in data:
-            revisions = data['filtered_revisions']
-            print(f"Found 'filtered_revisions' key with {len(revisions)} items")
-        elif isinstance(data, list):
-            revisions = data
-            print(f"Data is a list with {len(revisions)} items")
+                    print(f"❌ No revisions found in page data")
+                    if 'missing' in page_data:
+                        print(f"Page appears to be missing or doesn't exist")
         else:
-            print("❌ Could not identify revisions data structure")
-            print(f"Available keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
+            print(f"❌ Unexpected API response structure")
+            print(f"Full response: {api_data}")
+    
+    else:
+        print(f"❌ API request failed: HTTP {api_response.status_code}")
+        print(f"Response: {api_response.text[:500]}")
         
-        # Extract metadata if available
-        for key in ['extraction_metadata', 'filtering_metadata', 'metadata']:
-            if key in data:
-                metadata = data[key]
-                print(f"Found metadata under '{key}' key")
-                break
-        
-        if not revisions:
-            print("❌ No revision data found to process")
-        else:
-            print(f"\nProcessing {len(revisions)} revisions...")
-            
-            # Show sample revision structure
-            if len(revisions) > 0:
-                sample_rev = revisions[0]
-                print(f"\nSample revision structure:")
-                for key, value in sample_rev.items():
-                    print(f"  {key}: {type(value).__name__} = {str(value)[:100]}")
-            
-            # Filter revisions until June 30, 2023
-            cutoff_date = datetime(2023, 6, 30, 23, 59, 59)
-            print(f"\nApplying cutoff date: {cutoff_date.strftime('%Y-%m-%d %H:%M:%S')}")
-            
-            filtered_count = 0
-            excluded_count = 0
-            earliest_timestamp = None
-            latest_timestamp = None
-            
-            for revision in revisions:
-                if 'timestamp' in revision:
-                    try:
-                        # Parse Wikipedia timestamp format
-                        timestamp_str = revision['timestamp']
-                        rev_timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                        rev_timestamp = rev_timestamp.replace(tzinfo=None)
-                        
-                        # Track date range
-                        if earliest_timestamp is None or timestamp_str < earliest_timestamp:
-                            earliest_timestamp = timestamp_str
-                        if latest_timestamp is None or timestamp_str > latest_timestamp:
-                            latest_timestamp = timestamp_str
-                        
-                        # Count based on cutoff date
-                        if rev_timestamp <= cutoff_date:
-                            filtered_count += 1
-                        else:
-                            excluded_count += 1
-                            
-                    except Exception as e:
-                        print(f"  ⚠️ Error parsing timestamp {revision.get('timestamp', 'N/A')}: {str(e)}")
-                        continue
-                else:
-                    print(f"  ⚠️ Revision missing timestamp: {revision}")
-            
-            print(f"\n=== FILTERING RESULTS ===\n")
-            print(f"Total revisions processed: {len(revisions)}")
-            print(f"Edits until end of June 2023: {filtered_count}")
-            print(f"Edits excluded (after June 30, 2023): {excluded_count}")
-            
-            if earliest_timestamp and latest_timestamp:
-                print(f"\nRevision date range in data:")
-                print(f"  Earliest: {earliest_timestamp}")
-                print(f"  Latest: {latest_timestamp}")
-            
-            # Show metadata if available
-            if metadata:
-                print(f"\nSource metadata:")
-                for key, value in metadata.items():
-                    print(f"  {key}: {value}")
-            
-            # Save the final count result
-            result = {
-                'analysis_timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'source_file': largest_file['name'],
-                'cutoff_date': '2023-06-30 23:59:59',
-                'total_revisions_in_source': len(revisions),
-                'edits_until_june_2023': filtered_count,
-                'edits_excluded_after_june_2023': excluded_count,
-                'revision_date_range': {
-                    'earliest': earliest_timestamp,
-                    'latest': latest_timestamp
-                },
-                'source_metadata': metadata
-            }
-            
-            result_file = os.path.join(largest_file['workspace'], 'final_edit_count_june_2023.json')
-            with open(result_file, 'w', encoding='utf-8') as f:
-                json.dump(result, f, indent=2, ensure_ascii=False)
-            
-            print(f"\n✅ Final results saved to: {os.path.basename(result_file)}")
-            
-            # Create summary text file
-            summary_file = os.path.join(largest_file['workspace'], 'edit_count_summary_final.txt')
-            with open(summary_file, 'w', encoding='utf-8') as f:
-                f.write(f"WIKIPEDIA EDIT COUNT - FINAL RESULTS\n")
-                f.write(f"={'='*45}\n\n")
-                f.write(f"Analysis completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Source data file: {largest_file['name']}\n")
-                f.write(f"Cutoff date: June 30, 2023 23:59:59\n\n")
-                f.write(f"FINAL ANSWER:\n")
-                f.write(f"🎯 {filtered_count} edits were made from the page's inception until the end of June 2023\n\n")
-                f.write(f"BREAKDOWN:\n")
-                f.write(f"- Total revisions in source data: {len(revisions)}\n")
-                f.write(f"- Edits until end of June 2023: {filtered_count}\n")
-                f.write(f"- Edits excluded (after June 30, 2023): {excluded_count}\n\n")
-                if earliest_timestamp and latest_timestamp:
-                    f.write(f"SOURCE DATA DATE RANGE:\n")
-                    f.write(f"- Earliest revision: {earliest_timestamp}\n")
-                    f.write(f"- Latest revision: {latest_timestamp}\n")
-            
-            print(f"✅ Summary saved to: {os.path.basename(summary_file)}")
-            
-            print(f"\n🎯 FINAL ANSWER: {filtered_count} edits were made from the page's inception until the end of June 2023")
-            
-    except Exception as e:
-        print(f"❌ Error processing revision file: {str(e)}")
-        import traceback
-        traceback.print_exc()
+except Exception as e:
+    print(f"❌ Error accessing Wikipedia API: {str(e)}")
+
+# Create initial summary of findings
+print(f"\n=== INITIAL ANALYSIS SUMMARY ===\n")
+
+summary_data = {
+    'analysis_metadata': {
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'target_page': page_title,
+        'workspace_directory': workspace_dir,
+        'objective': 'Extract comprehensive edit history until June 2023'
+    },
+    'access_results': {
+        'main_page_accessible': 'response' in locals() and response.status_code == 200,
+        'history_page_accessible': 'history_response' in locals() and history_response.status_code == 200,
+        'api_accessible': 'api_response' in locals() and api_response.status_code == 200
+    },
+    'files_created': [
+        f for f in os.listdir(workspace_dir) if os.path.isfile(os.path.join(workspace_dir, f))
+    ],
+    'next_steps': [
+        'Parse HTML history page for detailed revision extraction',
+        'Implement API pagination to get complete revision history',
+        'Filter revisions to only include those before June 2023',
+        'Extract comprehensive metadata for each revision'
+    ]
+}
+
+# Save summary
+summary_file = os.path.join(workspace_dir, 'initial_analysis_summary.json')
+with open(summary_file, 'w', encoding='utf-8') as f:
+    json.dump(summary_data, f, indent=2, ensure_ascii=False)
+
+print(f"📊 Analysis Summary:")
+print(f"  Target page: {page_title}")
+print(f"  Main page accessible: {'✅' if summary_data['access_results']['main_page_accessible'] else '❌'}")
+print(f"  History page accessible: {'✅' if summary_data['access_results']['history_page_accessible'] else '❌'}")
+print(f"  API accessible: {'✅' if summary_data['access_results']['api_accessible'] else '❌'}")
+print(f"  Files created: {len(summary_data['files_created'])}")
+
+for filename in summary_data['files_created']:
+    file_path = os.path.join(workspace_dir, filename)
+    file_size = os.path.getsize(file_path)
+    print(f"    - {filename} ({file_size:,} bytes)")
+
+print(f"\n✅ Initial data collection completed!")
+print(f"📁 All data saved to workspace: {workspace_dir}")
+print(f"🔍 Ready for detailed revision history extraction and analysis")
 ```
 
 ## Created Time
-2025-08-11 07:06:40
+2025-08-13 23:46:54

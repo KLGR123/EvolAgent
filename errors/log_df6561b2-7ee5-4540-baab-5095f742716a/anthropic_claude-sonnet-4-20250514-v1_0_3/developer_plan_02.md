@@ -1,10 +1,10 @@
 # Developer Plan 02
 
 ## Plan
-Calculate the standard population deviation of the red numbers and the standard sample deviation of the green numbers using Python's statistics module, then compute the average of these two values and round the result to three decimal places as specified in the TASK.
+Calculate the standard population deviation of the red numbers and the standard sample deviation of the green numbers using Python's statistics module, then compute the average of these two values and round the result to three decimal places.
 
 ## Description
-This is the final calculation step because: (1) We have successfully extracted the red numbers [24, 28, 54, 73, 33, 64, 60, 53, 59, 40, 74, 72, 65, 76, 62, 31, 55, 24, 51, 65, 55, 35, 76, 53, 77, 49] and green numbers [39, 29, 28, 64, 73, 72, 68, 47, 64, 40, 75, 26, 48, 27, 34, 37, 31, 70, 31, 44, 38, 46, 78, 66, 61, 41, 51] from the image analysis, (2) We need to apply statistics.pstdev() for the red numbers (population standard deviation) and statistics.stdev() for the green numbers (sample standard deviation), (3) Expected outcome is to calculate the average of these two standard deviations and round to three decimal places, (4) This completes the TASK by providing the final numerical answer as requested
+This is the final calculation step because: (1) We have successfully extracted all red numbers [24, 74, 28, 54, 73, 33, 64, 73, 60, 53, 59, 40, 65, 76, 48, 34, 62, 70, 31, 24, 51, 38, 55, 78, 76, 41, 77, 51] and green numbers [39, 29, 28, 72, 68, 47, 64, 74, 72, 40, 75, 26, 27, 37, 31, 55, 44, 64, 65, 46, 66, 35, 76, 61, 53, 49] from the image analysis, (2) We need to use statistics.pstdev() for population standard deviation of red numbers and statistics.stdev() for sample standard deviation of green numbers as specified in the TASK, (3) Expected outcome is to calculate both deviations, take their average, and round to three decimal places, (4) This completes the TASK by providing the final numerical answer as requested
 
 ## Episodic Examples
 ### Development Step 2: Analyze Python code file to understand logic, trace execution, and find its final numeric output.
@@ -283,331 +283,321 @@ else:
         print("  - data directory not found")
 ```
 
-### Development Step 14: Estimating False Positive Papers in Nature’s 2020 Publications Using a 4% Type-I Error Rate
+### Development Step 4: Find oldest closed ‘Regression’ issue in numpy.polynomial and record its label addition time
 
-**Description**: Calculate the number of statistically incorrect papers using the false positive rate principle. Given that Nature published 1,002 research articles in 2020, all assumed to rely on statistical significance with an average p-value of 0.04, determine how many would be incorrectly claiming statistical significance. Apply the concept that a p-value of 0.04 means there's a 4% chance of a false positive (Type I error) when the null hypothesis is true. Calculate 1,002 × 0.04 and round up to the next integer as specified in the TASK.
+**Description**: Search GitHub for numpy.polynomial issues to identify all closed issues that have the 'Regression' label. Focus on finding the oldest closed issue with this label and determine when the 'Regression' label was added to that specific issue. Use GitHub's issue search functionality with filters for repository 'numpy/numpy', path 'polynomial', status 'closed', and label 'Regression'. Extract the issue creation date, closure date, and label addition timestamp for the oldest matching issue.
 
 **Use Cases**:
-- Academic journal editorial board uses the calculation to estimate how many cancer-biology papers published in 2020 may be falsely claiming novel biomarkers, guiding more rigorous peer‐review standards
-- Pharmaceutical R&D risk assessment team applies the false-positive rate principle to their preclinical efficacy studies to predict the number of drug candidates likely to fail in Phase II trials due to statistical flukes
-- Regulatory agency (e.g., FDA) implements the solution to audit submitted clinical trial reports and estimate how many efficacy claims could be Type I errors before approving new therapies
-- Grant review panels at a national science foundation use the calculation on past proposal outcomes to gauge the prevalence of spurious pilot‐study results informing funding decisions
-- Meta-analysis researchers in cognitive psychology apply the method across hundreds of published studies to quantify the expected proportion of false positives influencing overall effect‐size estimates
-- Science journalists at a major media outlet leverage the approach to flag press releases from high-impact journals that might overstate findings due to Type I errors, streamlining fact-checking workflows
-- University research integrity office employs the calculation to monitor departmental publication quality, identifying fields with unusually high false-positive rates for targeted statistical training
+- Legacy codebase performance tracking in a financial software firm to identify and timestamp regressions in numerical computations after major releases
+- Automated monitoring in a scientific research group analyzing regression bug introduction and triage times in community libraries like numpy.polynomial to optimize development workflows
+- QA audit workflow in a biotech company tracking the first occurrence and labeling date of computational inaccuracies in polynomial fitting modules for regulatory compliance
+- Open source community health dashboard for foundation maintainers to visualize historical regression labeling trends and resolution times in core numerical libraries
+- DevOps incident response system auto-generating alerts when new regression issues appear in polynomial routines, capturing creation and label addition timestamps for SLA management
+- Academic study on software engineering practices examining the latency between issue reporting and regression labeling in large-scale scientific computing repositories
+- Product engineering team in an aerospace simulation project auditing third-party library stability by retrieving and analyzing the earliest regression issues and labeling events in polynomial modules
 
 ```
-# Calculate the number of statistically incorrect papers using false positive rate principle
-# Given: 1,002 research articles in Nature 2020, average p-value of 0.04
-# Task: Calculate how many would be incorrectly claiming statistical significance
+import os
+import json
 
-import math
+print("=== FIXING SEARCH BUG AND INSPECTING COMPREHENSIVE RESULTS ===")
+print("Objective: Fix the variable definition bug and analyze the promising search results\n")
 
-print("=== CALCULATING STATISTICALLY INCORRECT PAPERS ===\n")
+# Find workspace directory
+workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
+if not workspace_dirs:
+    print("No workspace directory found.")
+    exit()
 
-# Given data
-total_papers = 1002
-average_p_value = 0.04
+workspace_dir = workspace_dirs[0]
+print(f"Using workspace directory: {workspace_dir}")
 
-print(f"Given information:")
-print(f"• Total research articles published by Nature in 2020: {total_papers:,}")
-print(f"• Average p-value across all studies: {average_p_value}")
-print(f"• Assumption: All papers rely on statistical significance testing")
+# First, inspect the comprehensive search results file structure
+comprehensive_file = f'{workspace_dir}/numpy_polynomial_comprehensive_search.json'
+if os.path.exists(comprehensive_file):
+    print(f"\n=== INSPECTING COMPREHENSIVE SEARCH FILE STRUCTURE ===")
+    
+    with open(comprehensive_file, 'r') as f:
+        comprehensive_data = json.load(f)
+    
+    print("Top-level keys in comprehensive search results:")
+    for key, value in comprehensive_data.items():
+        if isinstance(value, dict):
+            print(f"  - {key}: Dictionary with {len(value)} keys")
+        elif isinstance(value, list):
+            print(f"  - {key}: List with {len(value)} items")
+        else:
+            print(f"  - {key}: {value}")
+    
+    # Examine the results structure
+    if 'results' in comprehensive_data:
+        results = comprehensive_data['results']
+        print(f"\nSearch strategies tested: {len(results)}")
+        
+        for strategy_name, strategy_data in results.items():
+            print(f"\n{strategy_name}:")
+            print(f"  Status: {strategy_data.get('status', 'unknown')}")
+            
+            if 'total_count' in strategy_data:
+                print(f"  Total count: {strategy_data['total_count']}")
+            
+            if 'items' in strategy_data:
+                print(f"  Items retrieved: {len(strategy_data['items'])}")
+                
+                # Show structure of first item if available
+                if strategy_data['items']:
+                    first_item = strategy_data['items'][0]
+                    print(f"  First item keys: {list(first_item.keys())[:10]}...")  # Show first 10 keys
+            
+            if 'query' in strategy_data:
+                print(f"  Query: {strategy_data['query']}")
+    
+    print("\n=== IDENTIFYING MOST PROMISING RESULTS ===")
+    
+    # Based on HISTORY feedback, focus on the strategies that found results
+    promising_strategies = []
+    
+    if 'results' in comprehensive_data:
+        for strategy_name, strategy_data in comprehensive_data['results'].items():
+            if strategy_data.get('total_count', 0) > 0:
+                promising_strategies.append({
+                    'name': strategy_name,
+                    'count': strategy_data['total_count'],
+                    'items': len(strategy_data.get('items', [])),
+                    'query': strategy_data.get('query', 'N/A')
+                })
+    
+    # Sort by total count descending
+    promising_strategies.sort(key=lambda x: x['count'], reverse=True)
+    
+    print(f"Promising strategies found: {len(promising_strategies)}")
+    for i, strategy in enumerate(promising_strategies, 1):
+        print(f"  {i}. {strategy['name']}")
+        print(f"     Total issues: {strategy['count']}")
+        print(f"     Retrieved: {strategy['items']} items")
+        print(f"     Query: {strategy['query']}")
+        print()
+    
+    # Focus on the most relevant strategy for our PLAN
+    if promising_strategies:
+        target_strategy = None
+        
+        # Prioritize 'regression polynomial' search as most relevant to PLAN
+        for strategy in promising_strategies:
+            if 'regression' in strategy['name'].lower() and 'polynomial' in strategy['query'].lower():
+                target_strategy = strategy
+                break
+        
+        # If no regression+polynomial, take the one with most results
+        if not target_strategy:
+            target_strategy = promising_strategies[0]
+        
+        print(f"=== TARGET STRATEGY FOR DETAILED ANALYSIS ===")
+        print(f"Selected: {target_strategy['name']}")
+        print(f"Reason: {'Most relevant to PLAN (regression + polynomial)' if 'regression' in target_strategy['name'].lower() else 'Highest result count'}")
+        print(f"Total issues: {target_strategy['count']}")
+        print(f"Retrieved items: {target_strategy['items']}")
+        
+        # Save analysis summary
+        analysis_summary = {
+            'analysis_timestamp': comprehensive_data.get('search_timestamp'),
+            'total_strategies_tested': len(comprehensive_data.get('results', {})),
+            'promising_strategies_found': len(promising_strategies),
+            'target_strategy': target_strategy,
+            'next_steps': [
+                'Extract detailed issue information from target strategy',
+                'Sort issues by creation date to find oldest',
+                'Get individual issue details via GitHub API',
+                'Check issue timeline for label addition timestamps'
+            ]
+        }
+        
+        with open(f'{workspace_dir}/analysis_summary.json', 'w') as f:
+            json.dump(analysis_summary, f, indent=2)
+        
+        print(f"\nAnalysis summary saved to: {workspace_dir}/analysis_summary.json")
+        
+    else:
+        print("No promising strategies found with results > 0")
+        
+else:
+    print(f"Comprehensive search file not found: {comprehensive_file}")
 
-print(f"\n=== APPLYING FALSE POSITIVE RATE PRINCIPLE ===\n")
+print("\nNext step: Extract and analyze the target strategy's issue data in detail")
+```
 
-# Explanation of the statistical concept
-print(f"Statistical concept explanation:")
-print(f"• A p-value of {average_p_value} means there's a {average_p_value * 100}% chance of a false positive (Type I error)")
-print(f"• Type I error occurs when we reject a true null hypothesis")
-print(f"• This means {average_p_value * 100}% of studies could be incorrectly claiming statistical significance")
-print(f"• When the null hypothesis is actually true, but the study concludes significance")
+### Development Step 5: Find oldest closed numpy.polynomial Regression issue and its label-addition time
 
-# Calculate the number of statistically incorrect papers
-false_positive_rate = average_p_value
-incorrect_papers_exact = total_papers * false_positive_rate
+**Description**: Search GitHub for numpy.polynomial issues to identify all closed issues that have the 'Regression' label. Focus on finding the oldest closed issue with this label and determine when the 'Regression' label was added to that specific issue. Use GitHub's issue search functionality with filters for repository 'numpy/numpy', path 'polynomial', status 'closed', and label 'Regression'. Extract the issue creation date, closure date, and label addition timestamp for the oldest matching issue.
 
-print(f"\n=== CALCULATION ===\n")
-print(f"Formula: Total papers × False positive rate")
-print(f"Calculation: {total_papers} × {false_positive_rate}")
-print(f"Exact result: {incorrect_papers_exact}")
+**Use Cases**:
+- Academic research teams auditing the history of polynomial-related regressions in NumPy to validate the stability of scientific computation methods before citing them in a journal publication
+- Software quality assurance engineers automating the extraction of “Regression” label addition timestamps for polynomial modules to measure and improve bug-fix turnaround times in each release cycle
+- Data science teams monitoring changes and regressions in NumPy’s polynomial functions to ensure consistency and reproducibility of machine learning model fitting pipelines
+- DevOps engineers integrating this GitHub search script into CI/CD workflows to automatically flag new closed regression issues in the polynomial path and prevent regressions from reaching production
+- Product managers generating dashboards on closed regression issues for NumPy’s polynomial subpackage to inform road-mapping decisions and resource allocation for maintenance work
+- Open-source project maintainers analyzing label-addition timelines on polynomial regression issues to benchmark community response times and prioritize high-impact bug fixes
+- Compliance officers in finance or healthcare auditing the lifecycle of critical regression bugs in numerical libraries for regulatory reporting and software validation documentation
+- Software educators creating case studies on real-world issue management by tracing the oldest closed regression issues in NumPy’s polynomial module and illustrating best practices in bug triage
 
-# Round up to the next integer as specified in the task
-incorrect_papers_rounded = math.ceil(incorrect_papers_exact)
+```
+import requests
+import json
+from datetime import datetime
+import os
+import time
 
-print(f"\nRounding up to next integer: {incorrect_papers_rounded}")
+print("=== FIXED GITHUB SEARCH FOR NUMPY POLYNOMIAL REGRESSION ISSUES ===")
+print("Objective: Fix variable bug and properly extract polynomial regression issues")
+print("Focus: Find issues with 'regression' keyword and polynomial content\n")
 
-print(f"\n=== FINAL RESULT ===\n")
-print(f"Number of statistically incorrect papers: {incorrect_papers_rounded}")
+# Find workspace directory
+workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
+workspace_dir = workspace_dirs[0] if workspace_dirs else 'workspace'
+os.makedirs(workspace_dir, exist_ok=True)
 
-# Additional context and verification
-print(f"\n=== VERIFICATION AND CONTEXT ===\n")
-print(f"Verification:")
-print(f"• {incorrect_papers_exact} papers would be expected to show false positives")
-print(f"• Rounded up: {incorrect_papers_rounded} papers")
-print(f"• This represents {(incorrect_papers_rounded/total_papers)*100:.1f}% of all published papers")
+# GitHub API configuration
+base_url = "https://api.github.com"
+repo = "numpy/numpy"
 
-print(f"\nStatistical interpretation:")
-print(f"• Out of {total_papers:,} papers, approximately {incorrect_papers_rounded} would be")
-print(f"  incorrectly claiming statistical significance due to Type I errors")
-print(f"• This is based on the average p-value of {average_p_value} across all studies")
-print(f"• The false positive rate principle suggests that {average_p_value * 100}% of significant")
-print(f"  results could be false positives when the null hypothesis is true")
-
-# Save calculation details to workspace
-calculation_results = {
-    'input_data': {
-        'total_papers': total_papers,
-        'average_p_value': average_p_value,
-        'assumption': 'All papers rely on statistical significance testing'
-    },
-    'calculation': {
-        'formula': 'Total papers × False positive rate',
-        'exact_result': incorrect_papers_exact,
-        'rounded_result': incorrect_papers_rounded,
-        'rounding_method': 'Ceiling (round up to next integer)'
-    },
-    'statistical_interpretation': {
-        'false_positive_rate_percent': average_p_value * 100,
-        'percentage_of_total': (incorrect_papers_rounded/total_papers)*100,
-        'concept': 'Type I error - rejecting true null hypothesis'
-    },
-    'final_answer': incorrect_papers_rounded
+headers = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'Python-GitHub-Search'
 }
 
-import json
-with open('workspace/statistical_calculation_results.json', 'w') as f:
-    json.dump(calculation_results, f, indent=2)
+print(f"Using workspace directory: {workspace_dir}")
+print(f"Repository: {repo}\n")
 
-print(f"\nDetailed calculation results saved to: workspace/statistical_calculation_results.json")
-print(f"\n*** FINAL ANSWER: {incorrect_papers_rounded} papers ***")
-```
+# Focus on the most promising search strategy from HISTORY
+# Search for closed issues with 'regression' keyword and polynomial content
+search_query = f"repo:{repo} is:issue is:closed regression polynomial"
 
-### Development Step 15: Identify Washington County Seats with Largest and Smallest Land Areas and Their 2020 Census Populations
+print(f"=== TARGETED SEARCH: REGRESSION + POLYNOMIAL ISSUES ===")
+print(f"Query: {search_query}")
+print(f"Objective: Find oldest closed issue with regression and polynomial content\n")
 
-**Description**: Identify the largest and smallest county seats by land area from the complete dataset of 39 Washington state county seats with their land area measurements. Then extract the 2020 census population data for these two specific county seats using the official data.census.gov source as specified in the TASK.
+search_url = f"{base_url}/search/issues"
+params = {
+    'q': search_query,
+    'sort': 'created',  # Sort by creation date
+    'order': 'asc',     # Ascending order (oldest first)
+    'per_page': 100     # Get more results per page
+}
 
-**Use Cases**:
-- Urban planning and zoning standardization: compare the largest and smallest county seats by land area and 2020 population to set minimum service coverage benchmarks across Washington counties
-- Real estate investment analysis: analyze population density in the smallest land-area county seat versus the largest to identify high-growth, undervalued development opportunities
-- Emergency response optimization: model ambulance and fire station placement by contrasting travel times and resource needs in the most expansive and most compact county seats
-- Environmental impact and conservation planning: assess undeveloped land proportions in the largest county seat against population pressure in the smallest to prioritize habitat protection projects
-- GIS dashboard automation for state agencies: build a data pipeline that extracts area extremes and census populations monthly to update interactive public maps
-- Academic demographic research: conduct comparative studies on land-use efficiency and population distribution between the largest and smallest county seats for peer-reviewed journals
-- Logistics network design for distributors: use area-to-population ratios of the extreme county seats to optimize warehouse siting and last-mile delivery routes
-- Public health resource allocation: model hospital bed and vaccination clinic requirements based on population density differences in the largest versus smallest county seats
+print("Making GitHub API request...")
+response = requests.get(search_url, headers=headers, params=params)
 
-```
-import os
-import json
+print(f"Response status: {response.status_code}")
+if response.status_code != 200:
+    print(f"Error response: {response.text}")
+    exit()
 
-# First, let's inspect the structure of the most complete dataset to understand how to extract the data
-print("=== Loading and Inspecting the Most Complete Dataset ===")
+search_results = response.json()
+total_count = search_results['total_count']
+items = search_results['items']
 
-# Based on the file inspection, let's examine the largest file which likely has the most complete data
-filepath = os.path.join('workspace', 'wa_county_seats_land_area_complete.json')
+print(f"Total issues found: {total_count}")
+print(f"Issues retrieved in this page: {len(items)}\n")
 
-with open(filepath, 'r', encoding='utf-8') as f:
-    data = json.load(f)
+if not items:
+    print("No issues found with the search criteria.")
+    exit()
 
-print(f"Dataset metadata:")
-print(f"- Research timestamp: {data.get('research_timestamp', 'N/A')}")
-print(f"- Total cities: {data.get('total_cities', 'N/A')}")
-print(f"- Successful extractions: {data.get('successful_extractions', 'N/A')}")
-print(f"- Success rate: {data.get('success_rate_percent', 'N/A')}%")
-print(f"- Area unit: {data.get('area_unit', 'N/A')}")
+print("=== ANALYZING REGRESSION + POLYNOMIAL ISSUES ===")
+print("Filtering and analyzing issues for polynomial relevance...\n")
 
-# Examine the results structure
-if 'results' in data:
-    results = data['results']
-    print(f"\nResults structure: {type(results)}")
+# Process each issue with proper variable definitions
+polynomial_regression_issues = []
+polynomial_keywords = ['polynomial', 'poly', 'chebyshev', 'legendre', 'hermite', 'laguerre']
+
+for i, issue in enumerate(items, 1):
+    # Fix the bug: Define variables before using them
+    title = issue['title'] or ''
+    body = issue['body'] or ''
+    title_lower = title.lower()
+    body_lower = body.lower()
     
-    if isinstance(results, list):
-        print(f"Number of result records: {len(results)}")
-        if len(results) > 0:
-            print(f"\nFirst result record structure:")
-            first_record = results[0]
-            print(f"Keys: {list(first_record.keys()) if isinstance(first_record, dict) else 'Not a dict'}")
-            print(f"Sample record: {first_record}")
-            
-            # Show a few more examples to understand the data pattern
-            print(f"\nFirst 5 records:")
-            for i, record in enumerate(results[:5]):
-                if isinstance(record, dict):
-                    city = record.get('city', record.get('county_seat', 'Unknown'))
-                    county = record.get('county', 'Unknown')
-                    land_area = record.get('land_area_sq_miles', record.get('land_area', 'N/A'))
-                    print(f"  {i+1}. {city}, {county}: {land_area}")
+    # Check if issue is polynomial-related
+    is_polynomial_related = any(keyword in title_lower or keyword in body_lower for keyword in polynomial_keywords)
     
-    elif isinstance(results, dict):
-        print(f"Results is a dictionary with keys: {list(results.keys())}")
-        # Show sample entries
-        sample_keys = list(results.keys())[:5]
-        for key in sample_keys:
-            print(f"  {key}: {results[key]}")
+    # Check if issue mentions regression
+    has_regression = 'regression' in title_lower or 'regression' in body_lower
+    
+    print(f"{i}. Issue #{issue['number']}: {title[:80]}...")
+    print(f"   Created: {issue['created_at']}")
+    print(f"   Closed: {issue['closed_at']}")
+    print(f"   State: {issue['state']}")
+    print(f"   Labels: {[label['name'] for label in issue['labels']]}")
+    print(f"   Polynomial-related: {is_polynomial_related}")
+    print(f"   Has regression keyword: {has_regression}")
+    print(f"   URL: {issue['html_url']}")
+    
+    # Store relevant issues
+    if is_polynomial_related or has_regression:
+        issue_data = {
+            'number': issue['number'],
+            'title': title,
+            'created_at': issue['created_at'],
+            'closed_at': issue['closed_at'],
+            'state': issue['state'],
+            'labels': [label['name'] for label in issue['labels']],
+            'html_url': issue['html_url'],
+            'api_url': issue['url'],
+            'is_polynomial_related': is_polynomial_related,
+            'has_regression': has_regression,
+            'body_preview': body[:500] if body else ''
+        }
+        polynomial_regression_issues.append(issue_data)
+    
+    print()
 
-# Also check if there are summary statistics that might help us identify extremes
-if 'summary_statistics' in data:
-    print(f"\nSummary statistics available: {data['summary_statistics']}")
+print(f"=== SUMMARY OF RELEVANT ISSUES ===")
+print(f"Total issues analyzed: {len(items)}")
+print(f"Polynomial/regression relevant issues: {len(polynomial_regression_issues)}\n")
 
-print("\n=== Data Structure Analysis Complete ===")
-```
+# Sort by creation date to find the oldest
+polynomial_regression_issues.sort(key=lambda x: x['created_at'])
 
-### Development Step 14: Check START Cell’s Two-Cell Cardinal Neighbors’ Display Text and Hex Fill Colors
+if polynomial_regression_issues:
+    print("=== OLDEST RELEVANT ISSUES (sorted by creation date) ===")
+    for i, issue in enumerate(polynomial_regression_issues[:5], 1):  # Show top 5 oldest
+        print(f"{i}. Issue #{issue['number']}: {issue['title'][:60]}...")
+        print(f"   Created: {issue['created_at']}")
+        print(f"   Closed: {issue['closed_at']}")
+        print(f"   Labels: {issue['labels']}")
+        print(f"   Polynomial: {issue['is_polynomial_related']}, Regression: {issue['has_regression']}")
+        print(f"   URL: {issue['html_url']}")
+        print()
+    
+    # Identify the oldest issue for detailed timeline analysis
+    oldest_issue = polynomial_regression_issues[0]
+    print(f"=== OLDEST RELEVANT ISSUE IDENTIFIED ===")
+    print(f"Issue #{oldest_issue['number']}: {oldest_issue['title']}")
+    print(f"Created: {oldest_issue['created_at']}")
+    print(f"Closed: {oldest_issue['closed_at']}")
+    print(f"Current labels: {oldest_issue['labels']}")
+    print(f"API URL: {oldest_issue['api_url']}")
+    print(f"\nNext step: Get detailed timeline for this issue to check label addition history")
 
-**Description**: Inspect workspace/grid_data.json entries for the four cardinal two-cell neighbor coordinates of the START cell by locating the coordinates (start_x±2, start_y) and (start_x, start_y±2) based on the recorded START position in workspace/start_end_coordinates.json; report each neighbor’s displayed text and 6-digit hex fill color to verify which moves from START are actually legal.
+# Save comprehensive results
+results_data = {
+    'search_timestamp': datetime.now().isoformat(),
+    'search_query': search_query,
+    'repository': repo,
+    'total_issues_found': total_count,
+    'issues_analyzed': len(items),
+    'relevant_issues_count': len(polynomial_regression_issues),
+    'oldest_issue': oldest_issue if polynomial_regression_issues else None,
+    'all_relevant_issues': polynomial_regression_issues,
+    'next_action': 'Get detailed timeline for oldest issue to find label addition timestamp'
+}
 
-**Use Cases**:
-- Autonomous warehouse navigation and rack clearance verification, checking two-bin-away grid cells from the forklift’s start position to ensure safe travel paths.
-- Robotics competition maze solver, evaluating two-step cardinal moves from the entry cell to identify viable corridors and wall-free zones for path planning.
-- Board game AI for a custom “two-square” mover piece, scanning cells at (x±2, y) and (x, y±2) to validate legal moves and color-coded threat areas.
-- Pharmaceutical high-throughput screening grid analysis, extracting assay well labels and hex color readouts two wells away from a control sample.
-- GIS-based wildfire spread modeling, sampling vegetation density and hex-coded risk levels at two-cell offsets from current fire-start coordinates.
-- Pixel-art editing tool that reports text labels and 6-digit hex fill colors of pixels exactly two units away from a selected start pixel for precise color transformations.
-- Automated aerial drone flight planner over farmland plots, verifying crop health indicators and color-coded NDVI values at two-field offsets from the launch point.
+with open(f'{workspace_dir}/polynomial_regression_issues_analysis.json', 'w') as f:
+    json.dump(results_data, f, indent=2)
 
-```
-import os
-import json
-from pprint import pprint
-
-# Paths to workspace files
-workspace_dir = 'workspace'
-grid_path = os.path.join(workspace_dir, 'grid_data.json')
-coords_path = os.path.join(workspace_dir, 'start_end_coordinates.json')
-
-print("=== STEP 1: Inspect workspace directory ===")
-if os.path.isdir(workspace_dir):
-    print(f"Files in '{workspace_dir}': {os.listdir(workspace_dir)}")
-else:
-    print(f"Error: Workspace directory '{workspace_dir}' not found.")
-
-# STEP 2: Load and inspect start/end coordinates file
-print("\n=== STEP 2: Inspect start_end_coordinates.json ===")
-if not os.path.isfile(coords_path):
-    print(f"Error: File '{coords_path}' does not exist.")
-    exit(1)
-with open(coords_path, 'r') as f:
-    coords_data = json.load(f)
-
-print("Type of coords_data:", type(coords_data))
-pprint(coords_data)
-
-# Dynamically detect START coordinates
-start_x = None
-start_y = None
-# Case 1: coords_data is dict with 'start'
-if isinstance(coords_data, dict) and 'start' in coords_data:
-    start_block = coords_data['start']
-    print("Found 'start' block:", start_block)
-    if isinstance(start_block, dict):
-        # look for numeric values
-        for k, v in start_block.items():
-            if isinstance(v, (int, float)):
-                if start_x is None:
-                    start_x = int(v)
-                    print(f"Assigned start_x from key '{k}': {start_x}")
-                elif start_y is None:
-                    start_y = int(v)
-                    print(f"Assigned start_y from key '{k}': {start_y}")
-# Case 2: coords_data has keys 'start_x' and 'start_y'
-elif isinstance(coords_data, dict) and 'start_x' in coords_data and 'start_y' in coords_data:
-    start_x = int(coords_data['start_x'])
-    start_y = int(coords_data['start_y'])
-    print(f"start_x: {start_x}, start_y: {start_y}")
-# Case 3: coords_data is list - find entry containing 'start'
-elif isinstance(coords_data, list):
-    print("coords_data is a list, examining entries for 'start'...")
-    for item in coords_data:
-        if isinstance(item, dict) and any('start' in str(v).lower() for v in item.values()):
-            print("Potential start entry:", item)
-            # extract numeric fields
-            for k, v in item.items():
-                if isinstance(v, (int, float)):
-                    if start_x is None:
-                        start_x = int(v)
-                    elif start_y is None:
-                        start_y = int(v)
-            break
-
-if start_x is None or start_y is None:
-    print("Error: Could not determine START coordinates. Please check the JSON structure.")
-    exit(1)
-
-print(f"\nParsed START coordinates: x={start_x}, y={start_y}")
-
-# STEP 3: Compute the four cardinal two-cell neighbors
-neighbors = [
-    (start_x + 2, start_y),
-    (start_x - 2, start_y),
-    (start_x, start_y + 2),
-    (start_x, start_y - 2)
-]
-print("\nCandidate neighbor coordinates (x, y):")
-for coord in neighbors:
-    print(f"  {coord}")
-
-# STEP 4: Load and inspect grid_data.json
-print("\n=== STEP 4: Inspect grid_data.json ===")
-if not os.path.isfile(grid_path):
-    print(f"Error: File '{grid_path}' does not exist.")
-    exit(1)
-with open(grid_path, 'r') as f:
-    grid_data = json.load(f)
-
-print(f"Type of grid_data: {type(grid_data)}")
-if isinstance(grid_data, list):
-    print(f"Total grid entries: {len(grid_data)}")
-    print("Keys of first entry:")
-    pprint(list(grid_data[0].keys()))
-    print("Sample entries (first 3):")
-    pprint(grid_data[:3])
-else:
-    print("Unexpected structure for grid_data.json - expecting a list of cell entries.")
-    exit(1)
-
-# STEP 5: Find each neighbor in the grid and report its text and fill color
-print("\n=== STEP 5: Report neighbor cells ===")
-for (nx, ny) in neighbors:
-    # search for matching entry
-    match = next((cell for cell in grid_data
-                  if cell.get('x') == nx and cell.get('y') == ny), None)
-    if not match:
-        print(f"Neighbor at ({nx},{ny}): NOT FOUND in grid_data.json")
-        continue
-    # Extract displayed text
-    text_keys = ['text', 'value', 'displayText', 'label']
-    display_text = None
-    for k in text_keys:
-        if k in match:
-            display_text = match[k]
-            break
-    if display_text is None:
-        display_text = "<no text key found>"
-    # Extract fill color (6-digit hex)
-    color = None
-    # assume key 'fillColor' or nested 'fill'->'color'
-    if 'fillColor' in match:
-        color = match['fillColor']
-    elif 'fill_color' in match:
-        color = match['fill_color']
-    elif 'fill' in match and isinstance(match['fill'], dict) and 'color' in match['fill']:
-        color = match['fill']['color']
-    # normalize to 6-digit hex
-    if isinstance(color, str):
-        c = color.lstrip('#')
-        if len(c) == 3:
-            # expand shorthand
-            c = ''.join([ch*2 for ch in c])
-        if len(c) == 6:
-            color = c.upper()
-        else:
-            # too long or short
-            color = color
-    else:
-        color = '<no fill color found>'
-    print(f"Neighbor at ({nx},{ny}): text='{display_text}', color='{color}'")
+print(f"\nDetailed analysis saved to: {workspace_dir}/polynomial_regression_issues_analysis.json")
+print("Ready for next step: Timeline analysis of the oldest relevant issue")
 ```
 
 ## Created Time
-2025-08-11 09:11:41
+2025-08-14 02:00:31

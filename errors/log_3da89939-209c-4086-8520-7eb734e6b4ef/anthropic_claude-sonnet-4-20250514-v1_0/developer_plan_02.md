@@ -1,10 +1,10 @@
 # Developer Plan 02
 
 ## Plan
-Search for and retrieve the full text of the research paper 'Trans fatty acid contents in chocolates and chocolate wafers in Turkey' to access its complete bibliography and reference list. Extract all numbered references from the paper's bibliography section to create a comprehensive list of cited papers that can be matched against the table titles found in the Excel file.
+Search for and retrieve the full text of the research paper 'Trans fatty acid contents in chocolates and chocolate wafers in Turkey' to access its complete bibliography and reference list. Extract all numbered references from the paper's bibliography section, then systematically match each of the 6 table titles from the Excel file against the cited papers to determine which reference numbers correspond to each table's source paper.
 
 ## Description
-This is the necessary next step because: (1) We have successfully extracted all 6 table titles from the Excel file but found that all reference number fields are empty, requiring us to manually match tables to bibliography entries, (2) To determine which bibliography numbers correspond to each table, we need access to the complete reference list from the 'Trans fatty acid contents in chocolates and chocolate wafers in Turkey' paper, (3) Expected outcome is to obtain the full bibliography with numbered references that can be cross-referenced with the table titles we extracted, (4) This will enable us to identify which papers each table originated from and provide the comma-separated list of reference numbers in the order they appear in the Excel file from top to bottom
+This is the necessary next step because: (1) The developer has successfully extracted all 6 table titles from the Excel file and identified their content themes, (2) To determine the reference numbers, we need access to the original 'Trans fatty acid contents in chocolates and chocolate wafers in Turkey' paper and its numbered bibliography, (3) Expected outcome is to obtain the complete reference list and match each table title to its corresponding source paper in the bibliography, (4) This will enable us to provide the comma-separated list of reference numbers in the order they appear in the Excel file from top to bottom as requested in the TASK
 
 ## Episodic Examples
 ### Development Step 3: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification (2020 Wikipedia Data)
@@ -338,6 +338,604 @@ except Exception as e:
 print("\n=== WIKIPEDIA ANALYSIS COMPLETE ===")
 ```
 
+### Development Step 8: Extract, Alphabetize EC 1.11.1.7;3.1.3.1 Chemicals from 2016 Wiley Sweet Potato Virus Paper
+
+**Description**: Access the identified 2016 Wiley paper 'Effects of Sweet Potato Feathery Mottle Virus and Sweet Potato Chlorotic Stunt Virus' and extract the specific chemicals with EC numbers 1.11.1.7 and 3.1.3.1 used in the virus testing methods. Identify the chemical names corresponding to these EC numbers, alphabetize them, and format the EC numbers in the required semicolon-separated order.
+
+**Use Cases**:
+- Agricultural pathology workflows for automating the extraction of enzyme reagents (EC 1.11.1.7 and 3.1.3.1) from crop‐virus research to rapidly assemble diagnostic assay protocols
+- Pharmaceutical R&D literature mining to identify peroxidase and alkaline phosphatase methods for high‐throughput drug screening assays
+- Environmental compliance reporting by compiling a standardized database of enzyme‐based soil and water testing chemicals for regulatory submissions
+- Food quality control in dairy and beverage industries to automate retrieval of phosphatase assay components from published validation studies
+- Patent landscaping in biotechnology to extract and alphabetize EC number–linked chemicals from patent documents for competitor intelligence
+- Contract research organization (CRO) proposal generation by auto‐populating materials and methods sections with enzymatic reagents from target protocols
+- Academic systematic reviews of plant virology methods to standardize and format all EC 1.11.1.7;3.1.3.1 enzyme usages across multiple studies
+
+```
+import os
+import json
+from datetime import datetime
+
+# First, let's properly inspect and load the search results
+print("Locating and inspecting search results files...")
+print("="*80)
+
+# Check both workspace locations mentioned in the history
+search_file_paths = [
+    'workspace/sweet_potato_virus_paper_search_20250806_185041.json',
+    'workspace_2a649bb1-795f-4a01-b3be-9a01868dae73/sweet_potato_virus_paper_search_20250806_185041.json'
+]
+
+search_data = None
+used_path = None
+
+for path in search_file_paths:
+    if os.path.exists(path):
+        print(f"Found search results file: {path}")
+        used_path = path
+        
+        # First inspect the file structure
+        print(f"\nInspecting file structure...")
+        with open(path, 'r', encoding='utf-8') as f:
+            search_data = json.load(f)
+        
+        print("Top-level keys:")
+        for key in search_data.keys():
+            if isinstance(search_data[key], list):
+                print(f"  - {key}: list with {len(search_data[key])} items")
+            elif isinstance(search_data[key], dict):
+                print(f"  - {key}: dict with keys {list(search_data[key].keys())}")
+            else:
+                print(f"  - {key}: {search_data[key]}")
+        
+        break
+
+if not search_data:
+    print("No search results file found. Need to run search first.")
+else:
+    print(f"\nUsing search data from: {used_path}")
+    print(f"Target: {search_data.get('target_paper', 'N/A')}")
+    print(f"EC Numbers: {search_data.get('target_ec_numbers', 'N/A')}")
+    
+    # Now analyze the search results with proper variable scoping
+    print("\n" + "="*80)
+    print("ANALYZING SEARCH RESULTS FOR PAPER AND EC NUMBERS")
+    print("="*80)
+    
+    paper_candidates = []
+    ec_number_sources = []
+    
+    # Process each search query result set
+    search_results = search_data.get('search_results', [])
+    print(f"Processing {len(search_results)} search result sets...\n")
+    
+    for query_idx, query_result in enumerate(search_results, 1):
+        query = query_result.get('query', 'Unknown query')
+        results = query_result.get('results', [])
+        
+        print(f"Query {query_idx}: {query}")
+        print(f"Results found: {len(results)}")
+        print("-"*50)
+        
+        # Analyze each result in this query set
+        for result_idx, result in enumerate(results[:8], 1):  # Top 8 results per query
+            title = result.get('title', 'No title')
+            link = result.get('link', 'No URL')
+            snippet = result.get('snippet', 'No snippet')
+            
+            # Create combined text for analysis (fix the variable scoping issue)
+            title_lower = title.lower()
+            snippet_lower = snippet.lower()
+            link_lower = link.lower()
+            combined_text = f"{title_lower} {snippet_lower} {link_lower}"
+            
+            print(f"  {result_idx}. {title[:80]}...")
+            print(f"      URL: {link}")
+            
+            # Score relevance for the target paper
+            relevance_score = 0
+            matching_indicators = []
+            
+            # Check for paper-specific terms
+            if 'sweet potato feathery mottle virus' in combined_text:
+                relevance_score += 10
+                matching_indicators.append('SPFMV')
+            if 'sweet potato chlorotic stunt virus' in combined_text:
+                relevance_score += 10
+                matching_indicators.append('SPCSV')
+            if '2016' in combined_text:
+                relevance_score += 5
+                matching_indicators.append('2016')
+            if 'wiley' in combined_text or 'onlinelibrary.wiley.com' in combined_text:
+                relevance_score += 5
+                matching_indicators.append('Wiley')
+            if 'effects' in combined_text:
+                relevance_score += 3
+                matching_indicators.append('Effects')
+            if 'uganda' in combined_text:
+                relevance_score += 2
+                matching_indicators.append('Uganda')
+            
+            # Check for EC numbers or enzyme-related content
+            ec_indicators = []
+            if '1.11.1.7' in combined_text:
+                relevance_score += 8
+                ec_indicators.append('EC 1.11.1.7')
+            if '3.1.3.1' in combined_text:
+                relevance_score += 8
+                ec_indicators.append('EC 3.1.3.1')
+            if any(term in combined_text for term in ['ec number', 'enzyme', 'alkaline phosphatase', 'peroxidase']):
+                relevance_score += 4
+                ec_indicators.append('Enzyme terms')
+            
+            if matching_indicators:
+                print(f"      📊 Relevance Score: {relevance_score}")
+                print(f"      🎯 Indicators: {', '.join(matching_indicators)}")
+                if ec_indicators:
+                    print(f"      🧪 EC/Enzyme: {', '.join(ec_indicators)}")
+            
+            # Store high-relevance paper candidates
+            if relevance_score >= 15:
+                paper_candidates.append({
+                    'title': title,
+                    'link': link,
+                    'snippet': snippet,
+                    'score': relevance_score,
+                    'indicators': matching_indicators + ec_indicators,
+                    'query': query,
+                    'is_wiley_direct': 'onlinelibrary.wiley.com' in link_lower
+                })
+                print(f"      ⭐ HIGH RELEVANCE - Added to candidates")
+            
+            # Store EC number sources separately
+            if any(ec in combined_text for ec in ['1.11.1.7', '3.1.3.1']):
+                ec_number_sources.append({
+                    'title': title,
+                    'link': link,
+                    'snippet': snippet,
+                    'ec_numbers_found': [ec for ec in ['1.11.1.7', '3.1.3.1'] if ec in combined_text],
+                    'query': query
+                })
+                print(f"      🔬 EC NUMBERS FOUND - Added to EC sources")
+        
+        print()  # Blank line between queries
+    
+    # Sort candidates by relevance score
+    paper_candidates.sort(key=lambda x: x['score'], reverse=True)
+    
+    print("="*80)
+    print(f"ANALYSIS RESULTS SUMMARY")
+    print("="*80)
+    
+    print(f"\n📚 PAPER CANDIDATES FOUND: {len(paper_candidates)}")
+    if paper_candidates:
+        print("\nTop candidates:")
+        for i, candidate in enumerate(paper_candidates[:3], 1):
+            print(f"\n{i}. SCORE: {candidate['score']}")
+            print(f"   Title: {candidate['title']}")
+            print(f"   URL: {candidate['link']}")
+            print(f"   Indicators: {', '.join(candidate['indicators'])}")
+            print(f"   Direct Wiley Access: {'✅ YES' if candidate['is_wiley_direct'] else '❌ NO'}")
+            
+            # Check if this is likely the target paper
+            if (candidate['score'] >= 25 and 
+                candidate['is_wiley_direct'] and 
+                'effects' in candidate['title'].lower()):
+                print(f"   🎯 THIS IS LIKELY THE TARGET PAPER!")
+    
+    print(f"\n🧪 EC NUMBER SOURCES FOUND: {len(ec_number_sources)}")
+    if ec_number_sources:
+        print("\nEC number sources:")
+        for i, source in enumerate(ec_number_sources, 1):
+            print(f"\n{i}. Title: {source['title']}")
+            print(f"   URL: {source['link']}")
+            print(f"   EC Numbers: {', '.join(source['ec_numbers_found'])}")
+            print(f"   Snippet: {source['snippet'][:200]}...")
+            
+            # Look for chemical names in the snippet
+            snippet_lower = source['snippet'].lower()
+            chemical_hints = []
+            if 'alkaline phosphatase' in snippet_lower:
+                chemical_hints.append('Alkaline phosphatase (likely EC 3.1.3.1)')
+            if 'peroxidase' in snippet_lower:
+                chemical_hints.append('Peroxidase (likely EC 1.11.1.7)')
+            if 'alkaline' in snippet_lower and 'phosphatase' not in snippet_lower:
+                chemical_hints.append('Contains "alkaline" - may refer to alkaline phosphatase')
+            
+            if chemical_hints:
+                print(f"   💡 Chemical hints: {'; '.join(chemical_hints)}")
+    
+    # Save comprehensive analysis
+    analysis_results = {
+        'analysis_timestamp': datetime.now().isoformat(),
+        'target_paper': search_data.get('target_paper'),
+        'target_ec_numbers': search_data.get('target_ec_numbers'),
+        'paper_candidates': paper_candidates,
+        'ec_number_sources': ec_number_sources,
+        'top_candidate': paper_candidates[0] if paper_candidates else None,
+        'analysis_summary': {
+            'total_paper_candidates': len(paper_candidates),
+            'total_ec_sources': len(ec_number_sources),
+            'wiley_direct_access': len([c for c in paper_candidates if c['is_wiley_direct']]),
+            'high_confidence_match': len([c for c in paper_candidates if c['score'] >= 25]) > 0
+        }
+    }
+    
+    analysis_file = 'workspace/comprehensive_paper_analysis.json'
+    with open(analysis_file, 'w', encoding='utf-8') as f:
+        json.dump(analysis_results, f, indent=2, ensure_ascii=False)
+    
+    print(f"\n📋 NEXT STEPS RECOMMENDATION:")
+    if paper_candidates and paper_candidates[0]['score'] >= 25:
+        print(f"✅ Target paper identified with high confidence")
+        print(f"✅ Direct Wiley access available: {paper_candidates[0]['link']}")
+        print(f"🔄 NEXT: Access paper content to extract EC number chemical names")
+        
+        # Based on the EC sources found, provide initial chemical identification
+        print(f"\n🧪 PRELIMINARY EC NUMBER CHEMICAL IDENTIFICATION:")
+        print(f"Based on search results analysis:")
+        print(f"   EC 1.11.1.7 = Peroxidase (enzyme that catalyzes oxidation reactions)")
+        print(f"   EC 3.1.3.1 = Alkaline phosphatase (enzyme that removes phosphate groups)")
+        print(f"\n📝 ALPHABETICAL ORDER: Alkaline phosphatase, Peroxidase")
+        print(f"📝 EC FORMAT: 3.1.3.1;1.11.1.7")
+        
+    else:
+        print(f"⚠️ Need to access paper content directly for confirmation")
+        print(f"⚠️ May need additional search strategies")
+    
+    print(f"\nAnalysis saved to: {analysis_file}")
+    print(f"Ready for content extraction phase.")
+```
+
+### Development Step 9: Download Westerink’s "A Dark Trace" from Project MUSE and Extract Chapter 2’s Influential Author
+
+**Description**: Access and download the full text of 'A Dark Trace: Sigmund Freud on the Sense of Guilt' by H. Westerink from Project MUSE using DOI 10.1353/book.24372. Since the book was confirmed to be open access, retrieve the complete text and save it to workspace/dark_trace_freud_book.pdf or appropriate format. Focus on locating and extracting Chapter 2 content to identify the author who influenced Freud's belief in 'endopsychic myths'. If the full book is not directly downloadable, extract Chapter 2 specifically or access the book's table of contents to determine the exact chapter title and content structure.
+
+**Use Cases**:
+- Legal due diligence in corporate mergers: automatically download open-access regulatory codes in PDF, search for “antitrust” and “competition” term variations, extract and summarize context to identify potential deal blockers.
+- Pharmaceutical literature review automation: fetch clinical trial protocols via DOI, load full-text PDFs, search for “double-blind” and “placebo” mentions, and extract methodological passages along with author names for evidence synthesis.
+- Patent portfolio analysis for semiconductor R&D: retrieve patent documents from public repositories, scan PDFs for “heterojunction” and “quantum well” variants, extract inventor citations and contextual explanations to map technology lineage.
+- Historical philosophy research on Nietzsche and Kant: access digitized editions of 19th-century works, locate references to “categorical imperative” or “will to power,” and extract surrounding paragraphs to trace cross-author influences.
+- Competitive intelligence from SEC filings: download publicly available 10-K and 10-Q reports, search for “risk factor,” “liquidity risk,” and “market volatility” variations, and pull relevant excerpts for financial analysis dashboards.
+- Academic curriculum design from open textbooks: ingest complete PDF textbooks via DOIs, locate chapter summaries or “learning objectives” headings, extract and compile structured outlines for course syllabi.
+- Investigative journalism document mining: import leaked policy PDFs, search for “whistleblower,” “confidential,” and “internal memo” terms, extract context with names and dates to support storytelling.
+- Compliance monitoring in healthcare: load clinical guideline PDFs, scan for “contraindication,” “adverse effect,” and “off-label” variations, and extract detailed sections with authoring bodies for automated policy updates.
+
+```
+from langchain_community.document_loaders import PyPDFLoader
+import os
+import json
+
+print('=== SEARCHING ENTIRE BOOK FOR "ENDOPSYCHIC MYTHS" REFERENCES ===')
+print('Objective: Since Chapter 2 did not contain "endopsychic" references, search the complete book to locate this specific term and identify the influencing author\n')
+
+# Load the PDF and search the entire document
+workspace_files = os.listdir('workspace')
+pdf_files = [f for f in workspace_files if f.endswith('.pdf')]
+
+if pdf_files:
+    pdf_path = os.path.join('workspace', pdf_files[0])
+    print(f'Searching entire PDF: {pdf_path}')
+    
+    try:
+        # Load the complete PDF
+        loader = PyPDFLoader(pdf_path)
+        pages = loader.load_and_split()
+        
+        print(f'✓ PDF loaded successfully')
+        print(f'Total pages to search: {len(pages)}')
+        
+        # Combine all pages into full text
+        full_text = '\n\n'.join([page.page_content for page in pages])
+        print(f'Total document length: {len(full_text):,} characters')
+        
+        # Search for "endopsychic" variations
+        endopsychic_variations = [
+            'endopsychic myth',
+            'endopsychic myths',
+            'endopsychic',
+            'endo-psychic',
+            'endopsychical'
+        ]
+        
+        print('\n=== SEARCHING FOR ENDOPSYCHIC VARIATIONS ===')
+        
+        found_endopsychic = False
+        full_text_lower = full_text.lower()
+        
+        for variation in endopsychic_variations:
+            count = full_text_lower.count(variation.lower())
+            if count > 0:
+                print(f'✓ Found "{variation}": {count} occurrences')
+                found_endopsychic = True
+                
+                # Extract all positions for this variation
+                positions = []
+                start = 0
+                while True:
+                    pos = full_text_lower.find(variation.lower(), start)
+                    if pos == -1:
+                        break
+                    positions.append(pos)
+                    start = pos + 1
+                
+                print(f'\n--- EXTRACTING ALL "{variation.upper()}" REFERENCES ({len(positions)} found) ---')
+                
+                for i, pos in enumerate(positions, 1):
+                    # Extract substantial context around each occurrence
+                    context_start = max(0, pos - 1000)
+                    context_end = min(len(full_text), pos + 1200)
+                    context = full_text[context_start:context_end]
+                    
+                    # Determine which page this occurs on
+                    char_count = 0
+                    page_num = 0
+                    for page_idx, page in enumerate(pages):
+                        if char_count + len(page.page_content) >= pos:
+                            page_num = page_idx + 1
+                            break
+                        char_count += len(page.page_content) + 2  # +2 for \n\n separator
+                    
+                    print(f'\n🎯 REFERENCE {i} - Position {pos} (Page ~{page_num}):')
+                    print('='*120)
+                    print(context)
+                    print('='*120)
+                    
+                    # Analyze this passage for author influences
+                    context_lower = context.lower()
+                    potential_authors = [
+                        'jung', 'carl jung', 'c.g. jung', 'c. g. jung',
+                        'nietzsche', 'friedrich nietzsche', 'f. nietzsche',
+                        'schopenhauer', 'arthur schopenhauer', 'a. schopenhauer',
+                        'kant', 'immanuel kant', 'i. kant',
+                        'darwin', 'charles darwin', 'c. darwin',
+                        'hegel', 'georg hegel', 'g.w.f. hegel',
+                        'goethe', 'johann wolfgang von goethe',
+                        'lamarck', 'jean-baptiste lamarck'
+                    ]
+                    
+                    mentioned_authors = []
+                    for author in potential_authors:
+                        if author in context_lower:
+                            mentioned_authors.append(author)
+                    
+                    if mentioned_authors:
+                        print(f'\n*** AUTHORS MENTIONED IN THIS PASSAGE: {[author.title() for author in mentioned_authors]} ***')
+                        
+                        # Look for specific influence language
+                        influence_phrases = [
+                            'influenced by', 'influence of', 'influenced freud',
+                            'borrowed from', 'adopted from', 'derived from',
+                            'took from', 'learned from', 'inspired by',
+                            'following', 'based on', 'according to'
+                        ]
+                        
+                        found_influence_language = []
+                        for phrase in influence_phrases:
+                            if phrase in context_lower:
+                                found_influence_language.append(phrase)
+                        
+                        if found_influence_language:
+                            print(f'🔍 INFLUENCE LANGUAGE DETECTED: {found_influence_language}')
+                            print('\n🎯 THIS PASSAGE LIKELY CONTAINS THE ANSWER! 🎯')
+                        
+                        # Look for direct statements about endopsychic myths
+                        myth_context_phrases = [
+                            'concept of endopsychic', 'idea of endopsychic', 'notion of endopsychic',
+                            'endopsychic concept', 'endopsychic idea', 'endopsychic notion',
+                            'belief in endopsychic', 'theory of endopsychic'
+                        ]
+                        
+                        found_myth_context = []
+                        for phrase in myth_context_phrases:
+                            if phrase in context_lower:
+                                found_myth_context.append(phrase)
+                        
+                        if found_myth_context:
+                            print(f'💡 ENDOPSYCHIC CONCEPT LANGUAGE: {found_myth_context}')
+                    
+                    else:
+                        print('\nNo specific authors mentioned in this immediate passage')
+                        print('Searching for author names in broader context...')
+                        
+                        # Expand search area for author names
+                        expanded_start = max(0, pos - 2000)
+                        expanded_end = min(len(full_text), pos + 2000)
+                        expanded_context = full_text[expanded_start:expanded_end]
+                        expanded_lower = expanded_context.lower()
+                        
+                        broader_authors = []
+                        for author in potential_authors:
+                            if author in expanded_lower:
+                                broader_authors.append(author)
+                        
+                        if broader_authors:
+                            print(f'Authors in broader context: {[author.title() for author in broader_authors]}')
+                    
+                    print(f'\n{"-"*120}\n')
+            else:
+                print(f'✗ "{variation}": Not found')
+        
+        if not found_endopsychic:
+            print('\n⚠ No "endopsychic" variations found in the entire document')
+            print('The term may be referenced differently or may not be the exact phrase used')
+            
+            # Search for related mythological concepts that might be the actual term
+            print('\n=== SEARCHING FOR ALTERNATIVE MYTHOLOGICAL CONCEPTS ===')
+            
+            alternative_terms = [
+                'unconscious myth',
+                'psychic myth',
+                'mental myth',
+                'psychological myth',
+                'inner myth',
+                'primitive myth',
+                'ancestral memory',
+                'collective unconscious',
+                'phylogenetic',
+                'archaic heritage',
+                'primal fantasies',
+                'inherited memory'
+            ]
+            
+            found_alternatives = []
+            
+            for term in alternative_terms:
+                count = full_text_lower.count(term.lower())
+                if count > 0:
+                    found_alternatives.append((term, count))
+                    print(f'✓ Found "{term}": {count} occurrences')
+            
+            if found_alternatives:
+                print(f'\n=== EXAMINING TOP ALTERNATIVE CONCEPTS ===')
+                
+                # Focus on the most promising alternative (highest count)
+                top_alternative = max(found_alternatives, key=lambda x: x[1])
+                term, count = top_alternative
+                
+                print(f'\nExamining most frequent alternative: "{term}" ({count} occurrences)')
+                
+                positions = []
+                start = 0
+                while True:
+                    pos = full_text_lower.find(term.lower(), start)
+                    if pos == -1:
+                        break
+                    positions.append(pos)
+                    start = pos + 1
+                
+                # Show first few occurrences
+                for i, pos in enumerate(positions[:3], 1):
+                    context_start = max(0, pos - 800)
+                    context_end = min(len(full_text), pos + 1000)
+                    context = full_text[context_start:context_end]
+                    
+                    # Determine page number
+                    char_count = 0
+                    page_num = 0
+                    for page_idx, page in enumerate(pages):
+                        if char_count + len(page.page_content) >= pos:
+                            page_num = page_idx + 1
+                            break
+                        char_count += len(page.page_content) + 2
+                    
+                    print(f'\nAlternative Reference {i} - "{term}" (Page ~{page_num}):')
+                    print('='*100)
+                    print(context)
+                    print('='*100)
+                    
+                    # Check for author influences
+                    context_lower = context.lower()
+                    mentioned_authors = []
+                    for author in ['jung', 'nietzsche', 'schopenhauer', 'kant', 'darwin', 'lamarck']:
+                        if author in context_lower:
+                            mentioned_authors.append(author)
+                    
+                    if mentioned_authors:
+                        print(f'\nAuthors mentioned: {[a.title() for a in mentioned_authors]}')
+                    
+                    print(f'\n{"-"*100}\n')
+        
+        # Also search for direct references to key authors with mythological context
+        print('\n=== SEARCHING FOR AUTHORS WITH MYTHOLOGICAL/INHERITANCE CONTEXT ===')
+        
+        key_authors_with_context = [
+            ('jung', ['myth', 'mythology', 'collective', 'archetype']),
+            ('lamarck', ['inheritance', 'inherited', 'acquired', 'transmission']),
+            ('darwin', ['inheritance', 'heredity', 'evolution', 'acquired']),
+            ('nietzsche', ['myth', 'mythology', 'cultural', 'psychological'])
+        ]
+        
+        for author, context_terms in key_authors_with_context:
+            author_positions = []
+            start = 0
+            while True:
+                pos = full_text_lower.find(author.lower(), start)
+                if pos == -1:
+                    break
+                author_positions.append(pos)
+                start = pos + 1
+            
+            if author_positions:
+                print(f'\n--- {author.upper()} REFERENCES WITH MYTHOLOGICAL CONTEXT ---')
+                
+                relevant_passages = []
+                for pos in author_positions:
+                    context_start = max(0, pos - 500)
+                    context_end = min(len(full_text), pos + 700)
+                    context = full_text[context_start:context_end]
+                    context_lower = context.lower()
+                    
+                    # Check if this passage contains relevant mythological context
+                    has_context = any(term in context_lower for term in context_terms)
+                    if has_context:
+                        relevant_passages.append((pos, context))
+                
+                if relevant_passages:
+                    print(f'Found {len(relevant_passages)} relevant passages for {author.title()}:')
+                    
+                    for i, (pos, context) in enumerate(relevant_passages[:2], 1):
+                        # Determine page
+                        char_count = 0
+                        page_num = 0
+                        for page_idx, page in enumerate(pages):
+                            if char_count + len(page.page_content) >= pos:
+                                page_num = page_idx + 1
+                                break
+                            char_count += len(page.page_content) + 2
+                        
+                        print(f'\n{author.title()} Passage {i} (Page ~{page_num}):')
+                        print('='*90)
+                        print(context)
+                        print('='*90)
+                else:
+                    print(f'No mythological context found for {author.title()}')
+        
+        # Save comprehensive search results
+        search_results = {
+            'search_objective': 'Find author who influenced Freud\'s belief in "endopsychic myths"',
+            'document_stats': {
+                'total_pages': len(pages),
+                'total_characters': len(full_text)
+            },
+            'endopsychic_search': {
+                'variations_searched': endopsychic_variations,
+                'found_endopsychic': found_endopsychic,
+                'total_occurrences': sum(full_text_lower.count(v.lower()) for v in endopsychic_variations)
+            },
+            'alternative_terms_found': found_alternatives if 'found_alternatives' in locals() else [],
+            'search_timestamp': '2025-01-21 13:00:00'
+        }
+        
+        results_file = 'workspace/complete_book_endopsychic_search_results.json'
+        with open(results_file, 'w', encoding='utf-8') as f:
+            json.dump(search_results, f, indent=2, ensure_ascii=False)
+        
+        print(f'\n*** COMPLETE BOOK SEARCH RESULTS ***')
+        print(f'✓ Searched {len(pages)} pages ({len(full_text):,} characters)')
+        print(f'✓ Endopsychic references found: {found_endopsychic}')
+        
+        if found_endopsychic:
+            print('🎯 SUCCESS: Found "endopsychic" references in the book!')
+            print('The extracted passages above should reveal the author who influenced Freud')
+        else:
+            print('⚠ "Endopsychic" not found - the term may be referenced differently')
+            if 'found_alternatives' in locals() and found_alternatives:
+                print(f'Alternative concepts found: {[term for term, count in found_alternatives]}')
+        
+        print(f'✓ Complete search results saved to: {results_file}')
+        
+    except Exception as e:
+        print(f'❌ Error during complete book search: {str(e)}')
+
+else:
+    print('❌ No PDF files found in workspace')
+
+print('\n=== COMPLETE BOOK SEARCH FINISHED ===')
+print('Objective: Locate the specific author who influenced Freud\'s concept of "endopsychic myths"')
+print('Status: Comprehensive search of entire book completed')
+```
+
 ### Development Step 2: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification (2020 Wikipedia Reference)
 
 **Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
@@ -623,883 +1221,5 @@ print(f"\n=== WIKIPEDIA SEARCH PHASE COMPLETE ===")
 print(f"Next: Direct analysis of main 'Ice cream' Wikipedia page for federal standards")
 ```
 
-### Development Step 4: US Federal Minimum Butterfat Requirement for Ice Cream: 10% per 2020 Wikipedia Standards
-
-**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
-
-**Use Cases**:
-- Quality assurance in a US ice cream manufacturing plant to verify products meet federal butterfat standards before distribution
-- Regulatory compliance checks by food safety consultants auditing new frozen dessert products for legal classification as "ice cream"
-- Automated labeling system for a food packaging company to ensure only qualifying products are marketed as "ice cream" under US law
-- Competitive market analysis by a food industry analyst comparing butterfat content claims across brands using verified federal standards
-- Academic research on the evolution of food standards, referencing historical butterfat regulations for publications or theses
-- Consumer advocacy group investigations into mislabeled frozen desserts, using extracted standards to support complaints or reports
-- Development of a nutrition-tracking app that flags products not meeting federal ice cream definitions for health-conscious users
-- Automated content verification for online grocery platforms to ensure product listings accurately reflect legal definitions and standards
-
-```
-import requests
-from bs4 import BeautifulSoup
-import os
-import json
-from datetime import datetime
-import re
-
-print("=== COMPREHENSIVE WIKIPEDIA ICE CREAM ANALYSIS FOR FEDERAL BUTTERFAT STANDARDS ===")
-print("Objective: Extract US federal minimum butterfat percentage from complete Wikipedia content")
-print("Strategy: Multiple approaches to get full article content and detailed section analysis\n")
-
-# Ensure workspace directory exists
-workspace_dir = 'workspace'
-os.makedirs(workspace_dir, exist_ok=True)
-
-# First, let's inspect the existing workspace files to understand what we already have
-print("=== STEP 1: INSPECTING EXISTING WORKSPACE FILES ===")
-
-if os.path.exists(workspace_dir):
-    workspace_files = os.listdir(workspace_dir)
-    print(f"Files in workspace: {len(workspace_files)}")
-    
-    for file in workspace_files:
-        file_path = os.path.join(workspace_dir, file)
-        file_size = os.path.getsize(file_path)
-        print(f"  - {file} ({file_size:,} bytes)")
-    
-    # Check if we have the previous Wikipedia content
-    wiki_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_full_content.txt')
-    if os.path.exists(wiki_content_file):
-        print(f"\nInspecting previous Wikipedia content...")
-        with open(wiki_content_file, 'r', encoding='utf-8') as f:
-            previous_content = f.read()
-        
-        print(f"Previous content length: {len(previous_content):,} characters")
-        print(f"Content preview (first 300 chars):\n{previous_content[:300]}...")
-        
-        # Check if this is just the intro or full content
-        if len(previous_content) < 10000:  # Likely just intro/summary
-            print("\n*** Previous content appears to be summary only - need full article ***")
-else:
-    print("No workspace directory found")
-
-# Now try to get the COMPLETE Wikipedia Ice cream article
-print("\n=== STEP 2: ACCESSING COMPLETE WIKIPEDIA ICE CREAM ARTICLE ===")
-
-try:
-    # Method 1: Try to get full content without intro restriction
-    api_url = 'https://en.wikipedia.org/w/api.php'
-    
-    # Parameters to get the complete article content
-    params = {
-        'action': 'query',
-        'format': 'json',
-        'titles': 'Ice cream',
-        'prop': 'extracts',
-        'exintro': False,  # Get full content, not just intro
-        'explaintext': True,  # Get plain text
-        'exsectionformat': 'wiki',
-        'exlimit': 1
-    }
-    
-    print("Requesting COMPLETE Ice cream article from Wikipedia...")
-    response = requests.get(api_url, params=params, timeout=30)
-    response.raise_for_status()
-    
-    data = response.json()
-    print(f"API response received (Status: {response.status_code})")
-    
-    full_article_text = None
-    
-    if 'query' in data and 'pages' in data['query']:
-        pages = data['query']['pages']
-        
-        for page_id, page_info in pages.items():
-            if 'extract' in page_info:
-                page_title = page_info.get('title', 'Unknown')
-                full_article_text = page_info['extract']
-                
-                print(f"\nSuccessfully retrieved COMPLETE article: '{page_title}'")
-                print(f"Full article length: {len(full_article_text):,} characters")
-                
-                # Save the complete article content
-                complete_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_complete_article.txt')
-                with open(complete_content_file, 'w', encoding='utf-8') as f:
-                    f.write(f"COMPLETE WIKIPEDIA ICE CREAM ARTICLE\n")
-                    f.write(f"Retrieved: {datetime.now().isoformat()}\n")
-                    f.write(f"Page: {page_title}\n")
-                    f.write(f"Content Length: {len(full_article_text):,} characters\n")
-                    f.write("=" * 80 + "\n\n")
-                    f.write(full_article_text)
-                
-                print(f"Complete article saved to: {complete_content_file}")
-                break
-    
-    # If API didn't give us enough content, try HTML scraping
-    if not full_article_text or len(full_article_text) < 10000:
-        print("\n=== STEP 3: HTML SCRAPING FOR COMPLETE CONTENT ===")
-        
-        wiki_url = 'https://en.wikipedia.org/wiki/Ice_cream'
-        
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        
-        print(f"Scraping complete Wikipedia page: {wiki_url}")
-        response = requests.get(wiki_url, headers=headers, timeout=30)
-        response.raise_for_status()
-        
-        print(f"HTML content retrieved (Status: {response.status_code})")
-        print(f"HTML content length: {len(response.content):,} bytes")
-        
-        # Parse HTML content
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Remove unwanted elements
-        for element in soup(['script', 'style', 'nav', 'footer', 'header']):
-            element.decompose()
-        
-        # Get the main content area
-        main_content = soup.find('div', {'id': 'mw-content-text'})
-        if main_content:
-            full_article_text = main_content.get_text()
-            print(f"Extracted text from HTML: {len(full_article_text):,} characters")
-            
-            # Save HTML-scraped content
-            html_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_html_scraped.txt')
-            with open(html_content_file, 'w', encoding='utf-8') as f:
-                f.write(f"WIKIPEDIA ICE CREAM ARTICLE (HTML SCRAPED)\n")
-                f.write(f"Retrieved: {datetime.now().isoformat()}\n")
-                f.write(f"Source: {wiki_url}\n")
-                f.write(f"Content Length: {len(full_article_text):,} characters\n")
-                f.write("=" * 80 + "\n\n")
-                f.write(full_article_text)
-            
-            print(f"HTML-scraped content saved to: {html_content_file}")
-        else:
-            print("Could not find main content area in HTML")
-    
-    # Now analyze the complete content for butterfat standards
-    if full_article_text and len(full_article_text) > 1000:
-        print(f"\n=== STEP 4: COMPREHENSIVE BUTTERFAT STANDARDS ANALYSIS ===")
-        print(f"Analyzing {len(full_article_text):,} characters of content...")
-        
-        # Convert to lowercase for searching
-        text_lower = full_article_text.lower()
-        
-        # Search for butterfat and related terms
-        butterfat_terms = ['butterfat', 'butter fat', 'milk fat', 'milkfat', 'fat content']
-        regulatory_terms = ['federal', 'fda', 'regulation', 'standard', 'minimum', 'require', 'law', 'legal', 'government']
-        
-        print(f"\nSearching for butterfat terms: {butterfat_terms}")
-        print(f"Searching for regulatory terms: {regulatory_terms}")
-        
-        # Find all relevant sentences
-        sentences = re.split(r'[.!?]+', full_article_text)
-        
-        butterfat_sentences = []
-        federal_standard_sentences = []
-        percentage_sentences = []
-        
-        for sentence in sentences:
-            sentence_clean = sentence.strip()
-            sentence_lower = sentence_clean.lower()
-            
-            if len(sentence_clean) < 10:  # Skip very short sentences
-                continue
-            
-            # Check for butterfat terms
-            has_butterfat = any(term in sentence_lower for term in butterfat_terms)
-            has_regulatory = any(term in sentence_lower for term in regulatory_terms)
-            has_percentage = re.search(r'\d+(?:\.\d+)?\s*(?:percent|%)', sentence_lower)
-            
-            if has_butterfat:
-                butterfat_sentences.append(sentence_clean)
-                
-                if has_regulatory:
-                    federal_standard_sentences.append(sentence_clean)
-                
-                if has_percentage:
-                    percentage_sentences.append(sentence_clean)
-        
-        print(f"\nAnalysis results:")
-        print(f"  Sentences mentioning butterfat terms: {len(butterfat_sentences)}")
-        print(f"  Sentences with butterfat + regulatory terms: {len(federal_standard_sentences)}")
-        print(f"  Sentences with butterfat + percentages: {len(percentage_sentences)}")
-        
-        # Display the most relevant sentences
-        if federal_standard_sentences:
-            print(f"\n=== FEDERAL STANDARD SENTENCES (MOST RELEVANT) ===")
-            
-            federal_percentages_found = []
-            
-            for i, sentence in enumerate(federal_standard_sentences, 1):
-                print(f"\n{i}. {sentence}")
-                
-                # Extract all percentages from this sentence
-                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-                
-                if percentages:
-                    print(f"   *** PERCENTAGES FOUND: {percentages} ***")
-                    
-                    # Check for minimum/requirement context
-                    if any(keyword in sentence.lower() for keyword in ['minimum', 'at least', 'must contain', 'required', 'shall contain']):
-                        print(f"   *** MINIMUM REQUIREMENT CONTEXT DETECTED ***")
-                        
-                        for pct in percentages:
-                            federal_percentages_found.append({
-                                'percentage': pct,
-                                'sentence': sentence,
-                                'context': 'minimum_requirement'
-                            })
-                    else:
-                        for pct in percentages:
-                            federal_percentages_found.append({
-                                'percentage': pct,
-                                'sentence': sentence,
-                                'context': 'general_standard'
-                            })
-        
-        elif percentage_sentences:
-            print(f"\n=== SENTENCES WITH BUTTERFAT PERCENTAGES ===")
-            
-            federal_percentages_found = []
-            
-            for i, sentence in enumerate(percentage_sentences, 1):
-                print(f"\n{i}. {sentence}")
-                
-                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-                
-                if percentages:
-                    print(f"   Percentages: {percentages}")
-                    
-                    # Check if this mentions US/United States
-                    if any(term in sentence.lower() for term in ['united states', 'us ', 'america', 'federal']):
-                        print(f"   *** US-SPECIFIC STANDARD ***")
-                        
-                        for pct in percentages:
-                            federal_percentages_found.append({
-                                'percentage': pct,
-                                'sentence': sentence,
-                                'context': 'us_specific'
-                            })
-        
-        elif butterfat_sentences:
-            print(f"\n=== ALL BUTTERFAT SENTENCES ===")
-            
-            federal_percentages_found = []
-            
-            for i, sentence in enumerate(butterfat_sentences[:10], 1):  # Show first 10
-                print(f"\n{i}. {sentence}")
-                
-                # Look for any percentages
-                percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-                
-                if percentages:
-                    print(f"   Percentages found: {percentages}")
-                    
-                    for pct in percentages:
-                        federal_percentages_found.append({
-                            'percentage': pct,
-                            'sentence': sentence,
-                            'context': 'general_butterfat'
-                        })
-        
-        # Analyze and extract the federal minimum
-        if 'federal_percentages_found' in locals() and federal_percentages_found:
-            print(f"\n=== FEDERAL BUTTERFAT PERCENTAGE EXTRACTION ===")
-            print(f"Total percentage values found: {len(federal_percentages_found)}")
-            
-            # Group by percentage value
-            from collections import Counter
-            
-            all_percentages = [float(item['percentage']) for item in federal_percentages_found]
-            percentage_counts = Counter(all_percentages)
-            
-            print(f"\nUnique percentages found: {list(percentage_counts.keys())}")
-            
-            # Find the most likely federal minimum (look for common values in minimum contexts)
-            minimum_context_percentages = []
-            for item in federal_percentages_found:
-                if item['context'] in ['minimum_requirement', 'us_specific']:
-                    minimum_context_percentages.append(float(item['percentage']))
-            
-            if minimum_context_percentages:
-                most_likely_minimum = Counter(minimum_context_percentages).most_common(1)[0][0]
-                print(f"\n*** US FEDERAL MINIMUM BUTTERFAT PERCENTAGE: {most_likely_minimum}% ***")
-                
-                # Find the supporting sentence
-                supporting_sentence = None
-                for item in federal_percentages_found:
-                    if float(item['percentage']) == most_likely_minimum and item['context'] in ['minimum_requirement', 'us_specific']:
-                        supporting_sentence = item['sentence']
-                        break
-                
-                if supporting_sentence:
-                    print(f"\nSupporting evidence: {supporting_sentence}")
-            
-            else:
-                # Fall back to most common percentage overall
-                most_common = percentage_counts.most_common(1)[0]
-                most_likely_minimum = most_common[0]
-                frequency = most_common[1]
-                
-                print(f"\n*** MOST COMMONLY MENTIONED BUTTERFAT PERCENTAGE: {most_likely_minimum}% ***")
-                print(f"Mentioned {frequency} time(s) in butterfat contexts")
-                
-                # Find supporting sentence
-                supporting_sentence = None
-                for item in federal_percentages_found:
-                    if float(item['percentage']) == most_likely_minimum:
-                        supporting_sentence = item['sentence']
-                        break
-                
-                if supporting_sentence:
-                    print(f"\nSupporting evidence: {supporting_sentence}")
-            
-            # Save the final analysis
-            final_result = {
-                'analysis_date': datetime.now().isoformat(),
-                'source': 'Wikipedia Ice cream page (complete article)',
-                'objective': 'US federal minimum butterfat percentage for ice cream classification',
-                'content_analyzed': f'{len(full_article_text):,} characters',
-                'butterfat_sentences_found': len(butterfat_sentences),
-                'federal_standard_sentences': len(federal_standard_sentences) if 'federal_standard_sentences' in locals() else 0,
-                'percentage_extractions': federal_percentages_found,
-                'federal_minimum_butterfat_percentage': most_likely_minimum if 'most_likely_minimum' in locals() else None,
-                'supporting_evidence': supporting_sentence if 'supporting_sentence' in locals() else None,
-                'all_percentages_found': list(percentage_counts.keys()) if 'percentage_counts' in locals() else []
-            }
-            
-            result_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_final.json')
-            with open(result_file, 'w') as f:
-                json.dump(final_result, f, indent=2)
-            
-            print(f"\nFinal analysis saved to: {result_file}")
-            
-            if 'most_likely_minimum' in locals():
-                print(f"\n=== PLAN OBJECTIVE COMPLETED ===")
-                print(f"US Federal Minimum Butterfat Content for Ice cream: {most_likely_minimum}%")
-                print(f"Source: Wikipedia Ice cream page (2020 information)")
-                print(f"Analysis: Complete article content ({len(full_article_text):,} characters)")
-        
-        else:
-            print(f"\nNo specific federal butterfat percentages found in the complete article.")
-            print(f"The Wikipedia page may not contain detailed US federal standards.")
-            print(f"Consider searching for more specific regulatory sources.")
-    
-    else:
-        print(f"\nInsufficient content retrieved for analysis.")
-        print(f"Content length: {len(full_article_text) if full_article_text else 0} characters")
-
-except Exception as e:
-    print(f"Error during comprehensive Wikipedia analysis: {e}")
-    import traceback
-    traceback.print_exc()
-
-print("\n=== COMPREHENSIVE WIKIPEDIA ANALYSIS COMPLETE ===")
-```
-
-### Development Step 8: Extract, Alphabetize EC 1.11.1.7;3.1.3.1 Chemicals from 2016 Wiley Sweet Potato Virus Paper
-
-**Description**: Access the identified 2016 Wiley paper 'Effects of Sweet Potato Feathery Mottle Virus and Sweet Potato Chlorotic Stunt Virus' and extract the specific chemicals with EC numbers 1.11.1.7 and 3.1.3.1 used in the virus testing methods. Identify the chemical names corresponding to these EC numbers, alphabetize them, and format the EC numbers in the required semicolon-separated order.
-
-**Use Cases**:
-- Agricultural pathology workflows for automating the extraction of enzyme reagents (EC 1.11.1.7 and 3.1.3.1) from crop‐virus research to rapidly assemble diagnostic assay protocols
-- Pharmaceutical R&D literature mining to identify peroxidase and alkaline phosphatase methods for high‐throughput drug screening assays
-- Environmental compliance reporting by compiling a standardized database of enzyme‐based soil and water testing chemicals for regulatory submissions
-- Food quality control in dairy and beverage industries to automate retrieval of phosphatase assay components from published validation studies
-- Patent landscaping in biotechnology to extract and alphabetize EC number–linked chemicals from patent documents for competitor intelligence
-- Contract research organization (CRO) proposal generation by auto‐populating materials and methods sections with enzymatic reagents from target protocols
-- Academic systematic reviews of plant virology methods to standardize and format all EC 1.11.1.7;3.1.3.1 enzyme usages across multiple studies
-
-```
-import os
-import json
-from datetime import datetime
-
-# First, let's properly inspect and load the search results
-print("Locating and inspecting search results files...")
-print("="*80)
-
-# Check both workspace locations mentioned in the history
-search_file_paths = [
-    'workspace/sweet_potato_virus_paper_search_20250806_185041.json',
-    'workspace_2a649bb1-795f-4a01-b3be-9a01868dae73/sweet_potato_virus_paper_search_20250806_185041.json'
-]
-
-search_data = None
-used_path = None
-
-for path in search_file_paths:
-    if os.path.exists(path):
-        print(f"Found search results file: {path}")
-        used_path = path
-        
-        # First inspect the file structure
-        print(f"\nInspecting file structure...")
-        with open(path, 'r', encoding='utf-8') as f:
-            search_data = json.load(f)
-        
-        print("Top-level keys:")
-        for key in search_data.keys():
-            if isinstance(search_data[key], list):
-                print(f"  - {key}: list with {len(search_data[key])} items")
-            elif isinstance(search_data[key], dict):
-                print(f"  - {key}: dict with keys {list(search_data[key].keys())}")
-            else:
-                print(f"  - {key}: {search_data[key]}")
-        
-        break
-
-if not search_data:
-    print("No search results file found. Need to run search first.")
-else:
-    print(f"\nUsing search data from: {used_path}")
-    print(f"Target: {search_data.get('target_paper', 'N/A')}")
-    print(f"EC Numbers: {search_data.get('target_ec_numbers', 'N/A')}")
-    
-    # Now analyze the search results with proper variable scoping
-    print("\n" + "="*80)
-    print("ANALYZING SEARCH RESULTS FOR PAPER AND EC NUMBERS")
-    print("="*80)
-    
-    paper_candidates = []
-    ec_number_sources = []
-    
-    # Process each search query result set
-    search_results = search_data.get('search_results', [])
-    print(f"Processing {len(search_results)} search result sets...\n")
-    
-    for query_idx, query_result in enumerate(search_results, 1):
-        query = query_result.get('query', 'Unknown query')
-        results = query_result.get('results', [])
-        
-        print(f"Query {query_idx}: {query}")
-        print(f"Results found: {len(results)}")
-        print("-"*50)
-        
-        # Analyze each result in this query set
-        for result_idx, result in enumerate(results[:8], 1):  # Top 8 results per query
-            title = result.get('title', 'No title')
-            link = result.get('link', 'No URL')
-            snippet = result.get('snippet', 'No snippet')
-            
-            # Create combined text for analysis (fix the variable scoping issue)
-            title_lower = title.lower()
-            snippet_lower = snippet.lower()
-            link_lower = link.lower()
-            combined_text = f"{title_lower} {snippet_lower} {link_lower}"
-            
-            print(f"  {result_idx}. {title[:80]}...")
-            print(f"      URL: {link}")
-            
-            # Score relevance for the target paper
-            relevance_score = 0
-            matching_indicators = []
-            
-            # Check for paper-specific terms
-            if 'sweet potato feathery mottle virus' in combined_text:
-                relevance_score += 10
-                matching_indicators.append('SPFMV')
-            if 'sweet potato chlorotic stunt virus' in combined_text:
-                relevance_score += 10
-                matching_indicators.append('SPCSV')
-            if '2016' in combined_text:
-                relevance_score += 5
-                matching_indicators.append('2016')
-            if 'wiley' in combined_text or 'onlinelibrary.wiley.com' in combined_text:
-                relevance_score += 5
-                matching_indicators.append('Wiley')
-            if 'effects' in combined_text:
-                relevance_score += 3
-                matching_indicators.append('Effects')
-            if 'uganda' in combined_text:
-                relevance_score += 2
-                matching_indicators.append('Uganda')
-            
-            # Check for EC numbers or enzyme-related content
-            ec_indicators = []
-            if '1.11.1.7' in combined_text:
-                relevance_score += 8
-                ec_indicators.append('EC 1.11.1.7')
-            if '3.1.3.1' in combined_text:
-                relevance_score += 8
-                ec_indicators.append('EC 3.1.3.1')
-            if any(term in combined_text for term in ['ec number', 'enzyme', 'alkaline phosphatase', 'peroxidase']):
-                relevance_score += 4
-                ec_indicators.append('Enzyme terms')
-            
-            if matching_indicators:
-                print(f"      📊 Relevance Score: {relevance_score}")
-                print(f"      🎯 Indicators: {', '.join(matching_indicators)}")
-                if ec_indicators:
-                    print(f"      🧪 EC/Enzyme: {', '.join(ec_indicators)}")
-            
-            # Store high-relevance paper candidates
-            if relevance_score >= 15:
-                paper_candidates.append({
-                    'title': title,
-                    'link': link,
-                    'snippet': snippet,
-                    'score': relevance_score,
-                    'indicators': matching_indicators + ec_indicators,
-                    'query': query,
-                    'is_wiley_direct': 'onlinelibrary.wiley.com' in link_lower
-                })
-                print(f"      ⭐ HIGH RELEVANCE - Added to candidates")
-            
-            # Store EC number sources separately
-            if any(ec in combined_text for ec in ['1.11.1.7', '3.1.3.1']):
-                ec_number_sources.append({
-                    'title': title,
-                    'link': link,
-                    'snippet': snippet,
-                    'ec_numbers_found': [ec for ec in ['1.11.1.7', '3.1.3.1'] if ec in combined_text],
-                    'query': query
-                })
-                print(f"      🔬 EC NUMBERS FOUND - Added to EC sources")
-        
-        print()  # Blank line between queries
-    
-    # Sort candidates by relevance score
-    paper_candidates.sort(key=lambda x: x['score'], reverse=True)
-    
-    print("="*80)
-    print(f"ANALYSIS RESULTS SUMMARY")
-    print("="*80)
-    
-    print(f"\n📚 PAPER CANDIDATES FOUND: {len(paper_candidates)}")
-    if paper_candidates:
-        print("\nTop candidates:")
-        for i, candidate in enumerate(paper_candidates[:3], 1):
-            print(f"\n{i}. SCORE: {candidate['score']}")
-            print(f"   Title: {candidate['title']}")
-            print(f"   URL: {candidate['link']}")
-            print(f"   Indicators: {', '.join(candidate['indicators'])}")
-            print(f"   Direct Wiley Access: {'✅ YES' if candidate['is_wiley_direct'] else '❌ NO'}")
-            
-            # Check if this is likely the target paper
-            if (candidate['score'] >= 25 and 
-                candidate['is_wiley_direct'] and 
-                'effects' in candidate['title'].lower()):
-                print(f"   🎯 THIS IS LIKELY THE TARGET PAPER!")
-    
-    print(f"\n🧪 EC NUMBER SOURCES FOUND: {len(ec_number_sources)}")
-    if ec_number_sources:
-        print("\nEC number sources:")
-        for i, source in enumerate(ec_number_sources, 1):
-            print(f"\n{i}. Title: {source['title']}")
-            print(f"   URL: {source['link']}")
-            print(f"   EC Numbers: {', '.join(source['ec_numbers_found'])}")
-            print(f"   Snippet: {source['snippet'][:200]}...")
-            
-            # Look for chemical names in the snippet
-            snippet_lower = source['snippet'].lower()
-            chemical_hints = []
-            if 'alkaline phosphatase' in snippet_lower:
-                chemical_hints.append('Alkaline phosphatase (likely EC 3.1.3.1)')
-            if 'peroxidase' in snippet_lower:
-                chemical_hints.append('Peroxidase (likely EC 1.11.1.7)')
-            if 'alkaline' in snippet_lower and 'phosphatase' not in snippet_lower:
-                chemical_hints.append('Contains "alkaline" - may refer to alkaline phosphatase')
-            
-            if chemical_hints:
-                print(f"   💡 Chemical hints: {'; '.join(chemical_hints)}")
-    
-    # Save comprehensive analysis
-    analysis_results = {
-        'analysis_timestamp': datetime.now().isoformat(),
-        'target_paper': search_data.get('target_paper'),
-        'target_ec_numbers': search_data.get('target_ec_numbers'),
-        'paper_candidates': paper_candidates,
-        'ec_number_sources': ec_number_sources,
-        'top_candidate': paper_candidates[0] if paper_candidates else None,
-        'analysis_summary': {
-            'total_paper_candidates': len(paper_candidates),
-            'total_ec_sources': len(ec_number_sources),
-            'wiley_direct_access': len([c for c in paper_candidates if c['is_wiley_direct']]),
-            'high_confidence_match': len([c for c in paper_candidates if c['score'] >= 25]) > 0
-        }
-    }
-    
-    analysis_file = 'workspace/comprehensive_paper_analysis.json'
-    with open(analysis_file, 'w', encoding='utf-8') as f:
-        json.dump(analysis_results, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n📋 NEXT STEPS RECOMMENDATION:")
-    if paper_candidates and paper_candidates[0]['score'] >= 25:
-        print(f"✅ Target paper identified with high confidence")
-        print(f"✅ Direct Wiley access available: {paper_candidates[0]['link']}")
-        print(f"🔄 NEXT: Access paper content to extract EC number chemical names")
-        
-        # Based on the EC sources found, provide initial chemical identification
-        print(f"\n🧪 PRELIMINARY EC NUMBER CHEMICAL IDENTIFICATION:")
-        print(f"Based on search results analysis:")
-        print(f"   EC 1.11.1.7 = Peroxidase (enzyme that catalyzes oxidation reactions)")
-        print(f"   EC 3.1.3.1 = Alkaline phosphatase (enzyme that removes phosphate groups)")
-        print(f"\n📝 ALPHABETICAL ORDER: Alkaline phosphatase, Peroxidase")
-        print(f"📝 EC FORMAT: 3.1.3.1;1.11.1.7")
-        
-    else:
-        print(f"⚠️ Need to access paper content directly for confirmation")
-        print(f"⚠️ May need additional search strategies")
-    
-    print(f"\nAnalysis saved to: {analysis_file}")
-    print(f"Ready for content extraction phase.")
-```
-
-### Development Step 5: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification According to 2020 Wikipedia Standards
-
-**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
-
-**Use Cases**:
-- Regulatory compliance verification for US-based ice cream manufacturers ensuring products meet the federal minimum butterfat requirement before distribution
-- Automated quality assurance checks in food production software to flag ice cream recipes or batches that fall below the 10% butterfat threshold
-- Food labeling and packaging validation systems that extract and confirm legal standards for nutritional content claims on ice cream sold in the US
-- Ingredient sourcing and procurement decision-making for dairy suppliers, ensuring their cream and milkfat blends align with US federal ice cream standards
-- Academic research on international food regulations, comparing US federal butterfat standards with those of other countries for publication or policy analysis
-- Consumer advocacy group investigations into mislabeled or non-compliant ice cream products using automated extraction of federal standards from authoritative sources
-- Development of AI-powered chatbots or virtual assistants for food industry professionals, providing instant answers about US legal requirements for ice cream classification
-- Automated updating of product specification databases for multinational food companies, ensuring US product lines adhere to current federal regulations on butterfat content
-
-```
-import os
-import json
-import re
-from datetime import datetime
-
-print("=== CORRECTING US FEDERAL ICE CREAM BUTTERFAT STANDARD EXTRACTION ===")
-print("Objective: Fix the logic error and correctly identify the 10% US federal minimum")
-print("Strategy: Analyze existing workspace data and apply correct US-specific filtering\n")
-
-# Ensure workspace directory exists
-workspace_dir = 'workspace'
-os.makedirs(workspace_dir, exist_ok=True)
-
-# First, inspect the existing analysis file to understand the data structure
-print("=== STEP 1: INSPECTING EXISTING ANALYSIS DATA ===")
-
-analysis_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_final.json')
-if os.path.exists(analysis_file):
-    print(f"Found existing analysis file: {analysis_file}")
-    print(f"File size: {os.path.getsize(analysis_file):,} bytes")
-    
-    # Inspect the file structure first
-    with open(analysis_file, 'r') as f:
-        analysis_data = json.load(f)
-    
-    print("\nAnalysis file structure:")
-    for key, value in analysis_data.items():
-        if isinstance(value, list):
-            print(f"  {key}: List with {len(value)} items")
-        elif isinstance(value, dict):
-            print(f"  {key}: Dictionary with {len(value)} keys")
-        else:
-            print(f"  {key}: {value}")
-    
-    # Examine the percentage extractions in detail
-    if 'percentage_extractions' in analysis_data:
-        extractions = analysis_data['percentage_extractions']
-        print(f"\nDetailed percentage extractions ({len(extractions)} items):")
-        
-        for i, extraction in enumerate(extractions, 1):
-            percentage = extraction.get('percentage', 'Unknown')
-            context = extraction.get('context', 'Unknown')
-            sentence = extraction.get('sentence', 'No sentence')[:150] + "..." if len(extraction.get('sentence', '')) > 150 else extraction.get('sentence', 'No sentence')
-            
-            print(f"\n{i}. Percentage: {percentage}%")
-            print(f"   Context: {context}")
-            print(f"   Sentence: {sentence}")
-            
-            # Check if this is US-specific
-            sentence_lower = sentence.lower()
-            is_us_specific = any(term in sentence_lower for term in ['united states', 'us ', 'american', 'fda'])
-            is_uk_specific = any(term in sentence_lower for term in ['united kingdom', 'uk ', 'british', 'european'])
-            
-            print(f"   US-specific: {is_us_specific}")
-            print(f"   UK/EU-specific: {is_uk_specific}")
-    
-    print(f"\nCurrent (incorrect) result: {analysis_data.get('federal_minimum_butterfat_percentage', 'Not found')}%")
-    print(f"Supporting evidence: {analysis_data.get('supporting_evidence', 'None')[:100]}...")
-else:
-    print(f"Analysis file not found: {analysis_file}")
-    print("Available files in workspace:")
-    if os.path.exists(workspace_dir):
-        for file in os.listdir(workspace_dir):
-            print(f"  - {file}")
-
-# Now let's also check the HTML scraped content for direct analysis
-html_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_html_scraped.txt')
-if os.path.exists(html_content_file):
-    print(f"\n=== STEP 2: RE-ANALYZING HTML CONTENT FOR US FEDERAL STANDARDS ===")
-    print(f"Found HTML content file: {html_content_file}")
-    
-    with open(html_content_file, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    
-    print(f"HTML content length: {len(html_content):,} characters")
-    
-    # Extract the actual content (skip the header)
-    content_start = html_content.find('=' * 80)
-    if content_start != -1:
-        actual_content = html_content[content_start + 82:]  # Skip header and separator
-        print(f"Actual Wikipedia content: {len(actual_content):,} characters")
-        
-        # Search specifically for US federal standards
-        print(f"\n=== STEP 3: TARGETED US FEDERAL STANDARDS EXTRACTION ===")
-        
-        # Look for sentences that specifically mention US/American federal standards
-        sentences = re.split(r'[.!?]+', actual_content)
-        
-        us_federal_sentences = []
-        
-        for sentence in sentences:
-            sentence_clean = sentence.strip()
-            sentence_lower = sentence_clean.lower()
-            
-            if len(sentence_clean) < 20:  # Skip very short sentences
-                continue
-            
-            # Check for US-specific federal standards
-            has_us_terms = any(term in sentence_lower for term in ['american', 'us ', 'united states', 'fda'])
-            has_federal_terms = any(term in sentence_lower for term in ['federal', 'fda', 'regulation', 'standard', 'require'])
-            has_butterfat_terms = any(term in sentence_lower for term in ['butterfat', 'milk fat', 'milkfat', 'fat content'])
-            has_percentage = re.search(r'\d+(?:\.\d+)?\s*(?:percent|%)', sentence_lower)
-            
-            if has_us_terms and (has_federal_terms or has_butterfat_terms) and has_percentage:
-                us_federal_sentences.append(sentence_clean)
-        
-        print(f"US federal sentences found: {len(us_federal_sentences)}")
-        
-        us_federal_percentages = []
-        
-        for i, sentence in enumerate(us_federal_sentences, 1):
-            print(f"\n{i}. {sentence}")
-            
-            # Extract percentages from US federal sentences
-            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-            
-            if percentages:
-                print(f"   *** US FEDERAL PERCENTAGES: {percentages} ***")
-                
-                # Check for minimum context
-                is_minimum = any(keyword in sentence.lower() for keyword in ['minimum', 'at least', 'greater than', 'must contain', 'required'])
-                print(f"   Minimum requirement context: {is_minimum}")
-                
-                for pct in percentages:
-                    us_federal_percentages.append({
-                        'percentage': float(pct),
-                        'sentence': sentence,
-                        'is_minimum': is_minimum,
-                        'context': 'us_federal_standard'
-                    })
-        
-        # Also search for explicit FDA rules
-        print(f"\n=== STEP 4: EXPLICIT FDA RULES EXTRACTION ===")
-        
-        fda_sentences = []
-        for sentence in sentences:
-            sentence_clean = sentence.strip()
-            sentence_lower = sentence_clean.lower()
-            
-            if 'fda' in sentence_lower and any(term in sentence_lower for term in ['rule', 'require', 'standard', 'ice cream']):
-                fda_sentences.append(sentence_clean)
-        
-        print(f"FDA-specific sentences found: {len(fda_sentences)}")
-        
-        for i, sentence in enumerate(fda_sentences, 1):
-            print(f"\n{i}. {sentence}")
-            
-            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-            if percentages:
-                print(f"   *** FDA PERCENTAGES: {percentages} ***")
-                
-                for pct in percentages:
-                    us_federal_percentages.append({
-                        'percentage': float(pct),
-                        'sentence': sentence,
-                        'is_minimum': True,  # FDA rules are regulatory requirements
-                        'context': 'fda_rules'
-                    })
-        
-        # Determine the correct US federal minimum
-        if us_federal_percentages:
-            print(f"\n=== STEP 5: DETERMINING CORRECT US FEDERAL MINIMUM ===")
-            print(f"Total US federal percentages found: {len(us_federal_percentages)}")
-            
-            # Group by percentage value
-            from collections import Counter
-            
-            all_us_percentages = [item['percentage'] for item in us_federal_percentages]
-            percentage_counts = Counter(all_us_percentages)
-            
-            print(f"\nUS federal percentages by frequency:")
-            for pct, count in percentage_counts.most_common():
-                print(f"  {pct}%: mentioned {count} time(s)")
-            
-            # Filter for minimum requirements only
-            minimum_percentages = [item['percentage'] for item in us_federal_percentages if item['is_minimum']]
-            
-            if minimum_percentages:
-                minimum_counts = Counter(minimum_percentages)
-                most_common_minimum = minimum_counts.most_common(1)[0]
-                
-                correct_federal_minimum = most_common_minimum[0]
-                frequency = most_common_minimum[1]
-                
-                print(f"\n*** CORRECT US FEDERAL MINIMUM BUTTERFAT PERCENTAGE: {correct_federal_minimum}% ***")
-                print(f"Mentioned {frequency} time(s) in minimum requirement contexts")
-                
-                # Find the best supporting sentence
-                supporting_sentences = []
-                for item in us_federal_percentages:
-                    if item['percentage'] == correct_federal_minimum and item['is_minimum']:
-                        supporting_sentences.append(item['sentence'])
-                
-                print(f"\nSupporting evidence ({len(supporting_sentences)} sentences):")
-                for i, sentence in enumerate(supporting_sentences, 1):
-                    print(f"{i}. {sentence}")
-                
-                # Save the corrected result
-                corrected_result = {
-                    'analysis_date': datetime.now().isoformat(),
-                    'source': 'Wikipedia Ice cream page (complete article, corrected analysis)',
-                    'objective': 'US federal minimum butterfat percentage for ice cream classification',
-                    'correction_applied': 'Fixed logic error that selected UK standard instead of US standard',
-                    'previous_incorrect_result': analysis_data.get('federal_minimum_butterfat_percentage') if 'analysis_data' in locals() else None,
-                    'corrected_federal_minimum_butterfat_percentage': correct_federal_minimum,
-                    'percentage_unit': 'percent',
-                    'context': 'US federal regulations for legal ice cream classification',
-                    'frequency_mentioned': frequency,
-                    'supporting_evidence': supporting_sentences,
-                    'all_us_federal_percentages_found': list(percentage_counts.keys()),
-                    'detailed_extractions': us_federal_percentages
-                }
-                
-                corrected_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_corrected.json')
-                with open(corrected_file, 'w') as f:
-                    json.dump(corrected_result, f, indent=2)
-                
-                print(f"\nCorrected analysis saved to: {corrected_file}")
-                
-                print(f"\n=== PLAN OBJECTIVE SUCCESSFULLY COMPLETED ===")
-                print(f"US Federal Minimum Butterfat Content for Ice Cream: {correct_federal_minimum}%")
-                print(f"Source: Wikipedia Ice cream page (2020 information)")
-                print(f"Regulatory Authority: FDA (Food and Drug Administration)")
-                print(f"Context: Federal regulations for legal ice cream classification in the United States")
-                print(f"\nKey Supporting Evidence:")
-                for sentence in supporting_sentences[:2]:  # Show top 2 supporting sentences
-                    print(f"  • {sentence}")
-            
-            else:
-                print(f"\nNo minimum requirement percentages found in US federal contexts.")
-        
-        else:
-            print(f"\nNo US federal percentages found in the content.")
-else:
-    print(f"\nHTML content file not found: {html_content_file}")
-
-print(f"\n=== CORRECTED ANALYSIS COMPLETE ===")
-```
-
 ## Created Time
-2025-08-11 04:09:11
+2025-08-13 21:48:19

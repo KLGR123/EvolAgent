@@ -1,10 +1,10 @@
 # Developer Plan 02
 
 ## Plan
-Research the publication histories of Pietro Murano and Iram N. Khan to determine which author had prior papers before 2015, and identify the title of the first paper authored by that person. Search academic databases, Google Scholar, and author profiles to find their earliest publications and chronologically order their work to determine who had previous research experience and what their inaugural paper was titled.
+Research the publication histories of both authors Pietro Murano and I. N. Khan to determine which author had published papers prior to 2015. Search academic databases and author profiles to identify their chronological publication records. For the author who had prior publications before 2015, identify their very first published paper by examining their complete bibliography in chronological order. Extract the exact title of that earliest publication.
 
 ## Description
-This is the necessary next step because: (1) The previous research successfully identified the two authors of the 2015 'Pie Menus or Linear Menus, Which Is Better?' paper as Pietro Murano and Iram N. Khan, (2) We now need to investigate each author's publication history to determine which one had authored papers prior to 2015, (3) Expected outcome is to identify which author had previous publications and extract the title of their first/earliest paper, (4) This will complete the TASK by finding the specific author with prior work and determining their inaugural publication title
+This is the necessary next step because: (1) We have successfully identified the two authors of the 2015 'Pie Menus or Linear Menus, Which Is Better?' paper as Pietro Murano and I. N. Khan, (2) Now we need to determine which of these authors had published papers before 2015 and find their first publication, (3) Expected outcome is to identify the author with prior publications and extract the title of their earliest paper, (4) This will complete the TASK by providing the title of the first paper authored by the author who had prior publication history
 
 ## Episodic Examples
 ### Development Step 1: Determine Year David Sklar First Published Innovation Reports in Academic Medicine
@@ -579,539 +579,192 @@ print(f"\nAll search results saved to: workspace/david_sklar_innovation_reports_
 print(f"Next step: Analyze results to identify the specific year when David Sklar introduced Innovation Reports in Academic Medicine journal")
 ```
 
-### Development Step 4: Locate 1851 Atheistic Naturalism Phrenology Mesmerism Book and 2009 Reissuing Publisher
+### Development Step 1: Find Nedoshivina 2010 Publication Describing Kuznetzov’s Vietnamese Specimens, Including Methods and Repository Info
 
-**Description**: Conduct a comprehensive web search to identify a co-authored book from 1851 that advocated for atheistic naturalism, systematically explored phrenology and mesmerism, was controversial for these topics, and was reissued by a publisher in 2009. Search using keywords including '1851 book atheistic naturalism phrenology mesmerism co-authored', '1851 controversial book phrenology mesmerism reissued 2009', 'atheistic naturalism 1851 publication', and 'phrenology mesmerism 1851 authors'. Focus on identifying both the original 1851 publication details and the specific publisher who reissued it in 2009.
+**Description**: Search for Nedoshivina's 2010 scientific paper that includes descriptions of Vietnamese specimens by Kuznetzov. Focus on finding the complete publication with methods/materials sections or specimen repository information. Use these search approaches: (1) Academic databases like Google Scholar, PubMed, or ResearchGate using keywords 'Nedoshivina 2010 Vietnamese specimens Kuznetzov', (2) Taxonomic databases that might reference specimen deposits, (3) Journal archives that published the paper in 2010. Look specifically for sections mentioning specimen deposition, museum collections, or institutional repositories where the Vietnamese materials were stored.
 
 **Use Cases**:
-- University research library digitization team using the multi-engine search script to locate and verify obscure 1851 scientific texts for digital archive inclusion and confirm 2009 reissue details.
-- Historical society librarian employing automated Google Scholar, Bing, JSTOR, and archive.org queries to compile a complete bibliography of co-authored controversial phrenology and mesmerism treatises for a museum exhibition.
-- Digital humanities scholar mapping the spread of atheistic naturalism by systematically harvesting primary sources and modern reprint information from multiple search engines for network analysis.
-- Rare bookseller validating a potential 1851 first edition’s provenance by cross-referencing academic databases and general web searches to confirm authorship, publication history, and a 2009 specialty press reissue.
-- PhD candidate in history of science leveraging the Python multi-method search to uncover mid-19th century philosophical works on phrenology and mesmerism across library catalogs and online archives for dissertation research.
-- Independent publisher’s research team discovering forgotten public domain texts for annotated reissues by scanning academic sites and search engines to identify obscure co-authored volumes and track modern rights holders.
-- Data journalist investigating the revival of fringe-science publications by extracting publication metadata and reissue patterns from search logs to illustrate how 19th-century controversial works reappear in contemporary niche markets.
+- Entomology researcher retrieving Nedoshivina’s 2010 paper to verify Vietnamese veneer moth specimen depositories before describing a new related species
+- Museum curator cross-referencing taxonomic literature to confirm the institutional repository and accession numbers of Kuznetzov’s Vietnam collection for database curation
+- Graduate student compiling methods and material details from primary sources to support a molecular phylogeny of Southeast Asian Tortricidae
+- Biodiversity informatics specialist automating DOI and PDF link extraction for taxonomic publications to integrate specimen metadata into an online species portal
+- Conservation biologist mapping historical specimen localities in Vietnam by extracting georeferenced collection data from Nedoshivina’s publication
+- Journal editor validating author-provided repository statements against original publications to ensure compliance with taxonomic code requirements
+- Natural history collection manager updating digital catalogs by linking specimen records to their original taxonomic descriptions and museum holdings
+- Academic librarian indexing obscure entomological articles in digital archives, using SerpAPI to locate full-text PDFs and DOIs for 2010 publications
 
 ```
 import os
+import re
 import requests
-import json
-import time
-from urllib.parse import quote_plus
-from bs4 import BeautifulSoup
 
-print('=== ALTERNATIVE SEARCH STRATEGY FOR 1851 ATHEISTIC NATURALISM BOOK ===')
-print('Previous attempts failed due to API rate limits (SERPAPI) and HTTP 202 responses (DuckDuckGo)')
-print('Implementing multi-pronged approach with different search engines and methods\n')
+# Search for Nedoshivina's 2010 scientific paper that includes descriptions of Vietnamese specimens by Kuznetzov
+query = '"Nedoshivina" 2010 Vietnamese specimens Kuznetzov'
+max_results = 15
+type = "search"
 
-# Ensure workspace directory exists
-os.makedirs('workspace', exist_ok=True)
+# Get SerpAPI key from environment variables
+api_key = os.getenv("SERPAPI_API_KEY")
 
-# Initialize comprehensive results storage
-search_results = {
-    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-    'objective': 'Find 1851 co-authored book on atheistic naturalism with phrenology/mesmerism, reissued 2009',
-    'search_methods': [],
-    'all_findings': [],
-    'book_candidates': [],
-    'analysis_summary': {}
-}
-
-print('TARGET BOOK CHARACTERISTICS:')
-print('• Published: 1851')
-print('• Co-authored (multiple authors)')
-print('• Topic: Atheistic naturalism')
-print('• Contains: Phrenology and mesmerism content')
-print('• Controversial for these topics')
-print('• Reissued by a publisher in 2009')
-print()
-
-# Method 1: Try Google Scholar search using requests
-print('=== METHOD 1: GOOGLE SCHOLAR DIRECT SEARCH ===')
-print('=' * 60)
-
-scholar_queries = [
-    '"atheistic naturalism" 1851 phrenology mesmerism',
-    '1851 controversial book phrenology mesmerism authors',
-    'phrenology mesmerism 1851 naturalism philosophy'
-]
-
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive'
-}
-
-for i, query in enumerate(scholar_queries, 1):
-    print(f'\nGoogle Scholar Search {i}: {query}')
-    try:
-        scholar_url = f'https://scholar.google.com/scholar?q={quote_plus(query)}'
-        print(f'URL: {scholar_url}')
-        
-        response = requests.get(scholar_url, headers=headers, timeout=20)
-        print(f'Status: {response.status_code}')
-        
-        if response.status_code == 200:
-            # Save raw HTML
-            filename = f'google_scholar_search_{i}.html'
-            filepath = os.path.join('workspace', filename)
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(response.text)
-            print(f'Saved: {filepath}')
-            
-            # Quick parse for academic results
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Look for result titles in Google Scholar
-            result_titles = soup.find_all(['h3', 'a'], class_=lambda x: x and 'gs_rt' in str(x))
-            if not result_titles:
-                result_titles = soup.find_all('h3')
-            
-            print(f'Found {len(result_titles)} potential results')
-            
-            for j, title_elem in enumerate(result_titles[:5], 1):
-                title_text = title_elem.get_text().strip()
-                if len(title_text) > 10:
-                    print(f'  {j}. {title_text[:100]}...')
-                    
-                    # Check for key terms
-                    text_lower = title_text.lower()
-                    relevance_indicators = []
-                    if '1851' in text_lower: relevance_indicators.append('1851')
-                    if 'phrenology' in text_lower: relevance_indicators.append('phrenology')
-                    if 'mesmerism' in text_lower: relevance_indicators.append('mesmerism')
-                    if 'naturalism' in text_lower: relevance_indicators.append('naturalism')
-                    
-                    if relevance_indicators:
-                        print(f'     ⭐ Relevant terms: {', '.join(relevance_indicators)}')
-                        search_results['all_findings'].append({
-                            'source': 'Google Scholar',
-                            'query': query,
-                            'title': title_text,
-                            'relevance_terms': relevance_indicators,
-                            'method': 'scholar_direct'
-                        })
-            
-            search_results['search_methods'].append(f'Google Scholar: {query} - Status {response.status_code}')
-        else:
-            print(f'Failed with status {response.status_code}')
-            
-    except Exception as e:
-        print(f'Error: {str(e)}')
-    
-    time.sleep(3)  # Rate limiting
-
-# Method 2: Try Bing search
-print('\n=== METHOD 2: BING SEARCH ===')
-print('=' * 40)
-
-bing_queries = [
-    '"1851" "atheistic naturalism" phrenology mesmerism book',
-    '1851 controversial phrenology mesmerism co-authored book',
-    'phrenology mesmerism 1851 naturalism reissued 2009'
-]
-
-for i, query in enumerate(bing_queries, 1):
-    print(f'\nBing Search {i}: {query}')
-    try:
-        bing_url = f'https://www.bing.com/search?q={quote_plus(query)}'
-        print(f'URL: {bing_url}')
-        
-        response = requests.get(bing_url, headers=headers, timeout=20)
-        print(f'Status: {response.status_code}')
-        
-        if response.status_code == 200:
-            # Save raw HTML
-            filename = f'bing_search_{i}.html'
-            filepath = os.path.join('workspace', filename)
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(response.text)
-            print(f'Saved: {filepath}')
-            
-            # Parse for results
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Look for Bing result titles
-            result_links = soup.find_all('a', href=True)
-            relevant_results = []
-            
-            for link in result_links:
-                link_text = link.get_text().strip()
-                href = link.get('href')
-                
-                if len(link_text) > 15 and href:
-                    text_lower = link_text.lower()
-                    relevance_score = 0
-                    matched_terms = []
-                    
-                    key_terms = {'1851': 3, 'phrenology': 2, 'mesmerism': 2, 'naturalism': 2, 'atheistic': 2, 'book': 1}
-                    
-                    for term, weight in key_terms.items():
-                        if term in text_lower:
-                            relevance_score += weight
-                            matched_terms.append(term)
-                    
-                    if relevance_score >= 3:
-                        relevant_results.append({
-                            'text': link_text[:150],
-                            'href': href,
-                            'score': relevance_score,
-                            'terms': matched_terms
-                        })
-            
-            print(f'Found {len(relevant_results)} relevant results')
-            for j, result in enumerate(relevant_results[:3], 1):
-                print(f'  {j}. Score {result["score"]}: {result["text"]}...')
-                print(f'     Terms: {', '.join(result["terms"])}')
-                
-                search_results['all_findings'].append({
-                    'source': 'Bing',
-                    'query': query,
-                    'title': result['text'],
-                    'link': result['href'],
-                    'relevance_score': result['score'],
-                    'relevance_terms': result['terms'],
-                    'method': 'bing_direct'
-                })
-            
-            search_results['search_methods'].append(f'Bing: {query} - Status {response.status_code}')
-        else:
-            print(f'Failed with status {response.status_code}')
-            
-    except Exception as e:
-        print(f'Error: {str(e)}')
-    
-    time.sleep(3)  # Rate limiting
-
-# Method 3: Try specific academic database searches
-print('\n=== METHOD 3: ACADEMIC DATABASE SEARCHES ===')
-print('=' * 50)
-
-# Try JSTOR, Project MUSE, and other academic sources
-academic_sites = [
-    'site:jstor.org',
-    'site:muse.jhu.edu', 
-    'site:archive.org',
-    'site:hathitrust.org'
-]
-
-base_query = '1851 atheistic naturalism phrenology mesmerism'
-
-for i, site in enumerate(academic_sites, 1):
-    query = f'{site} {base_query}'
-    print(f'\nAcademic Search {i}: {query}')
-    
-    try:
-        # Use Google to search specific academic sites
-        google_url = f'https://www.google.com/search?q={quote_plus(query)}'
-        print(f'URL: {google_url}')
-        
-        response = requests.get(google_url, headers=headers, timeout=20)
-        print(f'Status: {response.status_code}')
-        
-        if response.status_code == 200:
-            filename = f'academic_search_{i}_{site.replace("site:", "").replace(".", "_")}.html'
-            filepath = os.path.join('workspace', filename)
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(response.text)
-            print(f'Saved: {filepath}')
-            
-            # Quick analysis
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Look for Google result snippets
-            snippets = soup.find_all(['span', 'div'], class_=lambda x: x and 'st' in str(x).lower())
-            
-            relevant_snippets = []
-            for snippet in snippets:
-                snippet_text = snippet.get_text().strip()
-                if len(snippet_text) > 20:
-                    text_lower = snippet_text.lower()
-                    if any(term in text_lower for term in ['1851', 'phrenology', 'mesmerism', 'naturalism']):
-                        relevant_snippets.append(snippet_text[:200])
-            
-            print(f'Found {len(relevant_snippets)} relevant snippets')
-            for j, snippet in enumerate(relevant_snippets[:2], 1):
-                print(f'  {j}. {snippet}...')
-                
-                search_results['all_findings'].append({
-                    'source': f'Academic - {site}',
-                    'query': query,
-                    'snippet': snippet,
-                    'method': 'academic_site_search'
-                })
-            
-            search_results['search_methods'].append(f'Academic {site}: Status {response.status_code}')
-        else:
-            print(f'Failed with status {response.status_code}')
-            
-    except Exception as e:
-        print(f'Error: {str(e)}')
-    
-    time.sleep(4)  # Longer delay for Google
-
-# Method 4: Try alternative search engines
-print('\n=== METHOD 4: ALTERNATIVE SEARCH ENGINES ===')
-print('=' * 50)
-
-# Try Startpage (uses Google results but with privacy)
-startpage_query = '"1851" phrenology mesmerism atheistic naturalism book'
-print(f'\nStartpage Search: {startpage_query}')
-
-try:
-    startpage_url = f'https://www.startpage.com/sp/search?query={quote_plus(startpage_query)}'
-    print(f'URL: {startpage_url}')
-    
-    response = requests.get(startpage_url, headers=headers, timeout=20)
-    print(f'Status: {response.status_code}')
-    
-    if response.status_code == 200:
-        filename = 'startpage_search.html'
-        filepath = os.path.join('workspace', filename)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(response.text)
-        print(f'Saved: {filepath}')
-        
-        search_results['search_methods'].append(f'Startpage: Status {response.status_code}')
-    else:
-        print(f'Failed with status {response.status_code}')
-        
-except Exception as e:
-    print(f'Error: {str(e)}')
-
-# Analyze all findings
-print('\n' + '=' * 80)
-print('COMPREHENSIVE ANALYSIS OF ALL SEARCH METHODS')
-print('=' * 80)
-
-total_findings = len(search_results['all_findings'])
-print(f'Total findings collected: {total_findings}')
-print(f'Search methods attempted: {len(search_results["search_methods"])}')
-
-if search_results['all_findings']:
-    print('\n🔍 ALL FINDINGS ANALYSIS:')
-    print('-' * 40)
-    
-    # Group by source
-    by_source = {}
-    for finding in search_results['all_findings']:
-        source = finding['source']
-        if source not in by_source:
-            by_source[source] = []
-        by_source[source].append(finding)
-    
-    for source, findings in by_source.items():
-        print(f'\n{source} ({len(findings)} findings):')
-        for i, finding in enumerate(findings, 1):
-            title = finding.get('title', finding.get('snippet', 'No title'))[:100]
-            terms = finding.get('relevance_terms', [])
-            score = finding.get('relevance_score', 'N/A')
-            print(f'  {i}. {title}... (Score: {score}, Terms: {", ".join(terms)})')
-    
-    # Identify potential book candidates
-    book_indicators = ['book', 'work', 'treatise', 'publication', 'volume']
-    year_indicators = ['1851']
-    topic_indicators = ['phrenology', 'mesmerism', 'naturalism', 'atheistic']
-    
-    for finding in search_results['all_findings']:
-        text_content = (finding.get('title', '') + ' ' + finding.get('snippet', '')).lower()
-        
-        has_book = any(indicator in text_content for indicator in book_indicators)
-        has_year = any(indicator in text_content for indicator in year_indicators)
-        has_topic = any(indicator in text_content for indicator in topic_indicators)
-        
-        if has_book and has_year and has_topic:
-            search_results['book_candidates'].append(finding)
-    
-    print(f'\n📚 POTENTIAL BOOK CANDIDATES: {len(search_results["book_candidates"])}')
-    for i, candidate in enumerate(search_results['book_candidates'], 1):
-        print(f'\n{i}. Source: {candidate["source"]}')
-        print(f'   Title/Snippet: {candidate.get("title", candidate.get("snippet", "No content"))[:150]}...')
-        print(f'   Terms: {candidate.get("relevance_terms", [])}')
-        print(f'   Score: {candidate.get("relevance_score", "N/A")}')
-
+if api_key is None:
+    print("Error: Missing API key. Make sure you have SERPAPI_API_KEY in your environment variables.")
 else:
-    print('\n❌ No findings collected from any search method')
-    print('This suggests the book may be:')
-    print('1. Very obscure or not well-digitized')
-    print('2. Known by a different title or description')
-    print('3. Not matching our exact search terms')
-
-# Save comprehensive results
-results_file = os.path.join('workspace', 'comprehensive_1851_book_search.json')
-with open(results_file, 'w', encoding='utf-8') as f:
-    json.dump(search_results, f, indent=2, ensure_ascii=False)
-
-print(f'\n💾 COMPREHENSIVE SEARCH RESULTS SAVED TO: {results_file}')
-
-# Summary statistics
-search_results['analysis_summary'] = {
-    'total_findings': total_findings,
-    'book_candidates': len(search_results['book_candidates']),
-    'search_methods_attempted': len(search_results['search_methods']),
-    'successful_searches': len([m for m in search_results['search_methods'] if '200' in m]),
-    'sources_used': list(set([f['source'] for f in search_results['all_findings']])) if search_results['all_findings'] else []
-}
-
-print(f'\n📊 FINAL SEARCH STATISTICS:')
-print(f'   • Total findings: {search_results["analysis_summary"]["total_findings"]}')
-print(f'   • Book candidates: {search_results["analysis_summary"]["book_candidates"]}')
-print(f'   • Methods attempted: {search_results["analysis_summary"]["search_methods_attempted"]}')
-print(f'   • Successful searches: {search_results["analysis_summary"]["successful_searches"]}')
-print(f'   • Sources accessed: {search_results["analysis_summary"]["sources_used"]}')
-
-print('\n🎯 RECOMMENDED NEXT STEPS:')
-if search_results['book_candidates']:
-    print('1. ✅ Investigate specific book candidates found')
-    print('2. ✅ Follow up on promising links and sources')
-    print('3. ✅ Search for 2009 reissue information')
-else:
-    print('1. 🔄 Try more specific author name searches')
-    print('2. 🔄 Search for "controversial 1851 books" generally')
-    print('3. 🔄 Look into 19th century philosophy/science book catalogs')
-    print('4. 🔄 Search academic databases for phrenology/mesmerism history')
-
-print('5. 📋 Review all saved HTML files for additional context')
-print('6. 🔍 Consider library catalog searches (WorldCat, etc.)')
-
-print('\n=== COMPREHENSIVE MULTI-METHOD SEARCH COMPLETE ===')
-```
-
-### Development Step 7: Identify First Name in Holabird & Roche Firm Title and Variations as of June 2023
-
-**Description**: Research the architectural firm Holabird & Roche to determine the first name appearing in the firm's name as of June 2023. Focus on finding: (1) The complete firm name and any variations or successors, (2) The chronological order of names in the firm title, (3) Verify the firm's status and naming convention as of June 2023, (4) Confirm which name appears first alphabetically or positionally in the official firm designation. Look for the firm's current website, professional directories, architectural databases, and recent project listings to establish the exact naming format used in 2023.
-
-**Use Cases**:
-- Architectural heritage management: automating the extraction of founding architect first names (e.g., “William” from Holabird & Root) when cataloging historic Chicago buildings in a digital preservation database
-- Legal due diligence for mergers and acquisitions: parsing historical firm titles to confirm partner identities and ensure accurate naming conventions in transaction documents
-- Museum exhibit curation: generating founder biographies by programmatically extracting first names from archival architectural firm names for exhibit labels and multimedia displays
-- Marketing automation for industry conferences: populating speaker and sponsor profiles with correct founder first names by analyzing firm names in registration data
-- Academic publishing workflow: integrating a script to pull principal architect first names from firm titles for citation footnotes in urban design and architectural history journals
-- Real estate property management: tagging building portfolios with founding architect first names to enrich maintenance records and promotional brochures for heritage properties
-- CRM data enrichment in the AEC sector: automatically appending founders’ first names to architectural firm records in customer databases to enable personalized outreach and relationship tracking
-
-```
-import os
-import json
-
-print('=== FINAL ANSWER DETERMINATION ===')
-print('Based on research findings, determining the first name appearing in the firm name as of June 2023...')
-
-# Load the analysis results to confirm our findings
-analysis_path = 'workspace/holabird_analysis_results.json'
-
-if os.path.exists(analysis_path):
-    print(f'\nLoading analysis results from: {analysis_path}')
+    print(f"Searching for: {query}")
+    print(f"API key available: {api_key[:10]}...")
     
-    with open(analysis_path, 'r') as f:
-        analysis_data = json.load(f)
-    
-    print('\n=== CONFIRMED RESEARCH FINDINGS ===')
-    print(f'Current firm name as of June 2023: {analysis_data.get("current_firm_name", "Unknown")}')
-    print(f'Historical firm name: {analysis_data.get("historical_name", "Unknown")}')
-    print(f'Official website: {analysis_data.get("official_website", "Unknown")}')
-    print(f'Conclusion: {analysis_data.get("conclusion", "Unknown")}')
-    
-    # Extract key information from search results to identify the founders
-    print('\n=== IDENTIFYING THE FOUNDERS ===')
-    
-    key_findings = analysis_data.get('key_findings', [])
-    
-    # From the historical evidence, we know:
-    # - William Holabird (1854-1923) was the founder
-    # - Martin Roche was his partner (Holabird & Roche became Holabird & Root)
-    # - The current firm name as of June 2023 is "Holabird & Root"
-    
-    print('Historical evidence from search results:')
-    for finding in key_findings:
-        if 'William Holabird' in finding.get('evidence', ''):
-            print(f'- {finding.get("evidence", "")}')  
-    
-    # Based on the government source (cfa.gov) that mentioned:
-    # "His father, William Holabird, had formed the architectural firm Holabird & Roche in Chicago in 1883"
-    
-    print('\n=== FIRM NAME ANALYSIS ===')
-    current_firm_name = analysis_data.get('current_firm_name', 'Holabird & Root')
-    print(f'Current firm name: {current_firm_name}')
-    
-    # Parse the firm name to identify the first name that appears
-    firm_parts = current_firm_name.replace('&', '').split()
-    print(f'Firm name parts: {firm_parts}')
-    
-    # The first part of the firm name is "Holabird"
-    # "Holabird" refers to William Holabird, the founder
-    first_surname_in_firm = firm_parts[0] if firm_parts else None
-    print(f'First surname in firm name: {first_surname_in_firm}')
-    
-    # Determine the first name based on historical evidence
-    if first_surname_in_firm == 'Holabird':
-        # From the research, William Holabird was the founder
-        first_name_answer = 'William'
-        print(f'\n*** ANSWER DETERMINED ***')
-        print(f'The first surname "Holabird" refers to William Holabird')
-        print(f'Therefore, the first name appearing in the firm name is: {first_name_answer}')
-    else:
-        print(f'Unexpected firm name structure. Cannot determine first name.')
-        first_name_answer = None
-    
-    # Save the final answer
-    final_answer = {
-        'task': 'Determine the first name appearing in Holabird & Roche firm name as of June 2023',
-        'research_date': '2024',
-        'target_date': 'June 2023',
-        'firm_name_june_2023': current_firm_name,
-        'first_surname_in_name': first_surname_in_firm,
-        'first_name_answer': first_name_answer,
-        'historical_context': {
-            'founder': 'William Holabird (1854-1923)',
-            'partner': 'Martin Roche',
-            'original_firm': 'Holabird & Roche (1883)',
-            'current_firm': 'Holabird & Root (as of 2023)',
-            'evolution': 'Holabird & Simonds -> Holabird & Roche -> Holabird & Root'
-        },
-        'evidence_sources': {
-            'official_website': 'https://www.holabird.com/',
-            'instagram_2023_reference': 'Instagram post from early 2023 confirms "Holabird and Root"',
-            'government_source': 'U.S. Commission of Fine Arts confirms William Holabird founded the firm',
-            'chicago_landmarks': 'Chicago government website confirms firm history'
-        },
-        'verification': {
-            'firm_exists_june_2023': True,
-            'firm_name_confirmed': True,
-            'first_name_extracted': True,
-            'multiple_sources_confirmed': True
-        }
+    # Prepare API request parameters
+    params = {
+        "q": query,
+        "api_key": api_key,
+        "engine": "google",
+        "google_domain": "google.com",
+        "safe": "off",
+        "num": max_results,
+        "type": type,
     }
     
-    with open('workspace/holabird_final_answer.json', 'w') as f:
-        json.dump(final_answer, f, indent=2)
+    print(f"Making request to SerpAPI with params: {params}")
     
-    print(f'\n=== FINAL ANSWER SAVED ===')
-    print(f'Final answer saved to: workspace/holabird_final_answer.json')
+    # Make API request to SerpAPI
+    response = requests.get("https://serpapi.com/search.json", params=params)
     
-    print('\n=== TASK COMPLETION SUMMARY ===')
-    print('✅ Research completed successfully')
-    print('✅ Firm name as of June 2023 determined: Holabird & Root')
-    print('✅ First name in firm name identified: William')
-    print('✅ Multiple sources confirm findings')
-    print('✅ Historical context established')
+    print(f"Response status code: {response.status_code}")
     
-    print(f'\n*** FINAL ANSWER: {first_name_answer} ***')
-    
-else:
-    print('Analysis results file not found. Cannot determine final answer.')
-    print('Available workspace files:')
-    if os.path.exists('workspace'):
-        workspace_files = os.listdir('workspace')
-        for file in workspace_files:
-            print(f'  - {file}')
+    if response.status_code == 200:
+        results = response.json()
+        
+        # Check if we got organic results
+        if not results.get("organic_results"):
+            print(f"No results found for '{query}'. Response keys: {list(results.keys())}")
+            if 'error' in results:
+                print(f"API Error: {results['error']}")
+                
+            # Try a broader search
+            print("\nTrying a broader search with just 'Nedoshivina 2010'...")
+            broad_query = "Nedoshivina 2010"
+            params["q"] = broad_query
+            
+            response2 = requests.get("https://serpapi.com/search.json", params=params)
+            if response2.status_code == 200:
+                results2 = response2.json()
+                if results2.get("organic_results"):
+                    results = results2
+                    query = broad_query
+                    print(f"Broader search successful with {len(results['organic_results'])} results")
+                    
+        if results.get("organic_results"):
+            print(f"\nFound {len(results['organic_results'])} results for '{query}':")
+            print("="*80)
+            
+            # Look for academic paper links (PDF, DOI, journal sites)
+            academic_links = []
+            relevant_results = []
+            
+            for i, result in enumerate(results["organic_results"]):
+                title = result.get('title', 'No title')
+                link = result.get('link', 'No link')
+                snippet = result.get('snippet', 'No snippet')
+                
+                print(f"\nResult {i+1}:")
+                print(f"Title: {title}")
+                print(f"Link: {link}")
+                print(f"Snippet: {snippet}")
+                print("-" * 60)
+                
+                # Check for academic/scientific indicators
+                academic_indicators = [
+                    'doi.org', 'pubmed', 'researchgate', 'scholar.google',
+                    '.pdf', 'journal', 'publication', 'research',
+                    'specimens', 'taxonomy', 'species', 'museum',
+                    'repository', 'collection', 'vietnam'
+                ]
+                
+                is_academic = any(indicator in (title + link + snippet).lower() for indicator in academic_indicators)
+                
+                if is_academic:
+                    academic_links.append(link)
+                    relevant_results.append(result)
+                    print(f"*** POTENTIALLY RELEVANT ACADEMIC SOURCE ***")
+                    
+                # Check specifically for Vietnamese/specimen content
+                vietnamese_indicators = ['vietnam', 'specimen', 'kuznetzov', 'collection', 'museum', 'repository']
+                has_vietnamese_content = any(indicator in (title + link + snippet).lower() for indicator in vietnamese_indicators)
+                
+                if has_vietnamese_content:
+                    print(f"*** CONTAINS VIETNAMESE/SPECIMEN CONTENT ***")
+            
+            print(f"\nTotal potentially academic links found: {len(academic_links)}")
+            for i, link in enumerate(academic_links[:5]):  # Show first 5
+                print(f"Academic link {i+1}: {link}")
+                
+            # Save search results to workspace
+            import json
+            search_data = {
+                'query_used': query,
+                'total_results': len(results['organic_results']),
+                'academic_links_found': len(academic_links),
+                'search_results': results,
+                'relevant_results': relevant_results
+            }
+            
+            with open('workspace/nedoshivina_2010_search_results.json', 'w') as f:
+                json.dump(search_data, f, indent=2)
+            print(f"\nSearch results saved to workspace/nedoshivina_2010_search_results.json")
+            
+            # Try more specific searches if initial search wasn't very successful
+            if len(academic_links) < 3:
+                print("\n" + "="*80)
+                print("CONDUCTING ADDITIONAL TARGETED SEARCHES")
+                print("="*80)
+                
+                additional_queries = [
+                    '"Nedoshivina" Vietnamese specimens taxonomy',
+                    'Kuznetzov Vietnamese specimens 2010',
+                    'Nedoshivina 2010 filetype:pdf',
+                    '"Nedoshivina" museum collection Vietnam'
+                ]
+                
+                all_additional_results = []
+                
+                for additional_query in additional_queries:
+                    print(f"\nSearching: {additional_query}")
+                    params["q"] = additional_query
+                    params["num"] = 10  # Fewer results for additional searches
+                    
+                    add_response = requests.get("https://serpapi.com/search.json", params=params)
+                    if add_response.status_code == 200:
+                        add_results = add_response.json()
+                        if add_results.get("organic_results"):
+                            print(f"Found {len(add_results['organic_results'])} additional results")
+                            all_additional_results.extend(add_results['organic_results'])
+                            
+                            # Show top results for this search
+                            for j, result in enumerate(add_results['organic_results'][:3]):
+                                title = result.get('title', 'No title')
+                                link = result.get('link', 'No link')
+                                print(f"  {j+1}. {title[:100]}...")
+                                print(f"     {link}")
+                        else:
+                            print("No results for this additional query")
+                    else:
+                        print(f"Error in additional search: {add_response.status_code}")
+                
+                # Save all additional search results
+                if all_additional_results:
+                    additional_data = {
+                        'additional_queries': additional_queries,
+                        'total_additional_results': len(all_additional_results),
+                        'additional_search_results': all_additional_results
+                    }
+                    
+                    with open('workspace/nedoshivina_additional_searches.json', 'w') as f:
+                        json.dump(additional_data, f, indent=2)
+                    print(f"\nAdditional search results saved to workspace/nedoshivina_additional_searches.json")
+                    print(f"Total additional results found: {len(all_additional_results)}")
+                
     else:
-        print('  No workspace directory found')
-
-print('\n=== TASK COMPLETE ===')
+        print(f"Error: API request failed with status {response.status_code}: {response.text}")
 ```
 
 ## Created Time
-2025-08-11 04:54:47
+2025-08-13 22:07:36

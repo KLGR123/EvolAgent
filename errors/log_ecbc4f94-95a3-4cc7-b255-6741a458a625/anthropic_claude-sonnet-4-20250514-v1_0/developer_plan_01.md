@@ -1,10 +1,10 @@
 # Developer Plan 01
 
 ## Plan
-Search for and access the English Wikipedia article about Lego from 2022 to identify the latest version available from that year. Extract and count all images present in the article, including photographs, diagrams, logos, and any other visual content embedded within the page content.
+Search for and access the English Wikipedia article about 'Lego' to find the latest version from 2022. Use web search or direct Wikipedia access to locate the Lego article, then identify the specific revision that represents the latest version from 2022 (likely from late December 2022). Once the correct 2022 version is accessed, systematically count all images present in the article content, including photographs, diagrams, logos, and any other visual media embedded within the article text.
 
 ## Description
-This is the optimal starting approach because: (1) We need to locate the specific 2022 version of the Lego Wikipedia article to ensure we're analyzing the correct timeframe, (2) No previous research has been conducted, (3) Expected outcome is to access the Wikipedia page and systematically identify all images contained within the article content, (4) This directly addresses the TASK requirement to count the total number of images in the latest 2022 Lego English Wikipedia article.
+This is the optimal starting approach because: (1) We need to identify and access the specific 2022 version of the Lego Wikipedia article rather than the current version, (2) No previous research has been conducted on this image counting task, (3) Expected outcome is to locate the correct 2022 article version and extract all embedded images for counting, (4) This directly addresses the TASK requirement to determine the exact number of images in the latest 2022 version of the Lego English Wikipedia article.
 
 ## Episodic Examples
 ### Development Step 3: Wikipedia 'Dragon' Page: Leap Day (Feb 29, 2000 & 2004) Edits Removing Jokes or Humor Content
@@ -657,423 +657,6 @@ print("\nIf no joke removal is found in this revision, the surrounding revisions
 print("may contain the actual joke removal that this comment references.")
 ```
 
-### Development Step 5: Analyze 2022 Legume Wikipedia Logs for Content Violations and Decode ‘R’ Policy Meaning
-
-**Description**: Search for information about the Legume Wikipedia page and identify what content violations occurred in its public logs during 2022 before December. Focus on finding the specific type of content that was violated and the associated three core policies, particularly identifying what 'R' stands for in those policies.
-
-**Use Cases**:
-- Wikipedia community management: Auditing the edit history of high-traffic plant taxonomy pages (like “Legume”) to flag all vandalism, spam, or unsourced content removals before December 2022 and ensure policy compliance.
-- Academic research on collaborative editing: Extracting detailed rollback summaries and policy references from the Legume page’s 2022 logs to analyze how “No Original Research” (NOR) and “Verifiability” (V) issues evolve in botanical articles.
-- Data journalism investigation: Mining the public history of articles on crop nutrition to identify when and why nutritional claims were removed or reverted, helping reporters document misinformation trends in legumes.
-- Legal and copyright compliance review: Systematically collecting all entries marked “deleted,” “removed,” or “rollback” from the Legume page to verify that no copyrighted text was inadvertently retained in public edits during 2022.
-- Non-profit conservation monitoring: Automating a monthly scan of endangered plant species pages (including legumes) to detect policy violations and generate alerts for curators when unsourced or promotional content appears.
-- Bot development for policy enforcement: Feeding the parsed 2022 edit summaries into a custom moderation bot that recognizes “RV,” “SPAM,” and “VAND” tags to automatically revert or flag noncompliant edits in ecology-related articles.
-- Digital literacy education: Leveraging real flagged entries from the Legume page to teach students about the three core Wikipedia policies (NPOV, V, NOR) and how to spot and document content violations in collaborative platforms.
-- SEO and brand management: Reviewing promotional content removals on corporate-sponsored legume pages to understand why certain claims were reverted, guiding marketing teams to craft compliance-ready copy.
-
-```
-import os
-import json
-from bs4 import BeautifulSoup
-import re
-
-print("=== DEEP DIVE INTO EDIT HISTORY FOR CONTENT VIOLATIONS ===\n")
-print("Objective: Extract detailed edit summaries and administrative actions from 2022\n")
-
-# Locate workspace directory
-workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
-if not workspace_dirs:
-    print("No workspace directory found.")
-    exit()
-
-workspace_dir = workspace_dirs[0]
-print(f"Using workspace directory: {workspace_dir}\n")
-
-# Load the edit history HTML file directly for detailed parsing
-history_file = None
-for file in os.listdir(workspace_dir):
-    if 'history' in file.lower() and file.endswith('.html'):
-        history_file = os.path.join(workspace_dir, file)
-        break
-
-if not history_file or not os.path.exists(history_file):
-    print("Edit history file not found.")
-    exit()
-
-print(f"Parsing edit history file: {os.path.basename(history_file)}")
-file_size = os.path.getsize(history_file)
-print(f"File size: {file_size:,} bytes\n")
-
-# Parse the HTML with focus on edit summaries and administrative actions
-with open(history_file, 'r', encoding='utf-8') as f:
-    html_content = f.read()
-
-soup = BeautifulSoup(html_content, 'html.parser')
-
-print("=== SEARCHING FOR EDIT ENTRIES WITH SUMMARIES ===\n")
-
-# Look for edit history entries - Wikipedia edit history typically uses specific CSS classes
-edit_entries = []
-
-# Try multiple selectors for edit history entries
-selectors_to_try = [
-    'li.mw-history-line',  # Common class for edit history lines
-    'li[class*="history"]',  # Any li with 'history' in class name
-    'li[id*="mw-history"]',  # Any li with history in id
-    'tr[class*="history"]',  # Table rows with history class
-    'tr[class*="mw-history"]'  # MW history table rows
-]
-
-for selector in selectors_to_try:
-    entries = soup.select(selector)
-    if entries:
-        print(f"Found {len(entries)} edit entries using selector: {selector}")
-        edit_entries = entries
-        break
-
-if not edit_entries:
-    print("No edit entries found with standard selectors. Trying broader search...\n")
-    # Try to find any list items or table rows containing dates
-    all_lis = soup.find_all('li')
-    all_trs = soup.find_all('tr')
-    
-    # Look for elements containing 2022 dates
-    potential_entries = []
-    for element in all_lis + all_trs:
-        element_text = element.get_text()
-        if '2022' in element_text and any(month in element_text.lower() for month in ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november']):
-            potential_entries.append(element)
-    
-    edit_entries = potential_entries
-    print(f"Found {len(edit_entries)} potential edit entries containing 2022 dates\n")
-
-print("=== ANALYZING EDIT ENTRIES FOR VIOLATIONS ===\n")
-
-violation_entries = []
-content_violations = []
-policy_references = []
-
-for i, entry in enumerate(edit_entries[:20], 1):  # Analyze first 20 entries
-    entry_text = entry.get_text().strip()
-    entry_html = str(entry)
-    
-    print(f"Edit Entry {i}:")
-    print(f"Text: {entry_text[:300]}...")  # First 300 characters
-    
-    # Look for 2022 dates specifically before December
-    before_december_2022 = False
-    date_patterns = [
-        r'\b(January|February|March|April|May|June|July|August|September|October|November)\s+\d{1,2},?\s+2022\b',
-        r'\b2022[-/]\d{1,2}[-/]\d{1,2}\b',
-        r'\b\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov)\s+2022\b'
-    ]
-    
-    for pattern in date_patterns:
-        if re.search(pattern, entry_text, re.IGNORECASE):
-            before_december_2022 = True
-            break
-    
-    # Look for violation indicators in edit summaries
-    violation_keywords = [
-        'revert', 'reverted', 'undid', 'rollback', 'removed', 'deleted', 'blocked',
-        'vandalism', 'spam', 'violation', 'policy', 'warning', 'copyright',
-        'inappropriate', 'unsourced', 'unreliable', 'promotional', 'pov'
-    ]
-    
-    found_violations = [keyword for keyword in violation_keywords if keyword.lower() in entry_text.lower()]
-    
-    # Look for policy abbreviations that might include 'R'
-    policy_abbreviations = re.findall(r'\b[A-Z]{2,}\b', entry_text)
-    r_policies = [abbrev for abbrev in policy_abbreviations if 'R' in abbrev]
-    
-    # Look for "three" with policy context
-    three_policy_context = 'three' in entry_text.lower() and any(word in entry_text.lower() for word in ['policy', 'policies', 'rule', 'rules'])
-    
-    print(f"  Before December 2022: {before_december_2022}")
-    print(f"  Violation keywords found: {found_violations}")
-    print(f"  Policy abbreviations: {policy_abbreviations}")
-    print(f"  R-containing policies: {r_policies}")
-    print(f"  Three+policy context: {three_policy_context}")
-    
-    # Store significant entries
-    if before_december_2022 and (found_violations or r_policies or three_policy_context):
-        violation_entry = {
-            'entry_number': i,
-            'full_text': entry_text,
-            'html': entry_html,
-            'violation_keywords': found_violations,
-            'policy_abbreviations': policy_abbreviations,
-            'r_policies': r_policies,
-            'three_policy_context': three_policy_context,
-            'before_december_2022': before_december_2022
-        }
-        violation_entries.append(violation_entry)
-        print(f"  *** FLAGGED AS POTENTIAL VIOLATION ENTRY ***")
-    
-    print()
-
-print(f"=== FLAGGED VIOLATION ENTRIES: {len(violation_entries)} ===\n")
-
-# Detailed analysis of flagged entries
-for i, entry in enumerate(violation_entries, 1):
-    print(f"VIOLATION ENTRY {i}:")
-    print(f"Full text: {entry['full_text']}")
-    print(f"Keywords: {entry['violation_keywords']}")
-    print(f"Policy abbreviations: {entry['policy_abbreviations']}")
-    print(f"R-containing policies: {entry['r_policies']}")
-    print()
-
-# Search for specific Wikipedia policy abbreviations
-print("=== SEARCHING FOR COMMON WIKIPEDIA POLICY ABBREVIATIONS ===\n")
-
-common_policies = {
-    'BLP': 'Biographies of Living Persons',
-    'COI': 'Conflict of Interest', 
-    'NPOV': 'Neutral Point of View',
-    'NOR': 'No Original Research',
-    'RS': 'Reliable Sources',
-    'V': 'Verifiability',
-    'WEIGHT': 'Due Weight',
-    'SPAM': 'Spam',
-    'VAND': 'Vandalism',
-    'RV': 'Revert',
-    'CSD': 'Criteria for Speedy Deletion'
-}
-
-all_text = soup.get_text().lower()
-found_policies = {}
-
-for abbrev, full_name in common_policies.items():
-    if abbrev.lower() in all_text or full_name.lower() in all_text:
-        # Count occurrences and find context
-        abbrev_count = all_text.count(abbrev.lower())
-        name_count = all_text.count(full_name.lower())
-        
-        found_policies[abbrev] = {
-            'full_name': full_name,
-            'abbrev_count': abbrev_count,
-            'name_count': name_count,
-            'total_mentions': abbrev_count + name_count,
-            'contains_r': 'R' in abbrev
-        }
-        
-        print(f"{abbrev} ({full_name}): {abbrev_count + name_count} mentions (Contains R: {'R' in abbrev})")
-
-print(f"\nTotal unique policies found: {len(found_policies)}")
-
-# Look for "three core policies" specifically
-print("\n=== SEARCHING FOR THREE CORE POLICIES REFERENCE ===\n")
-
-# Wikipedia's three core content policies are typically:
-# 1. Neutral Point of View (NPOV)
-# 2. Verifiability (V)
-# 3. No Original Research (NOR)
-
-core_policies_patterns = [
-    r'three\s+core\s+polic[iy]',
-    r'three\s+content\s+polic[iy]', 
-    r'three\s+fundamental\s+polic[iy]',
-    r'three\s+main\s+polic[iy]',
-    r'npov.*verif.*research',
-    r'verif.*npov.*research',
-    r'neutral.*verif.*original'
-]
-
-for pattern in core_policies_patterns:
-    matches = re.finditer(pattern, all_text, re.IGNORECASE | re.DOTALL)
-    for match in matches:
-        start_pos = max(0, match.start() - 300)
-        end_pos = min(len(all_text), match.end() + 300)
-        context = all_text[start_pos:end_pos]
-        
-        print(f"Three core policies reference found:")
-        print(f"Pattern: {pattern}")
-        print(f"Match: {match.group()}")
-        print(f"Context: ...{context}...")
-        print()
-
-# Save comprehensive results
-final_results = {
-    'research_target': 'Legume Wikipedia content violations 2022 (before December)',
-    'analysis_method': 'Deep edit history parsing',
-    'edit_entries_analyzed': len(edit_entries),
-    'violation_entries_found': len(violation_entries),
-    'flagged_violations': violation_entries,
-    'policy_abbreviations_found': found_policies,
-    'r_containing_policies': {k: v for k, v in found_policies.items() if 'R' in k},
-    'summary': {
-        'total_policies_identified': len(found_policies),
-        'policies_with_r': len([k for k in found_policies.keys() if 'R' in k]),
-        'potential_violation_entries': len(violation_entries)
-    }
-}
-
-with open(f'{workspace_dir}/legume_deep_violation_analysis.json', 'w') as f:
-    json.dump(final_results, f, indent=2, default=str)
-
-print(f"\n=== DEEP ANALYSIS COMPLETE ===\n")
-print(f"Results saved to: {workspace_dir}/legume_deep_violation_analysis.json")
-print(f"Violation entries identified: {len(violation_entries)}")
-print(f"Policy abbreviations found: {len(found_policies)}")
-print(f"Policies containing 'R': {[k for k in found_policies.keys() if 'R' in k]}")
-print(f"\nKey findings will be summarized in next analysis step.")
-```
-
-### Development Step 7: Legume Wikipedia 2022 Logs: Identify Violated Content Type and Define “R” in Core Policies
-
-**Description**: Search for information about the Legume Wikipedia page and identify what content violations occurred in its public logs during 2022 before December. Focus on finding the specific type of content that was violated and the associated three core policies, particularly identifying what 'R' stands for in those policies.
-
-**Use Cases**:
-- Nonprofit Wikipedia oversight reporting: Volunteers automate extraction of 2022 content violations on the Legume page to create training materials that improve community guideline compliance.
-- Media fact‐checking workflow: A newsroom integrates the solution to flag policy‐violating edits on botanical topics before December 2022 as part of their verification pipeline.
-- Corporate knowledge management audit: An enterprise mirrors public Wikipedia logs into its internal wiki and uses this code to detect and remove content that breaches core policy standards.
-- Academic research on online governance: Scholars parse violation incidents and policy interpretations from Legume’s logs to quantify trends in user‐generated content moderation for a peer‐reviewed study.
-- AI training data curation: A machine learning engineer filters out any text from pre‐December 2022 Wikipedia dumps that violated core policies, ensuring only reliable, policy‐compliant data is used.
-- Digital archival quality audit: A library’s digital preservation team runs the script on archived Wikipedia snapshots to verify adherence to NPOV, Verifiability, and No Original Research policies.
-- Legal risk assessment: A consultancy analyzes public log violations for trademark or defamation risks on the Legume page, advising clients on potential exposure from user edits.
-
-```
-import os
-import json
-
-print("=== FINAL RESULTS REVIEW: LEGUME WIKIPEDIA CONTENT VIOLATIONS ===\n")
-print("Objective: Extract complete findings from final analysis file to answer PLAN questions\n")
-
-# Locate workspace directory
-workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
-if not workspace_dirs:
-    print("No workspace directory found.")
-    exit()
-
-workspace_dir = workspace_dirs[0]
-print(f"Using workspace directory: {workspace_dir}\n")
-
-# Load the final analysis file
-final_analysis_file = f'{workspace_dir}/legume_final_violation_analysis.json'
-if not os.path.exists(final_analysis_file):
-    print(f"Final analysis file not found: {final_analysis_file}")
-    exit()
-
-print(f"Loading final analysis file: {os.path.basename(final_analysis_file)}")
-file_size = os.path.getsize(final_analysis_file)
-print(f"File size: {file_size:,} bytes\n")
-
-# First inspect the file structure
-with open(final_analysis_file, 'r') as f:
-    final_data = json.load(f)
-
-print("=== FINAL ANALYSIS FILE STRUCTURE INSPECTION ===\n")
-print("Top-level keys:")
-for key, value in final_data.items():
-    if isinstance(value, dict):
-        print(f"  {key}: Dictionary with {len(value)} keys")
-        for nested_key, nested_value in value.items():
-            if isinstance(nested_value, list):
-                print(f"    {nested_key}: List with {len(nested_value)} items")
-            elif isinstance(nested_value, dict):
-                print(f"    {nested_key}: Dictionary with {len(nested_value)} keys")
-            else:
-                print(f"    {nested_key}: {str(nested_value)[:100]}...")
-    elif isinstance(value, list):
-        print(f"  {key}: List with {len(value)} items")
-    else:
-        print(f"  {key}: {value}")
-
-print("\n=== EXTRACTING ANSWERS TO PLAN QUESTIONS ===\n")
-
-# Question 1: What content violations occurred in 2022 before December?
-print("1. CONTENT VIOLATIONS IN 2022 (BEFORE DECEMBER):")
-if 'violation_incidents_2022' in final_data:
-    incidents = final_data['violation_incidents_2022']
-    print(f"   Total incidents found: {len(incidents)}")
-    
-    if incidents:
-        print("   Incident details:")
-        for i, incident in enumerate(incidents[:5], 1):  # Show first 5
-            print(f"     {i}. Source: {incident.get('source_file', 'Unknown')}")
-            if 'match' in incident:
-                print(f"        Match: {incident['match'][:150]}...")
-            print(f"        Context: {incident.get('context', 'N/A')[:200]}...")
-            print()
-    else:
-        print("   No specific violation incidents found in the data.")
-else:
-    print("   No violation incidents data found.")
-
-# Question 2: What are the three core policies?
-print("\n2. THREE CORE POLICIES IDENTIFIED:")
-if 'three_core_policies_identified' in final_data:
-    core_policies = final_data['three_core_policies_identified']
-    print(f"   Policies found: {len(core_policies)}")
-    
-    for i, policy in enumerate(core_policies, 1):
-        print(f"     {i}. {policy}")
-    
-    # Add Wikipedia's standard three core policies context
-    print("\n   Wikipedia's three core content policies are typically:")
-    print("     1. Neutral Point of View (NPOV)")
-    print("     2. Verifiability (V)")
-    print("     3. No Original Research (NOR)")
-    
-    missing_policies = []
-    if 'NPOV (Neutral Point of View)' not in core_policies:
-        missing_policies.append('NPOV (Neutral Point of View)')
-    if 'V (Verifiability)' not in core_policies:
-        missing_policies.append('V (Verifiability)')
-    if 'NOR (No Original Research)' not in core_policies:
-        missing_policies.append('NOR (No Original Research)')
-    
-    if missing_policies:
-        print(f"\n   Missing from our analysis: {missing_policies}")
-else:
-    print("   No core policies data found.")
-
-# Question 3: What does 'R' stand for in the policies?
-print("\n3. WHAT 'R' STANDS FOR IN THE POLICIES:")
-if 'r_meaning_analysis' in final_data:
-    r_analysis = final_data['r_meaning_analysis']
-    
-    if 'most_likely_meanings' in r_analysis:
-        print("   Most likely meanings:")
-        for meaning in r_analysis['most_likely_meanings']:
-            print(f"     - {meaning}")
-    
-    if 'policies_with_r' in r_analysis:
-        print(f"\n   Policies containing 'R': {r_analysis['policies_with_r']}")
-    
-    if 'conclusion' in r_analysis:
-        print(f"\n   Conclusion: {r_analysis['conclusion']}")
-else:
-    print("   No 'R' meaning analysis found.")
-
-# Summary of findings
-print("\n=== COMPREHENSIVE SUMMARY FOR PLAN COMPLETION ===\n")
-
-if 'analysis_summary' in final_data:
-    summary = final_data['analysis_summary']
-    print("Analysis Statistics:")
-    print(f"  - Total Wikipedia policies found: {summary.get('policies_found', 'N/A')}")
-    print(f"  - Policies containing 'R': {summary.get('r_policies_found', 'N/A')}")
-    print(f"  - Core policies identified: {summary.get('core_policies_identified', 'N/A')}")
-    print(f"  - Violation incidents found: {summary.get('violation_incidents', 'N/A')}")
-
-print("\n=== PLAN COMPLETION STATUS ===\n")
-print("✓ Successfully accessed Legume Wikipedia page and related logs")
-print("✓ Identified Wikipedia policy abbreviations and references")
-print("✓ Found policies containing 'R' (NOR, RS, RV)")
-print("✓ Determined 'R' most likely stands for 'Research' or 'Reliable'")
-print("✓ Located violation incidents from 2022 before December")
-print("✓ Identified components of Wikipedia's three core content policies")
-
-print("\nFINAL ANSWERS:")
-print("1. Content violations: Found 7 incidents in 2022 before December")
-print("2. Three core policies: NPOV (Neutral Point of View), V (Verifiability), NOR (No Original Research)")
-print("3. 'R' stands for: RESEARCH (from 'No Original Research' - NOR) or RELIABLE (from 'Reliable Sources' - RS)")
-
-print(f"\nComplete analysis results saved in: {workspace_dir}/legume_final_violation_analysis.json")
-print("\n=== LEGUME WIKIPEDIA CONTENT VIOLATIONS ANALYSIS COMPLETE ===")
-```
-
 ### Development Step 1: Title: Identify 'Dragon' Wikipedia Edits on Feb 29, 2000/2004 Removing Jokes or Humor Content
 
 **Description**: Search for Wikipedia revision history of the 'Dragon' page to identify edits made on leap days (February 29) before 2008. Focus on February 29, 2000 and February 29, 2004 as the only leap days in that timeframe. Look for edit summaries or revision comparisons that mention joke removal, humor deletion, or similar content changes. Extract the specific revision data showing what content was removed on those dates.
@@ -1374,5 +957,335 @@ else:
     print(f"   If no leap day revisions found, may need to expand search or check different pages")
 ```
 
+### Development Step 4: Extract July 3 2023 LOTR Wikipedia Internal Links Toward A Song of Ice and Fire
+
+**Description**: Access the archived Wikipedia page for 'The Lord of the Rings' (book) as it appeared at the end of July 3, 2023. Use the Wayback Machine or Wikipedia's revision history to retrieve the specific version from that date. Extract all outbound links from the page content, focusing on internal Wikipedia links that could potentially lead toward 'A Song of Ice and Fire'. Create a comprehensive list of linked pages including literature, fantasy, author, publisher, and genre-related links that might serve as stepping stones in the path-finding process.
+
+**Use Cases**:
+- Competitive product mapping for market intelligence teams: archive the Wikipedia page of a rival’s flagship product, extract outbound links, and use BFS to uncover related technologies and collaborators leading to a specific emerging competitor.
+- Academic literature exploration for research librarians: retrieve an archived revision of a foundational theory page, scrape internal links, and trace a path through related journals and authors to locate a target contemporary study.
+- SEO internal linking audit for digital marketing agencies: load a historical snapshot of a high-traffic Wikipedia article, extract its link network, and identify the shortest chain of links that leads to pages optimized for a target keyword.
+- Educational curriculum design for e-learning platforms: access the archived “Introduction to Biology” page, gather its outbound topic links, and map a learning path toward advanced genetics content using breadth-first search.
+- Historical content evolution analysis for digital archivists: pull the July 2023 version of a political event page, extract links, and reconstruct how references to a specific legislation article appeared over time by finding link paths.
+- Knowledge graph augmentation for AI research teams: scrape a past revision of an ontology page, collect entity links, and build a linkage chain to a new domain-specific concept to enrich the graph with contextual relationships.
+- Due diligence support for consulting firms: obtain an archived corporate biography page, scrape its network of partner and subsidiary links, and run BFS to identify the shortest route to a target industry regulation page.
+
+```
+import requests
+from bs4 import BeautifulSoup
+import json
+import time
+from collections import deque
+from datetime import datetime
+import os
+
+print("=== FIXING BFS PATH-FINDING WITH DIRECT HTML SCRAPING ===")
+print("Objective: Find path from LOTR links to 'A Song of Ice and Fire' using HTML scraping\n")
+
+# Load the LOTR links data
+workspace_dirs = [d for d in os.listdir('.') if d.startswith('workspace')]
+if not workspace_dirs:
+    print("❌ No workspace directory found")
+    exit()
+
+workspace_dir = workspace_dirs[0]
+lotr_file = os.path.join(workspace_dir, 'lotr_wikipedia_links_july_2023.json')
+
+print(f"Loading LOTR links from: {os.path.basename(lotr_file)}\n")
+
+with open(lotr_file, 'r', encoding='utf-8') as f:
+    lotr_data = json.load(f)
+
+# Select high-priority starting nodes
+starting_nodes = set()
+target_variations = [
+    "A Song of Ice and Fire",
+    "Game of Thrones", 
+    "George R. R. Martin",
+    "George R.R. Martin",
+    "George Martin",
+    "A Game of Thrones"
+]
+
+print("=== SELECTING MOST PROMISING STARTING NODES ===")
+
+# Focus on the most likely connections to fantasy literature
+high_priority_nodes = [
+    "High fantasy",
+    "Fantasy", 
+    "Epic fantasy",
+    "J. R. R. Tolkien",
+    "Fantasy literature",
+    "The Encyclopedia of Fantasy",
+    "International Fantasy Award"
+]
+
+# Add high-priority nodes if they exist in our data
+for category_name, links in lotr_data.get('categorized_links', {}).items():
+    for link in links:
+        if isinstance(link, dict) and 'article_name' in link:
+            article_name = requests.utils.unquote(link['article_name']).replace('_', ' ')
+            if article_name in high_priority_nodes:
+                starting_nodes.add(article_name)
+                print(f"Added high-priority node: {article_name}")
+
+# If we don't have enough high-priority nodes, add some from fantasy/literature categories
+if len(starting_nodes) < 10:
+    for category in ['fantasy', 'literature']:
+        if category in lotr_data.get('categorized_links', {}):
+            for link in lotr_data['categorized_links'][category][:5]:  # Just first 5 from each
+                if isinstance(link, dict) and 'article_name' in link:
+                    article_name = requests.utils.unquote(link['article_name']).replace('_', ' ')
+                    starting_nodes.add(article_name)
+
+print(f"\nTotal starting nodes selected: {len(starting_nodes)}")
+for i, node in enumerate(list(starting_nodes), 1):
+    print(f"  {i:2d}. {node}")
+
+# Function to scrape Wikipedia page links directly
+def get_wikipedia_links_html(page_title, max_links=50):
+    """Scrape Wikipedia page links directly from HTML"""
+    try:
+        # Convert page title to URL format
+        url_title = page_title.replace(' ', '_')
+        url = f"https://en.wikipedia.org/wiki/{requests.utils.quote(url_title)}"
+        
+        print(f"  Scraping: {page_title}")
+        print(f"  URL: {url}")
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Find the main content area
+            main_content = soup.find('div', {'id': 'mw-content-text'})
+            if not main_content:
+                main_content = soup
+            
+            # Extract Wikipedia article links
+            links = []
+            for link in main_content.find_all('a', href=True):
+                href = link.get('href', '')
+                if href.startswith('/wiki/') and ':' not in href.split('/')[-1]:
+                    # Extract article name from URL
+                    article_name = href.split('/')[-1].replace('_', ' ')
+                    article_name = requests.utils.unquote(article_name)
+                    
+                    # Filter out non-article pages
+                    skip_patterns = ['File:', 'Category:', 'Template:', 'User:', 'Talk:', 'Wikipedia:', 'Help:', 'Portal:', 'Special:', 'Media:']
+                    if not any(pattern in article_name for pattern in skip_patterns):
+                        if article_name not in links and len(links) < max_links:
+                            links.append(article_name)
+            
+            print(f"    Found {len(links)} article links")
+            return links
+            
+        elif response.status_code == 404:
+            print(f"    Page not found: {page_title}")
+            return []
+        else:
+            print(f"    HTTP error {response.status_code} for {page_title}")
+            return []
+            
+    except Exception as e:
+        print(f"    Error scraping {page_title}: {str(e)}")
+        return []
+
+# Function to check if we found our target
+def is_target(page_title):
+    """Check if the page title matches our target variations"""
+    page_lower = page_title.lower()
+    for target in target_variations:
+        if target.lower() == page_lower or target.lower() in page_lower:
+            return True
+    return False
+
+# Function to check for promising leads
+def is_promising_lead(page_title):
+    """Check if page title suggests it might lead to our target"""
+    page_lower = page_title.lower()
+    promising_keywords = [
+        'fantasy', 'epic fantasy', 'high fantasy', 'fantasy literature',
+        'fantasy series', 'fantasy novel', 'fantasy author', 'fantasy writer',
+        'martin', 'george', 'song', 'ice', 'fire', 'game', 'thrones',
+        'contemporary fantasy', 'modern fantasy', 'fantasy saga'
+    ]
+    return any(keyword in page_lower for keyword in promising_keywords)
+
+# BFS Implementation with HTML scraping
+print("\n=== STARTING BREADTH-FIRST SEARCH WITH HTML SCRAPING ===")
+print(f"Target variations: {target_variations}\n")
+
+# Initialize BFS structures
+queue = deque()
+visited = set()
+parent = {}
+depth = {}
+found_paths = []
+max_depth = 2  # Reduced depth to be more focused
+max_requests = 20  # Reduced requests due to slower HTML scraping
+request_count = 0
+
+# Add starting nodes to queue
+for node in starting_nodes:
+    queue.append(node)
+    depth[node] = 0
+    parent[node] = None
+
+print(f"Initialized BFS queue with {len(queue)} starting nodes")
+print(f"Search parameters: max_depth={max_depth}, max_requests={max_requests}\n")
+
+# Function to reconstruct path
+def get_path(node, parent_dict):
+    """Reconstruct the path from start to target node"""
+    path = []
+    current = node
+    while current is not None:
+        path.append(current)
+        current = parent_dict.get(current)
+    return list(reversed(path))
+
+# Main BFS loop
+start_time = datetime.now()
+promisingLeads = []  # Track promising leads for later analysis
+
+while queue and request_count < max_requests:
+    current_node = queue.popleft()
+    
+    if current_node in visited:
+        continue
+        
+    visited.add(current_node)
+    current_depth = depth[current_node]
+    
+    print(f"\n--- Processing: {current_node} (depth {current_depth}) ---")
+    
+    # Check if we found the target
+    if is_target(current_node):
+        path = get_path(current_node, parent)
+        found_paths.append({
+            'target_found': current_node,
+            'path': path,
+            'depth': current_depth,
+            'path_length': len(path)
+        })
+        print(f"\n🎯 TARGET FOUND: {current_node}")
+        print(f"Path length: {len(path)} steps")
+        print(f"Path: {' → '.join(path)}")
+        break
+    
+    # Don't go deeper than max_depth
+    if current_depth >= max_depth:
+        print(f"  Reached max depth ({max_depth}), skipping expansion")
+        continue
+    
+    # Get outbound links from current node
+    outbound_links = get_wikipedia_links_html(current_node)
+    request_count += 1
+    
+    # Process each outbound link
+    new_nodes_added = 0
+    target_hints = []
+    
+    for link in outbound_links:
+        if link not in visited:
+            # Check if this is our target
+            if is_target(link):
+                # Found target! Add to queue and it will be processed next
+                queue.appendleft(link)  # Add to front for immediate processing
+                depth[link] = current_depth + 1
+                parent[link] = current_node
+                target_hints.append(f"TARGET: {link}")
+                new_nodes_added += 1
+            elif is_promising_lead(link):
+                # This looks promising, prioritize it
+                queue.appendleft(link)
+                depth[link] = current_depth + 1
+                parent[link] = current_node
+                target_hints.append(f"PROMISING: {link}")
+                promisingLeads.append({
+                    'node': link,
+                    'parent': current_node,
+                    'depth': current_depth + 1
+                })
+                new_nodes_added += 1
+            elif current_depth + 1 < max_depth:  # Only add regular nodes if we haven't reached max depth
+                queue.append(link)
+                depth[link] = current_depth + 1
+                parent[link] = current_node
+                new_nodes_added += 1
+    
+    print(f"  Added {new_nodes_added} new nodes to queue")
+    
+    if target_hints:
+        print(f"  🔍 Important findings: {target_hints[:3]}")
+    
+    # Add delay to be respectful to Wikipedia
+    time.sleep(1)
+    
+    # Progress update
+    elapsed = (datetime.now() - start_time).total_seconds()
+    print(f"  Progress: {len(visited)} visited, {len(queue)} in queue, {request_count}/{max_requests} requests")
+    print(f"  Elapsed: {elapsed:.1f}s")
+
+# Final results
+print(f"\n=== SEARCH COMPLETE ===")
+elapsed = (datetime.now() - start_time).total_seconds()
+print(f"Search completed in {elapsed:.1f} seconds")
+print(f"Nodes visited: {len(visited)}")
+print(f"Requests made: {request_count}")
+print(f"Paths found: {len(found_paths)}")
+
+# Save results
+search_results = {
+    'search_metadata': {
+        'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
+        'end_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'elapsed_seconds': elapsed,
+        'target_variations': target_variations,
+        'max_depth': max_depth,
+        'max_requests': max_requests,
+        'requests_made': request_count,
+        'nodes_visited': len(visited),
+        'method': 'HTML_scraping'
+    },
+    'starting_nodes': list(starting_nodes),
+    'paths_found': found_paths,
+    'promising_leads': promisingLeads,
+    'visited_nodes': list(visited)
+}
+
+results_file = os.path.join(workspace_dir, 'bfs_html_scraping_results.json')
+with open(results_file, 'w', encoding='utf-8') as f:
+    json.dump(search_results, f, indent=2, ensure_ascii=False, default=str)
+
+print(f"\n=== FINAL RESULTS ===")
+if found_paths:
+    print(f"\n🎉 SUCCESS: Found {len(found_paths)} path(s) to target!\n")
+    for i, path_info in enumerate(found_paths, 1):
+        print(f"Path {i}:")
+        print(f"  Target: {path_info['target_found']}")
+        print(f"  Length: {path_info['path_length']} steps")
+        print(f"  Route: {' → '.join(path_info['path'])}")
+        print()
+else:
+    print(f"\n⚠️ No direct paths found within {max_depth} steps using {max_requests} requests")
+    
+    if promisingLeads:
+        print(f"\n🔍 Found {len(promisingLeads)} promising leads for deeper exploration:")
+        for i, lead in enumerate(promisingLeads[:5], 1):
+            print(f"  {i}. {lead['node']} (depth {lead['depth']})")
+            print(f"     From: {lead['parent']}")
+        print("\n💡 These leads suggest connections exist but require deeper search")
+
+print(f"\n📁 Results saved to: {os.path.basename(results_file)}")
+print(f"🔄 Ready for extended search or manual exploration of promising leads")
+```
+
 ## Created Time
-2025-08-11 09:13:09
+2025-08-14 02:02:38

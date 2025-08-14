@@ -1,10 +1,10 @@
 # Developer Plan 02
 
 ## Plan
-Calculate the total number of water bottles consumed during the 3,415.43-mile journey using the specified consumption rate of 5 bottles per 100 miles (rounded to the nearest 100 miles). Then research Maine's bottle deposit program on Wikipedia to determine the refund rate per bottle as of May 2023, and calculate the total refund amount in dollars.
+Research bottle deposit laws and refund rates in Maine according to Wikipedia, since Augusta, Maine is the final destination where the water bottles will be recycled. Extract the specific refund amount per bottle that Maine provides for recycling water bottles, and then calculate the total refund amount for the 150 water bottles that will be consumed during the 3,000-mile cross-country trip.
 
 ## Description
-This is the necessary next step because: (1) We have the total driving distance of 3,415.43 miles from the previous route calculation, (2) We need to apply the consumption formula (5 bottles per 100 miles, rounded to nearest 100) to determine total bottles, (3) Expected outcome is to find Maine's bottle deposit rate from Wikipedia and calculate the final refund amount, (4) This completes the TASK by combining the distance calculation with bottle consumption rate and Maine's recycling refund program to determine the total dollar amount returned.
+This is the necessary next step because: (1) We have established that 150 water bottles will be consumed during the 3,000-mile trip from Los Angeles to Augusta via I-40 and I-90, (2) The bottles will be recycled at the end destination (Augusta, Maine), so Maine's bottle deposit laws apply, (3) Expected outcome is to find Maine's specific bottle deposit refund rate from Wikipedia and calculate the total dollar amount for 150 bottles, (4) This will complete the TASK by determining exactly how many dollars will be received back for recycling the water bottles according to Wikipedia's information on bottle deposit laws
 
 ## Episodic Examples
 ### Development Step 66: Extract Fish Bag Volume (cubic meters) from Dragon Diet PDF
@@ -106,222 +106,6 @@ else:
     print(f"Volume saved to: {out_path}")
 ```
 
-### Development Step 59: Extract Fish Bag Volume (m³) from dragon_diet_fish_bag.pdf
-
-**Description**: Search within workspace/dragon_diet_fish_bag.pdf for the section or table where the fish bag volume is calculated, locate the numeric value reported in cubic meters, and extract that volume number directly from the PDF.
-
-**Use Cases**:
-- Aquaculture feed calculation and ration planning: automatically extract fish bag volume from technical spec PDFs to determine optimal feed-to-water ratios on commercial fish farms
-- Environmental compliance reporting for fisheries: parse containment vessel volumes in fish bag specification documents to generate accurate data for water discharge permits and regulatory submissions
-- Marine biology research on stocking densities: batch process PDF manuals to aggregate fish bag volumes for habitat density simulations and ecological impact studies
-- Cold chain logistics optimization in seafood transport: extract packaging container volumes from vendor PDFs to optimize refrigerated truck loading plans and minimize spoilage
-- Manufacturing quality control in fish bag production: cross-validate extracted bag volumes from design documents against actual measurements to identify deviations and ensure product consistency
-- Inventory catalog maintenance for aquaculture suppliers: automate ingestion of fish bag volume data from supplier PDFs into product databases to streamline SKU management and ordering processes
-- Insurance risk assessment for fisheries operations: retrieve containment volumes from safety data sheets to model flood or contamination scenarios and support policy underwriting
-
-```
-import os
-import re
-from PyPDF2 import PdfReader
-
-print("=== FISH BAG VOLUME EXTRACTION ===")
-# Step 1: Locate the PDF in workspace
-dir_path = 'workspace'
-if not os.path.isdir(dir_path):
-    print(f"Error: workspace directory not found at '{dir_path}'")
-    exit(1)
-
-files = os.listdir(dir_path)
-print(f"Files in '{dir_path}': {files}")
-
-pdf_name = None
-for f in files:
-    if f.lower().endswith('.pdf') and 'dragon_diet_fish_bag' in f.lower():
-        pdf_name = f
-        break
-
-if not pdf_name:
-    print("Error: 'dragon_diet_fish_bag.pdf' not found in workspace directory.")
-    exit(1)
-
-pdf_path = os.path.join(dir_path, pdf_name)
-print(f"Found PDF: {pdf_path}\n")
-
-# Step 2: Read PDF pages and search for volume references
-reader = PdfReader(pdf_path)
-num_pages = len(reader.pages)
-print(f"Total pages in PDF: {num_pages}\n")
-
-volume_pattern = re.compile(r"(\d+(?:[\.,]\d+)*)\s*(?:m\^?3|m³|cubic meters?)", re.IGNORECASE)
-keyword_terms = ['volume', 'm3', 'm³', 'cubic meter']
-
-findings = []
-for i, page in enumerate(reader.pages):
-    try:
-        text = page.extract_text() or ''
-    except Exception as e:
-        print(f"Error extracting text from page {i+1}: {e}")
-        continue
-    lower = text.lower()
-    # Check if any volume-related keyword on this page
-    if any(term in lower for term in keyword_terms):
-        print(f"\n--- Page {i+1} contains volume-related terms ---")
-        # Extract all matches for volume_pattern
-        for match in volume_pattern.finditer(text):
-            vol_str = match.group(1)
-            unit_str = match.group(0)[len(vol_str):].strip()
-            # Provide context around match
-            start, end = match.start(), match.end()
-            ctx_start = max(0, start-50)
-            ctx_end = min(len(text), end+50)
-            context = text[ctx_start:ctx_end].replace("\n", " ")
-            print(f"Match on page {i+1}: '{match.group(0)}' -> value: {vol_str} unit: {unit_str}")
-            print(f"Context: ...{context.strip()}...")
-            findings.append({
-                'page': i+1,
-                'value': vol_str,
-                'unit': unit_str,
-                'context': context.strip()
-            })
-
-if not findings:
-    print("\nNo volume number found matching the pattern 'number + m3/cubic meters'.")
-else:
-    # Take the first finding as the reported volume
-    first = findings[0]
-    volume_value = first['value']
-    unit = first['unit']
-    print(f"\n>>> Extracted fish bag volume: {volume_value} {unit} (from page {first['page']})")
-    # Save to workspace file
-    out_path = os.path.join(dir_path, 'fish_bag_volume.txt')
-    with open(out_path, 'w') as f:
-        f.write(f"{volume_value} {unit}\n")
-    print(f"Volume saved to: {out_path}")
-```
-
-### Development Step 3: Count Intermediate Stops Between South Station and Windsor Gardens on MBTA Franklin-Foxboro Line Using API Data
-
-**Description**: Count the intermediate stops between South Station and Windsor Gardens on the MBTA Franklin-Foxboro line using the comprehensive station data already retrieved. Extract the exact number of stops that fall between these two endpoints (not including South Station and Windsor Gardens themselves) from the processed MBTA API data in the workspace files.
-
-**Use Cases**:
-- MBTA commuter rail schedule optimization for transit planners assessing passenger flow between major endpoints
-- Real estate market analysis for agents highlighting properties with direct access to intermediate stops on the Franklin-Foxboro line
-- Automated travel itinerary generation for tour operators planning group excursions with stop-by-stop breakdowns
-- Emergency response route planning for municipal agencies needing precise intermediate station locations for evacuation scenarios
-- Accessibility audits for advocacy groups evaluating the number and distribution of stops with ADA-compliant facilities between South Station and Windsor Gardens
-- Data-driven marketing campaigns for local businesses targeting commuters at specific intermediate stations
-- Academic transportation studies analyzing ridership patterns and station usage between urban and suburban endpoints
-- Mobile app development for commuters providing real-time alerts and notifications for intermediate stops along the MBTA Franklin-Foxboro line
-
-```
-import os
-import json
-
-# Find the workspace directory
-workspace_files = [f for f in os.listdir('.') if f.startswith('workspace')]
-if workspace_files:
-    workspace_dir = workspace_files[0]
-    print(f"Using workspace directory: {workspace_dir}")
-else:
-    workspace_dir = 'workspace'
-    print(f"Using default workspace directory: {workspace_dir}")
-
-print(f"\nFiles in {workspace_dir}:")
-for file in os.listdir(workspace_dir):
-    print(f"  - {file}")
-
-# Load the comprehensive analysis file that contains the stops between South Station and Windsor Gardens
-analysis_file = os.path.join(workspace_dir, 'franklin_foxboro_line_analysis.json')
-
-if os.path.exists(analysis_file):
-    print(f"\nLoading analysis from: {analysis_file}")
-    
-    with open(analysis_file, 'r') as f:
-        analysis_data = json.load(f)
-    
-    print(f"\nAnalysis data structure:")
-    print(f"Keys available: {list(analysis_data.keys())}")
-    
-    # Extract the stops between South Station and Windsor Gardens (inclusive)
-    stops_between_inclusive = analysis_data.get('stops_between_inclusive', [])
-    print(f"\nTotal stops between South Station and Windsor Gardens (inclusive): {len(stops_between_inclusive)}")
-    
-    print(f"\nAll stops in the inclusive range:")
-    for i, stop in enumerate(stops_between_inclusive, 1):
-        marker = ""
-        if stop['name'] == 'South Station':
-            marker = " ← START (South Station)"
-        elif stop['name'] == 'Windsor Gardens':
-            marker = " ← END (Windsor Gardens)"
-        print(f"{i:2d}. {stop['name']}{marker}")
-    
-    # Now count the intermediate stops (excluding South Station and Windsor Gardens)
-    intermediate_stops = []
-    for stop in stops_between_inclusive:
-        if stop['name'] not in ['South Station', 'Windsor Gardens']:
-            intermediate_stops.append(stop)
-    
-    print(f"\n" + "="*60)
-    print("INTERMEDIATE STOPS ANALYSIS")
-    print("="*60)
-    
-    print(f"\nIntermediate stops (excluding South Station and Windsor Gardens):")
-    for i, stop in enumerate(intermediate_stops, 1):
-        print(f"{i:2d}. {stop['name']}")
-    
-    intermediate_count = len(intermediate_stops)
-    print(f"\n🎯 ANSWER: There are {intermediate_count} intermediate stops between South Station and Windsor Gardens")
-    print(f"    (not including South Station and Windsor Gardens themselves)")
-    
-    # Create a summary of the result
-    result_summary = {
-        'question': 'Count intermediate stops between South Station and Windsor Gardens on MBTA Franklin-Foxboro line',
-        'data_source': 'Official MBTA API (May 2023)',
-        'line_name': analysis_data.get('line_name', 'Franklin/Foxboro Line'),
-        'total_stops_on_line': analysis_data.get('total_stops_on_line', 0),
-        'south_station_position': analysis_data.get('south_station_position', 0),
-        'windsor_gardens_position': analysis_data.get('windsor_gardens_position', 0),
-        'stops_between_inclusive_count': len(stops_between_inclusive),
-        'intermediate_stops_count': intermediate_count,
-        'intermediate_stops_list': [stop['name'] for stop in intermediate_stops],
-        'calculation': f'{len(stops_between_inclusive)} total stops between endpoints - 2 endpoints = {intermediate_count} intermediate stops'
-    }
-    
-    # Save the final result
-    result_file = os.path.join(workspace_dir, 'intermediate_stops_count.json')
-    with open(result_file, 'w') as f:
-        json.dump(result_summary, f, indent=2)
-    print(f"\nFinal result saved to: {result_file}")
-    
-    # Create a simple text answer file
-    answer_file = os.path.join(workspace_dir, 'final_answer.txt')
-    with open(answer_file, 'w') as f:
-        f.write(f"MBTA Franklin-Foxboro Line: Intermediate Stops Count\n")
-        f.write(f"="*50 + "\n\n")
-        f.write(f"Question: Count intermediate stops between South Station and Windsor Gardens\n")
-        f.write(f"Data Source: Official MBTA API (May 2023)\n\n")
-        f.write(f"ANSWER: {intermediate_count} intermediate stops\n\n")
-        f.write(f"Calculation:\n")
-        f.write(f"- Total stops between endpoints (inclusive): {len(stops_between_inclusive)}\n")
-        f.write(f"- Subtract endpoints (South Station + Windsor Gardens): 2\n")
-        f.write(f"- Intermediate stops: {len(stops_between_inclusive)} - 2 = {intermediate_count}\n\n")
-        f.write(f"Intermediate stops list:\n")
-        for i, stop in enumerate(intermediate_stops, 1):
-            f.write(f"{i:2d}. {stop['name']}\n")
-    
-    print(f"Simple answer saved to: {answer_file}")
-    
-else:
-    print(f"\n❌ Analysis file not found: {analysis_file}")
-    print("Available files in workspace:")
-    for file in os.listdir(workspace_dir):
-        print(f"  - {file}")
-
-print(f"\n" + "="*60)
-print("INTERMEDIATE STOPS COUNT COMPLETE")
-print("="*60)
-```
-
 ### Development Step 64: Locate and extract the fish bag volume (in cubic meters) from dragon_diet_fish_bag.pdf.
 
 **Description**: Search within workspace/dragon_diet_fish_bag.pdf for the section or table where the fish bag volume is calculated, locate the numeric value reported in cubic meters, and extract that volume number directly from the PDF.
@@ -421,27 +205,121 @@ else:
     print(f"Volume saved to: {out_path}")
 ```
 
-### Development Step 61: Locate and Extract Fish Bag Volume (m³) from dragon_diet_fish_bag.pdf
+### Development Step 59: Extract Fish Bag Volume (m³) from dragon_diet_fish_bag.pdf
 
 **Description**: Search within workspace/dragon_diet_fish_bag.pdf for the section or table where the fish bag volume is calculated, locate the numeric value reported in cubic meters, and extract that volume number directly from the PDF.
 
 **Use Cases**:
-- Fisheries logistics automation for a seafood export company to extract fish bag volumes from shipping PDFs and optimize container load planning
-- Marine biology research pipeline to batch-process field study reports and compile fish bag volume data for population density modeling
-- Aquarium retail inventory system integration that parses vendor PDF catalogs for fish bag dimensions and updates product listings automatically
-- Quality control compliance tool for food safety auditors to verify reported packing volumes in seafood transport documents against regulatory limits
-- E-commerce platform enhancement to auto-extract packaging volume details from supplier spec sheets in PDF form and drive dynamic shipping cost calculations
-- Supply chain analytics dashboard for cold-chain managers to aggregate cubic meter capacities from multiple carrier PDF manifests and balance temperature-controlled loads
-- Veterinary supply management software module that reads equipment and containment unit volumes from manufacturer PDFs to reconcile against hospital storage capacity requirements
+- Aquaculture feed calculation and ration planning: automatically extract fish bag volume from technical spec PDFs to determine optimal feed-to-water ratios on commercial fish farms
+- Environmental compliance reporting for fisheries: parse containment vessel volumes in fish bag specification documents to generate accurate data for water discharge permits and regulatory submissions
+- Marine biology research on stocking densities: batch process PDF manuals to aggregate fish bag volumes for habitat density simulations and ecological impact studies
+- Cold chain logistics optimization in seafood transport: extract packaging container volumes from vendor PDFs to optimize refrigerated truck loading plans and minimize spoilage
+- Manufacturing quality control in fish bag production: cross-validate extracted bag volumes from design documents against actual measurements to identify deviations and ensure product consistency
+- Inventory catalog maintenance for aquaculture suppliers: automate ingestion of fish bag volume data from supplier PDFs into product databases to streamline SKU management and ordering processes
+- Insurance risk assessment for fisheries operations: retrieve containment volumes from safety data sheets to model flood or contamination scenarios and support policy underwriting
 
 ```
 import os
 import re
 from PyPDF2 import PdfReader
 
-print("=== FISH BAG VOLUME EXTRACTION (VARIABLE NAME FIX) ===")
+print("=== FISH BAG VOLUME EXTRACTION ===")
+# Step 1: Locate the PDF in workspace
+dir_path = 'workspace'
+if not os.path.isdir(dir_path):
+    print(f"Error: workspace directory not found at '{dir_path}'")
+    exit(1)
 
-# Step 1: Locate the workspace directory (robust to random suffixes)
+files = os.listdir(dir_path)
+print(f"Files in '{dir_path}': {files}")
+
+pdf_name = None
+for f in files:
+    if f.lower().endswith('.pdf') and 'dragon_diet_fish_bag' in f.lower():
+        pdf_name = f
+        break
+
+if not pdf_name:
+    print("Error: 'dragon_diet_fish_bag.pdf' not found in workspace directory.")
+    exit(1)
+
+pdf_path = os.path.join(dir_path, pdf_name)
+print(f"Found PDF: {pdf_path}\n")
+
+# Step 2: Read PDF pages and search for volume references
+reader = PdfReader(pdf_path)
+num_pages = len(reader.pages)
+print(f"Total pages in PDF: {num_pages}\n")
+
+volume_pattern = re.compile(r"(\d+(?:[\.,]\d+)*)\s*(?:m\^?3|m³|cubic meters?)", re.IGNORECASE)
+keyword_terms = ['volume', 'm3', 'm³', 'cubic meter']
+
+findings = []
+for i, page in enumerate(reader.pages):
+    try:
+        text = page.extract_text() or ''
+    except Exception as e:
+        print(f"Error extracting text from page {i+1}: {e}")
+        continue
+    lower = text.lower()
+    # Check if any volume-related keyword on this page
+    if any(term in lower for term in keyword_terms):
+        print(f"\n--- Page {i+1} contains volume-related terms ---")
+        # Extract all matches for volume_pattern
+        for match in volume_pattern.finditer(text):
+            vol_str = match.group(1)
+            unit_str = match.group(0)[len(vol_str):].strip()
+            # Provide context around match
+            start, end = match.start(), match.end()
+            ctx_start = max(0, start-50)
+            ctx_end = min(len(text), end+50)
+            context = text[ctx_start:ctx_end].replace("\n", " ")
+            print(f"Match on page {i+1}: '{match.group(0)}' -> value: {vol_str} unit: {unit_str}")
+            print(f"Context: ...{context.strip()}...")
+            findings.append({
+                'page': i+1,
+                'value': vol_str,
+                'unit': unit_str,
+                'context': context.strip()
+            })
+
+if not findings:
+    print("\nNo volume number found matching the pattern 'number + m3/cubic meters'.")
+else:
+    # Take the first finding as the reported volume
+    first = findings[0]
+    volume_value = first['value']
+    unit = first['unit']
+    print(f"\n>>> Extracted fish bag volume: {volume_value} {unit} (from page {first['page']})")
+    # Save to workspace file
+    out_path = os.path.join(dir_path, 'fish_bag_volume.txt')
+    with open(out_path, 'w') as f:
+        f.write(f"{volume_value} {unit}\n")
+    print(f"Volume saved to: {out_path}")
+```
+
+### Development Step 65: Extract Fish Bag Volume in Cubic Meters from Dragon Diet Fish Bag PDF
+
+**Description**: Search within workspace/dragon_diet_fish_bag.pdf for the section or table where the fish bag volume is calculated, locate the numeric value reported in cubic meters, and extract that volume number directly from the PDF.
+
+**Use Cases**:
+- Aquaculture feed optimization and automated extraction of fish bag volume from supplier PDF datasheets to configure feed dispensing machinery on dragonfish farms
+- Environmental compliance monitoring by extracting tank and bag volume specifications from hatchery regulation PDF reports to validate water usage limits
+- Inventory management for aquaculture supply chains by batch-processing vendor PDF catalogs to catalogue fish feed bag volumes and auto-update ERP reorder thresholds
+- Marine biology meta-analysis through extraction of habitat and container volume measurements from published research PDFs to build population density models
+- Quality assurance in fish feed manufacturing by capturing bag volume specs from internal PDF manuals to verify packaging line parameters and prevent under-filling
+- E-commerce product catalog automation for aquarium retailers by scanning supplier PDF brochures to extract and populate online listings with accurate bag and tank capacity data
+- Insurance risk assessment for aquaculture facilities by extracting storage container and feed bag volumes from site survey PDFs to calculate fire load and coverage requirements
+- Academic laboratory preparation by extracting numeric bag volume values from PDF lab manuals on fish containment to generate problem sets and instructional resources
+
+```
+import os
+import re
+from PyPDF2 import PdfReader
+
+print("=== FISH BAG VOLUME EXTRACTION (DIRECT REGEX SCAN) ===")
+
+# Step 1: Locate the workspace directory (handles random suffixes)
 cwd = os.getcwd()
 workspace_dirs = [d for d in os.listdir(cwd) if os.path.isdir(d) and d.startswith('workspace')]
 if not workspace_dirs:
@@ -450,11 +328,11 @@ if not workspace_dirs:
 workspace_dir = workspace_dirs[0]
 print(f"Using workspace directory: {workspace_dir}\n")
 
-# Step 2: Locate the PDF file
-files = os.listdir(workspace_dir)
-print(f"Files in '{workspace_dir}': {files}\n")
+# Step 2: Locate the dragon_diet_fish_bag PDF file in workspace
+dir_files = os.listdir(workspace_dir)
+print(f"Files in '{workspace_dir}': {dir_files}\n")
 pdf_name = None
-for fname in files:
+for fname in dir_files:
     if fname.lower().endswith('.pdf') and 'dragon_diet_fish_bag' in fname.lower():
         pdf_name = fname
         break
@@ -464,46 +342,41 @@ if not pdf_name:
 pdf_path = os.path.join(workspace_dir, pdf_name)
 print(f"Found PDF: {pdf_path}\n")
 
-# Step 3: Read PDF and search for volume references
+# Step 3: Read PDF and apply regex to every page (no keyword filter)
 reader = PdfReader(pdf_path)
 num_pages = len(reader.pages)
 print(f"Total pages in PDF: {num_pages}\n")
 
-# Improved regex to capture number + cubic meter units
+# Regex to capture numbers + cubic meter units (e.g., "0.012 m³", "12.3 m3", "5 cubic meters")
 volume_pattern = re.compile(r"(\d+(?:[.,]\d+)*)\s*(?:m\^?3|m³|cubic meters?)", re.IGNORECASE)
-keyword_terms = ['volume', 'm3', 'm³', 'cubic meter']
-
 findings = []
+
 for i, page in enumerate(reader.pages, start=1):
     text = page.extract_text() or ''
-    lower_text = text.lower()  # renamed to avoid NameError
-
-    # Print a short preview for debugging
+    # Print a short preview
     print(f"--- Page {i} Preview ---")
-    preview = text[:200].replace('\n', ' ')
+    preview = text.replace('\n', ' ')[:200]
     print(preview + ('...' if len(text) > 200 else ''))
 
-    # Check for any volume-related keyword
-    if any(term in lower_text for term in keyword_terms):
-        print(f"Page {i} contains volume-related term(s). Searching regex matches...")
-        for match in volume_pattern.finditer(text):
-            full_match = match.group(0)
-            vol_str = match.group(1)
-            unit_str = full_match[len(vol_str):].strip()
-            start, end = match.start(), match.end()
-            context = text[max(0, start-50):min(len(text), end+50)].replace('\n', ' ')
+    # Apply regex directly to page text
+    for match in volume_pattern.finditer(text):
+        full_match = match.group(0)
+        vol_str = match.group(1)
+        unit_str = full_match[len(vol_str):].strip()
+        start, end = match.start(), match.end()
+        context = text[max(0, start-50):min(len(text), end+50)].replace('\n', ' ')
 
-            print(f"Match on page {i}: '{full_match}' -> value: {vol_str} unit: {unit_str}")
-            print(f"Context: ...{context.strip()}...")
+        print(f"Match on page {i}: '{full_match}' -> value: {vol_str}, unit: {unit_str}")
+        print(f"Context: ...{context.strip()}...\n")
 
-            findings.append({
-                'page': i,
-                'value': vol_str,
-                'unit': unit_str,
-                'context': context.strip()
-            })
+        findings.append({
+            'page': i,
+            'value': vol_str,
+            'unit': unit_str,
+            'context': context.strip()
+        })
 
-# Step 4: Report or save
+# Step 4: Report and save the first finding
 if not findings:
     print("\nNo volume number found matching the pattern.")
 else:
@@ -514,10 +387,11 @@ else:
     print(f"\n>>> Extracted fish bag volume: {volume_value} {unit} (from page {page_no})")
 
     out_path = os.path.join(workspace_dir, 'fish_bag_volume.txt')
-    with open(out_path, 'w') as f:
+    with open(out_path, 'w', encoding='utf-8') as f:
         f.write(f"{volume_value} {unit}\n")
     print(f"Volume saved to: {out_path}")
+
 ```
 
 ## Created Time
-2025-08-11 00:03:44
+2025-08-13 19:14:43

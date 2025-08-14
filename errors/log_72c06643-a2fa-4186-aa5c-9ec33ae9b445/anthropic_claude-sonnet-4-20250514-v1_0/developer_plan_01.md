@@ -1,215 +1,12 @@
 # Developer Plan 01
 
 ## Plan
-Research the physical properties of Freon-12 refrigerant (dichlorodifluoromethane, CCl2F2) including its equation of state, critical properties, and thermodynamic behavior under extreme pressure and temperature conditions. Focus on finding data that will allow calculation of specific volume or density at high pressure and temperature conditions.
+Research the physical properties of Freon-12 refrigerant (dichlorodifluoromethane, CCl2F2) including its critical temperature, critical pressure, density relationships, and equation of state parameters. Also gather information about the conditions at the bottom of the Marianas Trench, specifically the pressure (approximately 1,100 atmospheres or 110 MPa) and the peak temperature that occurs there.
 
 ## Description
-This is the optimal first step because: (1) We need to understand the thermodynamic properties of Freon-12 to calculate its volume under extreme conditions at the Marianas Trench, (2) No previous research has been conducted on this refrigerant's properties, (3) Expected outcome is to obtain critical temperature, critical pressure, molecular weight, and equation of state parameters for Freon-12, (4) This foundational data is essential before we can determine the conditions at the Marianas Trench and perform volume calculations
+This is the optimal first step because: (1) We need to understand the thermodynamic properties of Freon-12 to calculate its volume under extreme conditions, (2) No previous research has been conducted on either the refrigerant properties or Marianas Trench conditions, (3) Expected outcome is to obtain critical data including Freon-12's equation of state, density-temperature-pressure relationships, and the specific environmental conditions at the Marianas Trench's bottom, (4) This foundational information is essential for calculating the volume of 0.312 kg of Freon-12 under the specified extreme pressure and temperature conditions.
 
 ## Episodic Examples
-### Development Step 6: Title:  
-Calculate Ice Cream Butterfat %, Compare to 10% US Standard, and Find % Difference (+/-)
-
-**Description**: Calculate the actual butterfat percentage of the ice cream product from the extracted nutritional data (21g total fat per 144g serving) and compare it against the US federal standard of 10% minimum butterfat content. Determine the percentage difference above or below the federal standard and express the answer as +/- a number rounded to one decimal place as requested in the TASK.
-
-**Use Cases**:
-- Quality assurance testing in a dairy manufacturing plant to verify ice cream batches meet federal butterfat standards before shipment
-- Regulatory compliance audits by food safety inspectors to assess whether retail ice cream products adhere to FDA butterfat requirements
-- Product development in an R&D lab, where food scientists compare new ice cream formulations against legal butterfat thresholds
-- Automated nutritional labeling systems in packaging facilities to ensure accurate butterfat percentage is printed and compliant
-- Competitive market analysis by consumer advocacy groups to benchmark butterfat content across brands and report non-compliance
-- Procurement decision-making for grocery chains, using butterfat analysis to select suppliers whose products exceed federal standards
-- Custom recipe validation for artisanal ice cream shops, confirming homemade products meet minimum butterfat content for legal sale
-- Academic research projects in food science departments, analyzing the impact of butterfat levels on texture and regulatory status
-
-```
-import os
-import json
-from datetime import datetime
-
-print("=== CALCULATING ICE CREAM BUTTERFAT PERCENTAGE AND FEDERAL COMPLIANCE ===")
-print("Objective: Calculate actual butterfat percentage and compare against 10% federal standard")
-print("Data: 21g total fat per 144g serving vs 10% federal minimum\n")
-
-# Ensure workspace directory exists
-workspace_dir = 'workspace'
-os.makedirs(workspace_dir, exist_ok=True)
-
-# First, let's inspect existing workspace files to understand what data we have
-print("=== STEP 1: INSPECTING EXISTING WORKSPACE DATA ===")
-
-if os.path.exists(workspace_dir):
-    workspace_files = os.listdir(workspace_dir)
-    print(f"Files in workspace: {len(workspace_files)}")
-    
-    for file in workspace_files:
-        file_path = os.path.join(workspace_dir, file)
-        file_size = os.path.getsize(file_path)
-        print(f"  - {file} ({file_size:,} bytes)")
-    
-    # Check if we have the ice cream product analysis
-    product_analysis_file = os.path.join(workspace_dir, 'ice_cream_product_analysis.txt')
-    if os.path.exists(product_analysis_file):
-        print(f"\nFound product analysis file: {product_analysis_file}")
-        with open(product_analysis_file, 'r', encoding='utf-8') as f:
-            analysis_content = f.read()
-        print(f"Analysis content length: {len(analysis_content):,} characters")
-        print(f"Preview (first 300 chars): {analysis_content[:300]}...")
-    
-    # Check if we have the federal standard data
-    federal_standard_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_corrected.json')
-    if os.path.exists(federal_standard_file):
-        print(f"\nFound federal standard file: {federal_standard_file}")
-        
-        # Inspect the JSON structure first
-        with open(federal_standard_file, 'r') as f:
-            federal_data = json.load(f)
-        
-        print("Federal standard file structure:")
-        for key, value in federal_data.items():
-            if isinstance(value, list):
-                print(f"  {key}: List with {len(value)} items")
-            elif isinstance(value, dict):
-                print(f"  {key}: Dictionary with {len(value)} keys")
-            else:
-                print(f"  {key}: {value}")
-        
-        # Extract the federal minimum percentage
-        federal_minimum = federal_data.get('corrected_federal_minimum_butterfat_percentage')
-        print(f"\nFederal minimum butterfat percentage: {federal_minimum}%")
-else:
-    print("No workspace directory found")
-
-# Now calculate the actual butterfat percentage from the extracted nutritional data
-print("\n=== STEP 2: CALCULATING ACTUAL BUTTERFAT PERCENTAGE ===")
-
-# From the extracted nutritional data:
-# - Serving size: 2/3 cup (144g)
-# - Total fat per serving: 21g
-
-serving_size_grams = 144
-total_fat_grams = 21
-
-print(f"Nutritional data from ice cream product:")
-print(f"  Serving size: {serving_size_grams}g")
-print(f"  Total fat per serving: {total_fat_grams}g")
-
-# Calculate the fat percentage
-actual_fat_percentage = (total_fat_grams / serving_size_grams) * 100
-
-print(f"\nCalculation:")
-print(f"  Fat percentage = (Total fat ÷ Serving size) × 100")
-print(f"  Fat percentage = ({total_fat_grams}g ÷ {serving_size_grams}g) × 100")
-print(f"  Fat percentage = {actual_fat_percentage:.4f}%")
-print(f"  Fat percentage = {actual_fat_percentage:.1f}% (rounded to 1 decimal place)")
-
-print(f"\n*** ACTUAL BUTTERFAT PERCENTAGE: {actual_fat_percentage:.1f}% ***")
-
-# Compare against the federal standard
-print("\n=== STEP 3: COMPARING AGAINST US FEDERAL STANDARD ===")
-
-# Use the federal minimum we extracted (10%)
-federal_minimum_percentage = 10.0
-
-print(f"US Federal minimum butterfat standard: {federal_minimum_percentage}%")
-print(f"Actual ice cream butterfat percentage: {actual_fat_percentage:.1f}%")
-
-# Calculate the difference
-percentage_difference = actual_fat_percentage - federal_minimum_percentage
-
-print(f"\nComparison:")
-print(f"  Difference = Actual percentage - Federal minimum")
-print(f"  Difference = {actual_fat_percentage:.1f}% - {federal_minimum_percentage}%")
-print(f"  Difference = {percentage_difference:.1f} percentage points")
-
-# Determine if it meets the standard
-if actual_fat_percentage >= federal_minimum_percentage:
-    compliance_status = "EXCEEDS"
-    difference_sign = "+"
-else:
-    compliance_status = "BELOW"
-    difference_sign = "-"
-    percentage_difference = abs(percentage_difference)  # Make positive for display
-
-print(f"\n*** FEDERAL COMPLIANCE ANALYSIS ***")
-print(f"Ice cream product {compliance_status} federal standard")
-print(f"Difference: {difference_sign}{percentage_difference:.1f} percentage points")
-
-# Express as requested format (+/- number rounded to one decimal place)
-final_answer = f"{difference_sign}{percentage_difference:.1f}"
-
-print(f"\n=== FINAL ANSWER ===")
-print(f"Actual butterfat percentage: {actual_fat_percentage:.1f}%")
-print(f"Federal standard: {federal_minimum_percentage}%")
-print(f"Difference from federal standard: {final_answer}")
-
-# Save the complete analysis
-analysis_result = {
-    'analysis_date': datetime.now().isoformat(),
-    'objective': 'Calculate actual butterfat percentage and compare against US federal standard',
-    'nutritional_data': {
-        'serving_size_grams': serving_size_grams,
-        'total_fat_grams': total_fat_grams,
-        'source': 'Ice cream product nutrition label analysis'
-    },
-    'calculations': {
-        'actual_butterfat_percentage': round(actual_fat_percentage, 1),
-        'calculation_method': '(total_fat_grams / serving_size_grams) * 100',
-        'raw_percentage': actual_fat_percentage
-    },
-    'federal_standard': {
-        'minimum_butterfat_percentage': federal_minimum_percentage,
-        'source': 'US FDA regulations (Wikipedia 2020)',
-        'regulatory_authority': 'FDA (Food and Drug Administration)'
-    },
-    'compliance_analysis': {
-        'meets_federal_standard': actual_fat_percentage >= federal_minimum_percentage,
-        'compliance_status': compliance_status,
-        'percentage_difference': round(actual_fat_percentage - federal_minimum_percentage, 1),
-        'difference_from_standard': final_answer
-    },
-    'final_answer': {
-        'format_requested': '+/- number rounded to one decimal place',
-        'result': final_answer,
-        'interpretation': f'Ice cream {compliance_status.lower()} federal standard by {abs(percentage_difference):.1f} percentage points'
-    }
-}
-
-result_file = os.path.join(workspace_dir, 'ice_cream_butterfat_compliance_analysis.json')
-with open(result_file, 'w') as f:
-    json.dump(analysis_result, f, indent=2)
-
-print(f"\nComplete analysis saved to: {result_file}")
-
-# Also create a summary text file
-summary_file = os.path.join(workspace_dir, 'butterfat_analysis_summary.txt')
-with open(summary_file, 'w') as f:
-    f.write("ICE CREAM BUTTERFAT PERCENTAGE ANALYSIS\n")
-    f.write("=" * 50 + "\n\n")
-    f.write(f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-    f.write("NUTRITIONAL DATA:\n")
-    f.write(f"  Serving Size: {serving_size_grams}g\n")
-    f.write(f"  Total Fat: {total_fat_grams}g\n\n")
-    f.write("CALCULATIONS:\n")
-    f.write(f"  Actual Butterfat Percentage: {actual_fat_percentage:.1f}%\n")
-    f.write(f"  Calculation: ({total_fat_grams}g ÷ {serving_size_grams}g) × 100\n\n")
-    f.write("FEDERAL STANDARD:\n")
-    f.write(f"  US Federal Minimum: {federal_minimum_percentage}%\n")
-    f.write(f"  Regulatory Authority: FDA\n\n")
-    f.write("COMPLIANCE ANALYSIS:\n")
-    f.write(f"  Status: {compliance_status} federal standard\n")
-    f.write(f"  Difference: {final_answer} percentage points\n\n")
-    f.write("FINAL ANSWER:\n")
-    f.write(f"  {final_answer}\n")
-
-print(f"Summary saved to: {summary_file}")
-
-print(f"\n=== PLAN OBJECTIVE COMPLETED ===")
-print(f"The ice cream product contains {actual_fat_percentage:.1f}% butterfat")
-print(f"This is {final_answer} percentage points relative to the 10% federal standard")
-print(f"Answer format: {final_answer} (as requested: +/- number rounded to one decimal place)")
-```
-
 ### Development Step 2: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification (2020 Wikipedia Reference)
 
 **Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
@@ -870,6 +667,260 @@ except Exception as e:
 print("\n=== COMPREHENSIVE WIKIPEDIA ANALYSIS COMPLETE ===")
 ```
 
+### Development Step 5: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification According to 2020 Wikipedia Standards
+
+**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
+
+**Use Cases**:
+- Regulatory compliance verification for US-based ice cream manufacturers ensuring products meet the federal minimum butterfat requirement before distribution
+- Automated quality assurance checks in food production software to flag ice cream recipes or batches that fall below the 10% butterfat threshold
+- Food labeling and packaging validation systems that extract and confirm legal standards for nutritional content claims on ice cream sold in the US
+- Ingredient sourcing and procurement decision-making for dairy suppliers, ensuring their cream and milkfat blends align with US federal ice cream standards
+- Academic research on international food regulations, comparing US federal butterfat standards with those of other countries for publication or policy analysis
+- Consumer advocacy group investigations into mislabeled or non-compliant ice cream products using automated extraction of federal standards from authoritative sources
+- Development of AI-powered chatbots or virtual assistants for food industry professionals, providing instant answers about US legal requirements for ice cream classification
+- Automated updating of product specification databases for multinational food companies, ensuring US product lines adhere to current federal regulations on butterfat content
+
+```
+import os
+import json
+import re
+from datetime import datetime
+
+print("=== CORRECTING US FEDERAL ICE CREAM BUTTERFAT STANDARD EXTRACTION ===")
+print("Objective: Fix the logic error and correctly identify the 10% US federal minimum")
+print("Strategy: Analyze existing workspace data and apply correct US-specific filtering\n")
+
+# Ensure workspace directory exists
+workspace_dir = 'workspace'
+os.makedirs(workspace_dir, exist_ok=True)
+
+# First, inspect the existing analysis file to understand the data structure
+print("=== STEP 1: INSPECTING EXISTING ANALYSIS DATA ===")
+
+analysis_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_final.json')
+if os.path.exists(analysis_file):
+    print(f"Found existing analysis file: {analysis_file}")
+    print(f"File size: {os.path.getsize(analysis_file):,} bytes")
+    
+    # Inspect the file structure first
+    with open(analysis_file, 'r') as f:
+        analysis_data = json.load(f)
+    
+    print("\nAnalysis file structure:")
+    for key, value in analysis_data.items():
+        if isinstance(value, list):
+            print(f"  {key}: List with {len(value)} items")
+        elif isinstance(value, dict):
+            print(f"  {key}: Dictionary with {len(value)} keys")
+        else:
+            print(f"  {key}: {value}")
+    
+    # Examine the percentage extractions in detail
+    if 'percentage_extractions' in analysis_data:
+        extractions = analysis_data['percentage_extractions']
+        print(f"\nDetailed percentage extractions ({len(extractions)} items):")
+        
+        for i, extraction in enumerate(extractions, 1):
+            percentage = extraction.get('percentage', 'Unknown')
+            context = extraction.get('context', 'Unknown')
+            sentence = extraction.get('sentence', 'No sentence')[:150] + "..." if len(extraction.get('sentence', '')) > 150 else extraction.get('sentence', 'No sentence')
+            
+            print(f"\n{i}. Percentage: {percentage}%")
+            print(f"   Context: {context}")
+            print(f"   Sentence: {sentence}")
+            
+            # Check if this is US-specific
+            sentence_lower = sentence.lower()
+            is_us_specific = any(term in sentence_lower for term in ['united states', 'us ', 'american', 'fda'])
+            is_uk_specific = any(term in sentence_lower for term in ['united kingdom', 'uk ', 'british', 'european'])
+            
+            print(f"   US-specific: {is_us_specific}")
+            print(f"   UK/EU-specific: {is_uk_specific}")
+    
+    print(f"\nCurrent (incorrect) result: {analysis_data.get('federal_minimum_butterfat_percentage', 'Not found')}%")
+    print(f"Supporting evidence: {analysis_data.get('supporting_evidence', 'None')[:100]}...")
+else:
+    print(f"Analysis file not found: {analysis_file}")
+    print("Available files in workspace:")
+    if os.path.exists(workspace_dir):
+        for file in os.listdir(workspace_dir):
+            print(f"  - {file}")
+
+# Now let's also check the HTML scraped content for direct analysis
+html_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_html_scraped.txt')
+if os.path.exists(html_content_file):
+    print(f"\n=== STEP 2: RE-ANALYZING HTML CONTENT FOR US FEDERAL STANDARDS ===")
+    print(f"Found HTML content file: {html_content_file}")
+    
+    with open(html_content_file, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    print(f"HTML content length: {len(html_content):,} characters")
+    
+    # Extract the actual content (skip the header)
+    content_start = html_content.find('=' * 80)
+    if content_start != -1:
+        actual_content = html_content[content_start + 82:]  # Skip header and separator
+        print(f"Actual Wikipedia content: {len(actual_content):,} characters")
+        
+        # Search specifically for US federal standards
+        print(f"\n=== STEP 3: TARGETED US FEDERAL STANDARDS EXTRACTION ===")
+        
+        # Look for sentences that specifically mention US/American federal standards
+        sentences = re.split(r'[.!?]+', actual_content)
+        
+        us_federal_sentences = []
+        
+        for sentence in sentences:
+            sentence_clean = sentence.strip()
+            sentence_lower = sentence_clean.lower()
+            
+            if len(sentence_clean) < 20:  # Skip very short sentences
+                continue
+            
+            # Check for US-specific federal standards
+            has_us_terms = any(term in sentence_lower for term in ['american', 'us ', 'united states', 'fda'])
+            has_federal_terms = any(term in sentence_lower for term in ['federal', 'fda', 'regulation', 'standard', 'require'])
+            has_butterfat_terms = any(term in sentence_lower for term in ['butterfat', 'milk fat', 'milkfat', 'fat content'])
+            has_percentage = re.search(r'\d+(?:\.\d+)?\s*(?:percent|%)', sentence_lower)
+            
+            if has_us_terms and (has_federal_terms or has_butterfat_terms) and has_percentage:
+                us_federal_sentences.append(sentence_clean)
+        
+        print(f"US federal sentences found: {len(us_federal_sentences)}")
+        
+        us_federal_percentages = []
+        
+        for i, sentence in enumerate(us_federal_sentences, 1):
+            print(f"\n{i}. {sentence}")
+            
+            # Extract percentages from US federal sentences
+            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+            
+            if percentages:
+                print(f"   *** US FEDERAL PERCENTAGES: {percentages} ***")
+                
+                # Check for minimum context
+                is_minimum = any(keyword in sentence.lower() for keyword in ['minimum', 'at least', 'greater than', 'must contain', 'required'])
+                print(f"   Minimum requirement context: {is_minimum}")
+                
+                for pct in percentages:
+                    us_federal_percentages.append({
+                        'percentage': float(pct),
+                        'sentence': sentence,
+                        'is_minimum': is_minimum,
+                        'context': 'us_federal_standard'
+                    })
+        
+        # Also search for explicit FDA rules
+        print(f"\n=== STEP 4: EXPLICIT FDA RULES EXTRACTION ===")
+        
+        fda_sentences = []
+        for sentence in sentences:
+            sentence_clean = sentence.strip()
+            sentence_lower = sentence_clean.lower()
+            
+            if 'fda' in sentence_lower and any(term in sentence_lower for term in ['rule', 'require', 'standard', 'ice cream']):
+                fda_sentences.append(sentence_clean)
+        
+        print(f"FDA-specific sentences found: {len(fda_sentences)}")
+        
+        for i, sentence in enumerate(fda_sentences, 1):
+            print(f"\n{i}. {sentence}")
+            
+            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
+            if percentages:
+                print(f"   *** FDA PERCENTAGES: {percentages} ***")
+                
+                for pct in percentages:
+                    us_federal_percentages.append({
+                        'percentage': float(pct),
+                        'sentence': sentence,
+                        'is_minimum': True,  # FDA rules are regulatory requirements
+                        'context': 'fda_rules'
+                    })
+        
+        # Determine the correct US federal minimum
+        if us_federal_percentages:
+            print(f"\n=== STEP 5: DETERMINING CORRECT US FEDERAL MINIMUM ===")
+            print(f"Total US federal percentages found: {len(us_federal_percentages)}")
+            
+            # Group by percentage value
+            from collections import Counter
+            
+            all_us_percentages = [item['percentage'] for item in us_federal_percentages]
+            percentage_counts = Counter(all_us_percentages)
+            
+            print(f"\nUS federal percentages by frequency:")
+            for pct, count in percentage_counts.most_common():
+                print(f"  {pct}%: mentioned {count} time(s)")
+            
+            # Filter for minimum requirements only
+            minimum_percentages = [item['percentage'] for item in us_federal_percentages if item['is_minimum']]
+            
+            if minimum_percentages:
+                minimum_counts = Counter(minimum_percentages)
+                most_common_minimum = minimum_counts.most_common(1)[0]
+                
+                correct_federal_minimum = most_common_minimum[0]
+                frequency = most_common_minimum[1]
+                
+                print(f"\n*** CORRECT US FEDERAL MINIMUM BUTTERFAT PERCENTAGE: {correct_federal_minimum}% ***")
+                print(f"Mentioned {frequency} time(s) in minimum requirement contexts")
+                
+                # Find the best supporting sentence
+                supporting_sentences = []
+                for item in us_federal_percentages:
+                    if item['percentage'] == correct_federal_minimum and item['is_minimum']:
+                        supporting_sentences.append(item['sentence'])
+                
+                print(f"\nSupporting evidence ({len(supporting_sentences)} sentences):")
+                for i, sentence in enumerate(supporting_sentences, 1):
+                    print(f"{i}. {sentence}")
+                
+                # Save the corrected result
+                corrected_result = {
+                    'analysis_date': datetime.now().isoformat(),
+                    'source': 'Wikipedia Ice cream page (complete article, corrected analysis)',
+                    'objective': 'US federal minimum butterfat percentage for ice cream classification',
+                    'correction_applied': 'Fixed logic error that selected UK standard instead of US standard',
+                    'previous_incorrect_result': analysis_data.get('federal_minimum_butterfat_percentage') if 'analysis_data' in locals() else None,
+                    'corrected_federal_minimum_butterfat_percentage': correct_federal_minimum,
+                    'percentage_unit': 'percent',
+                    'context': 'US federal regulations for legal ice cream classification',
+                    'frequency_mentioned': frequency,
+                    'supporting_evidence': supporting_sentences,
+                    'all_us_federal_percentages_found': list(percentage_counts.keys()),
+                    'detailed_extractions': us_federal_percentages
+                }
+                
+                corrected_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_corrected.json')
+                with open(corrected_file, 'w') as f:
+                    json.dump(corrected_result, f, indent=2)
+                
+                print(f"\nCorrected analysis saved to: {corrected_file}")
+                
+                print(f"\n=== PLAN OBJECTIVE SUCCESSFULLY COMPLETED ===")
+                print(f"US Federal Minimum Butterfat Content for Ice Cream: {correct_federal_minimum}%")
+                print(f"Source: Wikipedia Ice cream page (2020 information)")
+                print(f"Regulatory Authority: FDA (Food and Drug Administration)")
+                print(f"Context: Federal regulations for legal ice cream classification in the United States")
+                print(f"\nKey Supporting Evidence:")
+                for sentence in supporting_sentences[:2]:  # Show top 2 supporting sentences
+                    print(f"  • {sentence}")
+            
+            else:
+                print(f"\nNo minimum requirement percentages found in US federal contexts.")
+        
+        else:
+            print(f"\nNo US federal percentages found in the content.")
+else:
+    print(f"\nHTML content file not found: {html_content_file}")
+
+print(f"\n=== CORRECTED ANALYSIS COMPLETE ===")
+```
+
 ### Development Step 3: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification (2020 Wikipedia Data)
 
 **Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
@@ -1201,259 +1252,5 @@ except Exception as e:
 print("\n=== WIKIPEDIA ANALYSIS COMPLETE ===")
 ```
 
-### Development Step 5: US Federal Minimum Butterfat Percentage Required for Ice Cream Classification According to 2020 Wikipedia Standards
-
-**Description**: Research the US federal standards for butterfat content in ice cream as reported by Wikipedia in 2020. Search for the specific minimum butterfat percentage required by federal regulations for a product to be legally classified as ice cream in the United States. Extract the exact percentage value and any relevant context about these standards.
-
-**Use Cases**:
-- Regulatory compliance verification for US-based ice cream manufacturers ensuring products meet the federal minimum butterfat requirement before distribution
-- Automated quality assurance checks in food production software to flag ice cream recipes or batches that fall below the 10% butterfat threshold
-- Food labeling and packaging validation systems that extract and confirm legal standards for nutritional content claims on ice cream sold in the US
-- Ingredient sourcing and procurement decision-making for dairy suppliers, ensuring their cream and milkfat blends align with US federal ice cream standards
-- Academic research on international food regulations, comparing US federal butterfat standards with those of other countries for publication or policy analysis
-- Consumer advocacy group investigations into mislabeled or non-compliant ice cream products using automated extraction of federal standards from authoritative sources
-- Development of AI-powered chatbots or virtual assistants for food industry professionals, providing instant answers about US legal requirements for ice cream classification
-- Automated updating of product specification databases for multinational food companies, ensuring US product lines adhere to current federal regulations on butterfat content
-
-```
-import os
-import json
-import re
-from datetime import datetime
-
-print("=== CORRECTING US FEDERAL ICE CREAM BUTTERFAT STANDARD EXTRACTION ===")
-print("Objective: Fix the logic error and correctly identify the 10% US federal minimum")
-print("Strategy: Analyze existing workspace data and apply correct US-specific filtering\n")
-
-# Ensure workspace directory exists
-workspace_dir = 'workspace'
-os.makedirs(workspace_dir, exist_ok=True)
-
-# First, inspect the existing analysis file to understand the data structure
-print("=== STEP 1: INSPECTING EXISTING ANALYSIS DATA ===")
-
-analysis_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_final.json')
-if os.path.exists(analysis_file):
-    print(f"Found existing analysis file: {analysis_file}")
-    print(f"File size: {os.path.getsize(analysis_file):,} bytes")
-    
-    # Inspect the file structure first
-    with open(analysis_file, 'r') as f:
-        analysis_data = json.load(f)
-    
-    print("\nAnalysis file structure:")
-    for key, value in analysis_data.items():
-        if isinstance(value, list):
-            print(f"  {key}: List with {len(value)} items")
-        elif isinstance(value, dict):
-            print(f"  {key}: Dictionary with {len(value)} keys")
-        else:
-            print(f"  {key}: {value}")
-    
-    # Examine the percentage extractions in detail
-    if 'percentage_extractions' in analysis_data:
-        extractions = analysis_data['percentage_extractions']
-        print(f"\nDetailed percentage extractions ({len(extractions)} items):")
-        
-        for i, extraction in enumerate(extractions, 1):
-            percentage = extraction.get('percentage', 'Unknown')
-            context = extraction.get('context', 'Unknown')
-            sentence = extraction.get('sentence', 'No sentence')[:150] + "..." if len(extraction.get('sentence', '')) > 150 else extraction.get('sentence', 'No sentence')
-            
-            print(f"\n{i}. Percentage: {percentage}%")
-            print(f"   Context: {context}")
-            print(f"   Sentence: {sentence}")
-            
-            # Check if this is US-specific
-            sentence_lower = sentence.lower()
-            is_us_specific = any(term in sentence_lower for term in ['united states', 'us ', 'american', 'fda'])
-            is_uk_specific = any(term in sentence_lower for term in ['united kingdom', 'uk ', 'british', 'european'])
-            
-            print(f"   US-specific: {is_us_specific}")
-            print(f"   UK/EU-specific: {is_uk_specific}")
-    
-    print(f"\nCurrent (incorrect) result: {analysis_data.get('federal_minimum_butterfat_percentage', 'Not found')}%")
-    print(f"Supporting evidence: {analysis_data.get('supporting_evidence', 'None')[:100]}...")
-else:
-    print(f"Analysis file not found: {analysis_file}")
-    print("Available files in workspace:")
-    if os.path.exists(workspace_dir):
-        for file in os.listdir(workspace_dir):
-            print(f"  - {file}")
-
-# Now let's also check the HTML scraped content for direct analysis
-html_content_file = os.path.join(workspace_dir, 'wikipedia_ice_cream_html_scraped.txt')
-if os.path.exists(html_content_file):
-    print(f"\n=== STEP 2: RE-ANALYZING HTML CONTENT FOR US FEDERAL STANDARDS ===")
-    print(f"Found HTML content file: {html_content_file}")
-    
-    with open(html_content_file, 'r', encoding='utf-8') as f:
-        html_content = f.read()
-    
-    print(f"HTML content length: {len(html_content):,} characters")
-    
-    # Extract the actual content (skip the header)
-    content_start = html_content.find('=' * 80)
-    if content_start != -1:
-        actual_content = html_content[content_start + 82:]  # Skip header and separator
-        print(f"Actual Wikipedia content: {len(actual_content):,} characters")
-        
-        # Search specifically for US federal standards
-        print(f"\n=== STEP 3: TARGETED US FEDERAL STANDARDS EXTRACTION ===")
-        
-        # Look for sentences that specifically mention US/American federal standards
-        sentences = re.split(r'[.!?]+', actual_content)
-        
-        us_federal_sentences = []
-        
-        for sentence in sentences:
-            sentence_clean = sentence.strip()
-            sentence_lower = sentence_clean.lower()
-            
-            if len(sentence_clean) < 20:  # Skip very short sentences
-                continue
-            
-            # Check for US-specific federal standards
-            has_us_terms = any(term in sentence_lower for term in ['american', 'us ', 'united states', 'fda'])
-            has_federal_terms = any(term in sentence_lower for term in ['federal', 'fda', 'regulation', 'standard', 'require'])
-            has_butterfat_terms = any(term in sentence_lower for term in ['butterfat', 'milk fat', 'milkfat', 'fat content'])
-            has_percentage = re.search(r'\d+(?:\.\d+)?\s*(?:percent|%)', sentence_lower)
-            
-            if has_us_terms and (has_federal_terms or has_butterfat_terms) and has_percentage:
-                us_federal_sentences.append(sentence_clean)
-        
-        print(f"US federal sentences found: {len(us_federal_sentences)}")
-        
-        us_federal_percentages = []
-        
-        for i, sentence in enumerate(us_federal_sentences, 1):
-            print(f"\n{i}. {sentence}")
-            
-            # Extract percentages from US federal sentences
-            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-            
-            if percentages:
-                print(f"   *** US FEDERAL PERCENTAGES: {percentages} ***")
-                
-                # Check for minimum context
-                is_minimum = any(keyword in sentence.lower() for keyword in ['minimum', 'at least', 'greater than', 'must contain', 'required'])
-                print(f"   Minimum requirement context: {is_minimum}")
-                
-                for pct in percentages:
-                    us_federal_percentages.append({
-                        'percentage': float(pct),
-                        'sentence': sentence,
-                        'is_minimum': is_minimum,
-                        'context': 'us_federal_standard'
-                    })
-        
-        # Also search for explicit FDA rules
-        print(f"\n=== STEP 4: EXPLICIT FDA RULES EXTRACTION ===")
-        
-        fda_sentences = []
-        for sentence in sentences:
-            sentence_clean = sentence.strip()
-            sentence_lower = sentence_clean.lower()
-            
-            if 'fda' in sentence_lower and any(term in sentence_lower for term in ['rule', 'require', 'standard', 'ice cream']):
-                fda_sentences.append(sentence_clean)
-        
-        print(f"FDA-specific sentences found: {len(fda_sentences)}")
-        
-        for i, sentence in enumerate(fda_sentences, 1):
-            print(f"\n{i}. {sentence}")
-            
-            percentages = re.findall(r'(\d+(?:\.\d+)?)\s*(?:percent|%)', sentence, re.IGNORECASE)
-            if percentages:
-                print(f"   *** FDA PERCENTAGES: {percentages} ***")
-                
-                for pct in percentages:
-                    us_federal_percentages.append({
-                        'percentage': float(pct),
-                        'sentence': sentence,
-                        'is_minimum': True,  # FDA rules are regulatory requirements
-                        'context': 'fda_rules'
-                    })
-        
-        # Determine the correct US federal minimum
-        if us_federal_percentages:
-            print(f"\n=== STEP 5: DETERMINING CORRECT US FEDERAL MINIMUM ===")
-            print(f"Total US federal percentages found: {len(us_federal_percentages)}")
-            
-            # Group by percentage value
-            from collections import Counter
-            
-            all_us_percentages = [item['percentage'] for item in us_federal_percentages]
-            percentage_counts = Counter(all_us_percentages)
-            
-            print(f"\nUS federal percentages by frequency:")
-            for pct, count in percentage_counts.most_common():
-                print(f"  {pct}%: mentioned {count} time(s)")
-            
-            # Filter for minimum requirements only
-            minimum_percentages = [item['percentage'] for item in us_federal_percentages if item['is_minimum']]
-            
-            if minimum_percentages:
-                minimum_counts = Counter(minimum_percentages)
-                most_common_minimum = minimum_counts.most_common(1)[0]
-                
-                correct_federal_minimum = most_common_minimum[0]
-                frequency = most_common_minimum[1]
-                
-                print(f"\n*** CORRECT US FEDERAL MINIMUM BUTTERFAT PERCENTAGE: {correct_federal_minimum}% ***")
-                print(f"Mentioned {frequency} time(s) in minimum requirement contexts")
-                
-                # Find the best supporting sentence
-                supporting_sentences = []
-                for item in us_federal_percentages:
-                    if item['percentage'] == correct_federal_minimum and item['is_minimum']:
-                        supporting_sentences.append(item['sentence'])
-                
-                print(f"\nSupporting evidence ({len(supporting_sentences)} sentences):")
-                for i, sentence in enumerate(supporting_sentences, 1):
-                    print(f"{i}. {sentence}")
-                
-                # Save the corrected result
-                corrected_result = {
-                    'analysis_date': datetime.now().isoformat(),
-                    'source': 'Wikipedia Ice cream page (complete article, corrected analysis)',
-                    'objective': 'US federal minimum butterfat percentage for ice cream classification',
-                    'correction_applied': 'Fixed logic error that selected UK standard instead of US standard',
-                    'previous_incorrect_result': analysis_data.get('federal_minimum_butterfat_percentage') if 'analysis_data' in locals() else None,
-                    'corrected_federal_minimum_butterfat_percentage': correct_federal_minimum,
-                    'percentage_unit': 'percent',
-                    'context': 'US federal regulations for legal ice cream classification',
-                    'frequency_mentioned': frequency,
-                    'supporting_evidence': supporting_sentences,
-                    'all_us_federal_percentages_found': list(percentage_counts.keys()),
-                    'detailed_extractions': us_federal_percentages
-                }
-                
-                corrected_file = os.path.join(workspace_dir, 'us_federal_ice_cream_butterfat_standard_corrected.json')
-                with open(corrected_file, 'w') as f:
-                    json.dump(corrected_result, f, indent=2)
-                
-                print(f"\nCorrected analysis saved to: {corrected_file}")
-                
-                print(f"\n=== PLAN OBJECTIVE SUCCESSFULLY COMPLETED ===")
-                print(f"US Federal Minimum Butterfat Content for Ice Cream: {correct_federal_minimum}%")
-                print(f"Source: Wikipedia Ice cream page (2020 information)")
-                print(f"Regulatory Authority: FDA (Food and Drug Administration)")
-                print(f"Context: Federal regulations for legal ice cream classification in the United States")
-                print(f"\nKey Supporting Evidence:")
-                for sentence in supporting_sentences[:2]:  # Show top 2 supporting sentences
-                    print(f"  • {sentence}")
-            
-            else:
-                print(f"\nNo minimum requirement percentages found in US federal contexts.")
-        
-        else:
-            print(f"\nNo US federal percentages found in the content.")
-else:
-    print(f"\nHTML content file not found: {html_content_file}")
-
-print(f"\n=== CORRECTED ANALYSIS COMPLETE ===")
-```
-
 ## Created Time
-2025-08-11 10:21:08
+2025-08-14 02:56:25
