@@ -179,7 +179,7 @@ class MarkdownTaskLogger(BaseTaskLogger):
 """
         self._write_file("planner_history.md", content, "markdown")
     
-    def log_developer_plan(self, plan: str, plan_description: str = "", episodic_examples: str = "") -> int:
+    def log_developer_plan(self, plan: str, plan_description: str = "", semantic_examples: str = "", episodic_examples: str = "") -> int:
         """Log developer plan and return plan index."""
         self.developer_plan_count += 1
         
@@ -190,6 +190,8 @@ class MarkdownTaskLogger(BaseTaskLogger):
 
 ## Description
 {plan_description if plan_description else "No description provided."}
+
+{"## Semantic Examples\n"+semantic_examples if semantic_examples else None}
 
 ## Episodic Examples
 {episodic_examples if episodic_examples else "No episodic examples available."}
@@ -802,10 +804,10 @@ class HTMLTaskLogger(BaseTaskLogger):
         """Log planner execution history."""
         self.add_conversation("planner", "Execution History", history)
     
-    def log_developer_plan(self, plan: str, plan_description: str = "", episodic_examples: str = "") -> int:
+    def log_developer_plan(self, plan: str, plan_description: str = "", semantic_examples: str = "", episodic_examples: str = "") -> int:
         """Log developer plan."""
         self.developer_plan_count += 1
-        content = f"Plan: {plan}\n\nDescription: {plan_description}\n\nEpisodic Examples:\n{episodic_examples if episodic_examples else 'None'}"
+        content = f"Plan: {plan}\n\nDescription: {plan_description}\n\nSemantic Examples:\n{semantic_examples if semantic_examples else 'None'}\n\nEpisodic Examples:\n{episodic_examples if episodic_examples else 'None'}"
         self.add_conversation("developer", f"Plan {self.developer_plan_count:02d}", content)
         return self.developer_plan_count
     

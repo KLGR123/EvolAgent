@@ -305,8 +305,9 @@ class EvolvePipeline(BasePipeline):
         """
         # Get episodic examples and log developer plan start
         episodic_examples = getattr(developer, 'episodic', '')
+        semantic_examples = getattr(developer, 'semantic', '')
         current_plan_index = self._log_developer_plan_start(
-            task_logger, html_logger, plan, episodic_examples
+            task_logger, html_logger, plan, semantic_examples, episodic_examples
         )
 
         next_feedback = None
@@ -350,7 +351,7 @@ class EvolvePipeline(BasePipeline):
         
         return next_code
 
-    def _log_developer_plan_start(self, task_logger, html_logger, plan, episodic_examples) -> Optional[int]:
+    def _log_developer_plan_start(self, task_logger, html_logger, plan, semantic_examples, episodic_examples) -> Optional[int]:
         """Log the start of a new development plan."""
         current_plan_index = None
         
@@ -358,6 +359,7 @@ class EvolvePipeline(BasePipeline):
             current_plan_index = task_logger.log_developer_plan(
                 plan["plan"], 
                 plan.get("description", ""),
+                semantic_examples,
                 episodic_examples
             )
         
@@ -365,6 +367,7 @@ class EvolvePipeline(BasePipeline):
             current_plan_index = html_logger.log_developer_plan(
                 plan["plan"], 
                 plan.get("description", ""),
+                semantic_examples,
                 episodic_examples
             )
             
