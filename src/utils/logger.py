@@ -854,7 +854,8 @@ class HTMLTaskLogger(BaseTaskLogger):
     
     @staticmethod
     def save_critic_result_static(task_id: str, critic_model: str, final_answer: str, 
-                                 reason: str, best_model_index: int, start_time: datetime = None) -> None:
+                                 reason: str, best_model_index: int, true_answer: str = None, 
+                                 start_time: datetime = None) -> None:
         """Static method to save critic results without logger instance."""
         task_root = Path(f"logs/log_{task_id}")
         task_root.mkdir(parents=True, exist_ok=True)
@@ -1101,6 +1102,16 @@ class HTMLTaskLogger(BaseTaskLogger):
                 </div>
             </div>
             
+            {f'''<div class="section">
+                <div class="section-header">
+                    <span class="section-icon">✅</span>
+                    <span class="section-title">True Answer</span>
+                </div>
+                <div class="answer-box" style="background: linear-gradient(135deg, #a8e6cf 0%, #dcedc8 100%);">
+                    <div class="answer-text">{html.escape(true_answer)}</div>
+                </div>
+            </div>''' if true_answer is not None else ''}
+            
             <div class="section">
                 <div class="section-header">
                     <span class="section-icon">🤔</span>
@@ -1138,6 +1149,7 @@ class HTMLTaskLogger(BaseTaskLogger):
             "task_id": task_id,
             "critic_model": critic_model,
             "final_answer": final_answer,
+            "true_answer": true_answer,
             "reason": reason,
             "best_model_index": best_model_index,
             "evaluation_time": datetime.now().isoformat()

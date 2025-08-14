@@ -419,6 +419,7 @@ class EvolvePipeline(BasePipeline):
         task: str,
         models: Optional[List[str]] = None,
         task_id: Optional[str] = None,
+        true_answer: Optional[str] = None,
     ) -> str:
         """
         Execute the evolutionary algorithm with multiple parallel trajectories.
@@ -430,6 +431,7 @@ class EvolvePipeline(BasePipeline):
             task: Task description to solve
             models: List of models to use (defaults to config.default_models)
             task_id: Optional task identifier for workspace isolation
+            true_answer: Optional true answer for comparison in results
             
         Returns:
             Final answer selected by the critic node
@@ -441,6 +443,9 @@ class EvolvePipeline(BasePipeline):
         if task_id is None:
             import uuid
             task_id = str(uuid.uuid4())[:8]
+            
+        # Store true_answer for later use in critic results
+        self.true_answer = true_answer
             
         self.logger.info(f"Starting evolutionary task solving with {len(models)} models (task_id: {task_id})")
         self.logger.debug("Task: %s...", task[:200])
@@ -539,7 +544,7 @@ class EvolvePipeline(BasePipeline):
         self.logger.info(f"Selected best trajectory: {best_id} (model: {models[best_id]})")
         
         # Save critic results
-        self._save_critic_results(task_id, critic.model, final_answer, reason, best_id)
+        self._save_critic_results(task_id, critic.model, final_answer, reason, best_id, self.true_answer)
         
         return final_answer
 
@@ -548,7 +553,8 @@ class EvolvePipeline(BasePipeline):
         critic_model: str, 
         final_answer: str, 
         reason: str, 
-        best_id: int
+        best_id: int,
+        true_answer: str = None
     ) -> None:
         """Save critic evaluation results."""
         from ..utils.logger import HTMLTaskLogger
@@ -558,7 +564,8 @@ class EvolvePipeline(BasePipeline):
             critic_model=critic_model,
             final_answer=final_answer,
             reason=reason,
-            best_model_index=best_id
+            best_model_index=best_id,
+            true_answer=true_answer
         )
 
     def _store_execution_results(self, execution_results: List[Dict[str, Any]]) -> None:

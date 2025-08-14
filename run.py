@@ -335,7 +335,8 @@ class ExperimentRunner:
             answer = pipeline(
                 task=task_info["question"], 
                 models=config.get('models.default_models', ['o4-mini']),
-                task_id=task_id
+                task_id=task_id,
+                true_answer=task_info["true_answer"]
             )
             
             end_time = time.time()
