@@ -300,7 +300,7 @@ class ExperimentRunner:
                 "23dd907f-1261-4488-b21c-e9185af91d5e", 
             ]
         elif dataset == "coldstart":
-            task_list = [f"webshaper_{i}" for i in range(50)]
+            task_list = [f"webshaper_{i}" for i in range(81, 90)]
         else:
             raise ValueError(f"Unknown dataset: {dataset}")
         
