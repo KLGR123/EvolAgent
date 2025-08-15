@@ -422,8 +422,24 @@ class HTMLTaskLogger(BaseTaskLogger):
         use_cases = ""
         code_blocks = []
         
-        # Split content into sections
-        sections = content.split('\n\n')
+        # Better regex-based parsing for code blocks
+        import re
+        
+        # Extract code blocks first using regex
+        code_pattern = r'```(?:python)?\n?(.*?)```'
+        code_matches = re.findall(code_pattern, content, re.DOTALL)
+        
+        # Clean and store code blocks
+        for code_match in code_matches:
+            clean_code = code_match.strip()
+            if clean_code:
+                code_blocks.append(clean_code)
+        
+        # Remove code blocks from content for other processing
+        content_without_code = re.sub(code_pattern, '', content, flags=re.DOTALL)
+        
+        # Split remaining content into sections
+        sections = content_without_code.split('\n\n')
         remaining_content = []
         
         for section in sections:
@@ -432,12 +448,7 @@ class HTMLTaskLogger(BaseTaskLogger):
                 description = section[len('**Description**:'):].strip()
             elif section.startswith('**Use Cases**:'):
                 use_cases = section[len('**Use Cases**:'):].strip()
-            elif section.startswith('```') and section.endswith('```'):
-                # Extract code block
-                code = section[3:-3].strip()
-                if code:
-                    code_blocks.append(code)
-            else:
+            elif section:  # Only add non-empty sections
                 remaining_content.append(section)
         
         # Build formatted example
@@ -988,7 +999,7 @@ class HTMLTaskLogger(BaseTaskLogger):
         
         .example-description {{
             margin-bottom: 12px;
-            color: #6c757d;
+            color: #495057 !important;
             font-style: italic;
         }}
         
@@ -1013,15 +1024,57 @@ class HTMLTaskLogger(BaseTaskLogger):
         
         .example-code-block {{
             margin-top: 12px;
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+        }}
+        
+        .example-code-block .code-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0;
+            padding: 10px 15px;
+            border-bottom: 1px solid #333;
+            background: #2d2d2d;
+        }}
+        
+        .example-code-block .code-content {{
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #f8f8f2;
+            white-space: pre-wrap;
+            word-break: break-word;
+            padding: 15px;
+            margin: 0;
+            background: #1e1e1e;
         }}
         
         .no-examples {{
             text-align: center;
-            color: #6c757d;
+            color: #495057 !important;
             font-style: italic;
             padding: 20px;
             background: #f8f9fa;
             border-radius: 4px;
+        }}
+        
+        .plain-examples {{
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            color: #495057 !important;
+            border: 1px solid #e9ecef;
+        }}
+        
+        .example-extra {{
+            margin-top: 12px;
+            padding: 12px;
+            background: #f1f3f4;
+            border-radius: 4px;
+            color: #495057 !important;
+            border-left: 3px solid #007bff;
         }}
         
         /* JSON history formatting */

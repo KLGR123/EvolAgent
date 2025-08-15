@@ -616,15 +616,11 @@ class PythonInterpreter:
             if current_task_id and current_workspace:
                 task_workspace_name = f"workspace_{current_task_id}"
                 
-                # Use regex to replace workspace paths
-                import re
-                
-                # Replace workspace paths in the code
-                code = re.sub(r'\bworkspace/', f'{task_workspace_name}/', code)
-                code = re.sub(r'\bworkspace\\', f'{task_workspace_name}\\', code)
-                
-                # Replace standalone "workspace" string literals
-                code = re.sub(r'(["\'])workspace\1(?!\w)', f'\\1{task_workspace_name}\\1', code)
+                # replace workspace paths in various forms
+                code = code.replace('workspace/', f'{task_workspace_name}/')
+                code = code.replace('workspace\\', f'{task_workspace_name}\\')
+                code = code.replace('"workspace"', f'"{task_workspace_name}"')
+                code = code.replace("'workspace'", f"'{task_workspace_name}'")
                 
                 print(f"[WORKSPACE] Using task-specific workspace: {task_workspace_name}")
         
