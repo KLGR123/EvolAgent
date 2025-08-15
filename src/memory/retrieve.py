@@ -364,7 +364,7 @@ class MemoryRetriever:
             query=FusionQuery(fusion=Fusion.RRF),
             limit=limit,
             with_payload=True,
-            score_threshold=score_threshold
+            # score_threshold=score_threshold
         )
         
         return self._format_search_results(search_result.points)
