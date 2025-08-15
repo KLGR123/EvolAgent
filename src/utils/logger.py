@@ -256,20 +256,68 @@ class HTMLTaskLogger(BaseTaskLogger):
         super().__init__(task_id, model, base_dir)
         self.conversations = []
         self.model_index = model_index
+        self.dev_test_pairs = []  # Track dev-test pairs for merging
+        self.pending_dev_block = None  # Track pending dev block for merging
     
     def _escape_html(self, text: str) -> str:
-        """Escape HTML special characters."""
-        return html.escape(text)
+        """Escape HTML special characters but preserve intentional HTML in markdown."""
+        if not text:
+            return ""
+        # First escape all HTML
+        escaped = html.escape(text)
+        return escaped
+    
+    def _unescape_html_entities(self, text: str) -> str:
+        """Fix over-escaped HTML entities and malformed HTML tags."""
+        if not text:
+            return ""
+        
+        # Fix common HTML entity issues
+        fixes = {
+            '&amp;quot;': '"',
+            '&amp;#x27;': "'",
+            '&amp;lt;': '<',
+            '&amp;gt;': '>',
+            '&amp;amp;': '&',
+            '&#x27;': "'",
+            '&quot;': '"',
+            '&lt;': '<',
+            '&gt;': '>'
+        }
+        
+        result = text
+        for entity, replacement in fixes.items():
+            result = result.replace(entity, replacement)
+        
+        # Remove malformed HTML tags that cause display issues
+        import re
+        
+        # Remove standalone closing tags like "keyword"> or "string"> 
+        result = re.sub(r'"\w+">', '', result)
+        
+        # Remove malformed opening tags
+        result = re.sub(r'<"\w+"', '', result)
+        
+        # Clean up any remaining malformed span tags
+        result = re.sub(r'</?span[^>]*?"[^>]*?>', '', result)
+        
+        return result
     
     def _highlight_python_code(self, code: str) -> str:
-        """Apply enhanced Python syntax highlighting."""
+        """Apply clean Python syntax highlighting without HTML conflicts."""
         if not code.strip():
             return code
             
-        # Enhanced syntax highlighting
-        highlighted = self._escape_html(code)
+        # First, fix any over-escaped entities
+        code = self._unescape_html_entities(code)
         
-        # Highlight Python keywords
+        # Clean escape of HTML - this is the root cause of the issue
+        clean_code = html.escape(code)
+        
+        # Use a more conservative approach to avoid HTML tag conflicts
+        import re
+        
+        # Keywords to highlight
         keywords = [
             'def', 'class', 'import', 'from', 'if', 'else', 'elif', 'for', 'while', 
             'try', 'except', 'finally', 'return', 'yield', 'break', 'continue',
@@ -277,32 +325,282 @@ class HTMLTaskLogger(BaseTaskLogger):
             'pass', 'lambda', 'global', 'nonlocal', 'raise', 'assert', 'del'
         ]
         
-        # Apply keyword highlighting with word boundaries
+        # Create a safer highlighting approach
+        result = clean_code
+        
+        # Split into lines to process line by line
+        lines = result.split('\n')
+        highlighted_lines = []
+        
+        for line in lines:
+            # Process each line individually to avoid cross-line issues
+            highlighted_line = line
+            
+            # Highlight comments first (they override other highlighting)
+            if '#' in highlighted_line:
+                parts = highlighted_line.split('#', 1)
+                if len(parts) == 2:
+                    code_part = parts[0]
+                    comment_part = parts[1]
+                    highlighted_line = code_part + f'<span class="comment">#{comment_part}</span>'
+                else:
+                    highlighted_line = parts[0]
+            
+            # Only highlight keywords if not in a comment
+            if '<span class="comment">' not in highlighted_line:
+                # Highlight keywords with very specific word boundary matching
+                for keyword in keywords:
+                    # Use negative lookbehind and lookahead to ensure word boundaries
+                    pattern = r'(?<!\w)' + re.escape(keyword) + r'(?!\w)'
+                    replacement = f'<span class="keyword">{keyword}</span>'
+                    highlighted_line = re.sub(pattern, replacement, highlighted_line)
+            
+            # Highlight strings more carefully
+            # Single quotes
+            highlighted_line = re.sub(
+                r"(?<!\\)'([^'\n]*?)(?<!\\)'",
+                r'<span class="string">\'\1\'</span>',
+                highlighted_line
+            )
+            
+            # Double quotes  
+            highlighted_line = re.sub(
+                r'(?<!\\)"([^"\n]*?)(?<!\\)"',
+                r'<span class="string">"\1"</span>',
+                highlighted_line
+            )
+            
+            # Highlight numbers (but not if they're part of strings or already highlighted)
+            if '<span class="string">' not in highlighted_line:
+                highlighted_line = re.sub(
+                    r'\b(\d+(?:\.\d+)?)\b',
+                    r'<span class="number">\1</span>',
+                    highlighted_line
+                )
+            
+            highlighted_lines.append(highlighted_line)
+        
+        return '\n'.join(highlighted_lines)
+    
+    def _parse_examples(self, examples_text: str) -> str:
+        """Parse and format semantic/episodic examples with proper structure."""
+        if not examples_text or examples_text.strip() in ['None', 'No examples available.', 'No semantic examples available.', 'No episodic examples available.']:
+            return '<div class="no-examples">📝 No examples available</div>'
+        
+        # Split examples by markdown headers (### Title:)
         import re
-        for keyword in keywords:
-            pattern = r'\b' + re.escape(keyword) + r'\b'
-            highlighted = re.sub(pattern, f'<span class="keyword">{keyword}</span>', highlighted)
+        examples = re.split(r'(?=### [^\n]+)', examples_text.strip())
         
-        # Highlight function definitions
-        highlighted = re.sub(r'\bdef\s+(\w+)', r'<span class="keyword">def</span> <span class="function">\1</span>', highlighted)
-        highlighted = re.sub(r'\bclass\s+(\w+)', r'<span class="keyword">class</span> <span class="function">\1</span>', highlighted)
+        if not examples or len(examples) == 1 and not examples[0].strip().startswith('###'):
+            # No structured examples, return as plain text
+            return f'<div class="plain-examples">{self._escape_html(examples_text)}</div>'
         
-        # Highlight strings
-        highlighted = re.sub(r'(["\'])((?:\\.|(?!\1)[^\\])*?)\1', r'<span class="string">\1\2\1</span>', highlighted)
-        highlighted = re.sub(r'(["\']){3}(.*?)\1{3}', r'<span class="string">\1\1\1\2\1\1\1</span>', highlighted, flags=re.DOTALL)
+        formatted_examples = []
+        for example in examples:
+            if not example.strip():
+                continue
+                
+            # Extract title
+            title_match = re.match(r'### (.+?)\n', example)
+            if title_match:
+                title = title_match.group(1).strip()
+                content = example[title_match.end():].strip()
+                
+                # Format the example
+                formatted_example = self._format_single_example(title, content)
+                formatted_examples.append(formatted_example)
         
-        # Highlight numbers
-        highlighted = re.sub(r'\b(\d+\.?\d*)\b', r'<span class="number">\1</span>', highlighted)
+        if not formatted_examples:
+            return f'<div class="plain-examples">{self._escape_html(examples_text)}</div>'
         
-        # Highlight comments
-        highlighted = re.sub(r'(#.*?)(?=\n|$)', r'<span class="comment">\1</span>', highlighted)
+        return '<div class="examples-container">' + ''.join(formatted_examples) + '</div>'
+    
+    def _format_single_example(self, title: str, content: str) -> str:
+        """Format a single example with title and structured content."""
+        # Extract description if exists
+        description = ""
+        use_cases = ""
+        code_blocks = []
         
-        return highlighted
+        # Split content into sections
+        sections = content.split('\n\n')
+        remaining_content = []
+        
+        for section in sections:
+            section = section.strip()
+            if section.startswith('**Description**:'):
+                description = section[len('**Description**:'):].strip()
+            elif section.startswith('**Use Cases**:'):
+                use_cases = section[len('**Use Cases**:'):].strip()
+            elif section.startswith('```') and section.endswith('```'):
+                # Extract code block
+                code = section[3:-3].strip()
+                if code:
+                    code_blocks.append(code)
+            else:
+                remaining_content.append(section)
+        
+        # Build formatted example
+        html = f'''
+        <div class="example-item">
+            <div class="example-header">
+                <span class="example-icon">📚</span>
+                <h4 class="example-title">{self._escape_html(title)}</h4>
+            </div>
+            <div class="example-content">'''
+        
+        if description:
+            html += f'<div class="example-description">{self._escape_html(description)}</div>'
+        
+        if use_cases:
+            html += f'''<div class="example-use-cases">
+                <div class="use-cases-header">💡 Use Cases:</div>
+                <div class="use-cases-content">{self._escape_html(use_cases)}</div>
+            </div>'''
+        
+        # Add any remaining content
+        if remaining_content:
+            html += f'<div class="example-extra">{self._escape_html("\n\n".join(remaining_content))}</div>'
+        
+        # Add code blocks
+        for i, code in enumerate(code_blocks):
+            html += f'''
+            <div class="example-code-block">
+                <div class="code-header">
+                    <span class="code-label">💻 Code Example {i+1 if len(code_blocks) > 1 else ""}</span>
+                    <span class="code-lang">Python</span>
+                </div>
+                <div class="code-content">{self._highlight_python_code(code)}</div>
+            </div>'''
+        
+        html += '</div></div>'
+        return html
+    
+    def _format_json_history(self, history_text: str) -> str:
+        """Format JSON history with proper structure instead of raw dump."""
+        if not history_text.strip():
+            return '<div class="no-history">📋 No history available</div>'
+        
+        try:
+            import json
+            import re
+            
+            # Try to find JSON objects in the text
+            json_objects = []
+            
+            # Look for JSON-like structures
+            json_pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
+            matches = re.findall(json_pattern, history_text, re.DOTALL)
+            
+            for match in matches:
+                try:
+                    # Clean up the JSON string
+                    clean_json = match.strip()
+                    # Try to parse it
+                    parsed = json.loads(clean_json)
+                    json_objects.append(parsed)
+                except:
+                    continue
+            
+            if json_objects:
+                formatted_objects = []
+                for i, obj in enumerate(json_objects):
+                    formatted_obj = self._format_json_object(obj, i+1)
+                    formatted_objects.append(formatted_obj)
+                
+                return '<div class="json-history-container">' + ''.join(formatted_objects) + '</div>'
+            else:
+                # If no valid JSON found, format as structured text
+                return self._format_structured_history(history_text)
+                
+        except Exception:
+            # Fallback to plain text formatting
+            return f'<div class="plain-history">{self._escape_html(history_text)}</div>'
+    
+    def _format_json_object(self, obj: dict, index: int) -> str:
+        """Format a single JSON object with proper UI components."""
+        html = f'<div class="history-step"><div class="step-header"><span class="step-number">{index}</span>'
+        
+        # Extract key information
+        role = obj.get('role', 'unknown')
+        plan = obj.get('plan', '')
+        description = obj.get('description', '')
+        code = obj.get('code', '')
+        
+        html += f'<span class="step-role">{role.upper()}</span></div><div class="step-content">'
+        
+        if plan and plan != '<END>':
+            html += f'<div class="step-plan"><strong>Plan:</strong> {self._escape_html(plan)}</div>'
+        
+        if description:
+            html += f'<div class="step-description"><strong>Description:</strong> {self._escape_html(description[:500])}{"…" if len(description) > 500 else ""}</div>'
+        
+        if code and code != '<END>':
+            html += f'<div class="step-code"><strong>Code:</strong><pre class="inline-code">{self._escape_html(code[:200])}{"…" if len(code) > 200 else ""}</pre></div>'
+        
+        html += '</div></div>'
+        return html
+    
+    def _format_structured_history(self, history_text: str) -> str:
+        """Format history text with better structure."""
+        # Split by common separators and format
+        lines = history_text.split('\n')
+        formatted_lines = []
+        
+        current_section = None
+        section_content = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Check if this is a section header
+            if line.startswith(('role:', 'plan:', 'description:', 'code:')):
+                # Save previous section
+                if current_section and section_content:
+                    formatted_lines.append(self._format_history_section(current_section, section_content))
+                
+                # Start new section
+                parts = line.split(':', 1)
+                current_section = parts[0].strip()
+                section_content = [parts[1].strip()] if len(parts) > 1 and parts[1].strip() else []
+            else:
+                section_content.append(line)
+        
+        # Add last section
+        if current_section and section_content:
+            formatted_lines.append(self._format_history_section(current_section, section_content))
+        
+        if formatted_lines:
+            return '<div class="structured-history">' + ''.join(formatted_lines) + '</div>'
+        else:
+            return f'<div class="plain-history">{self._escape_html(history_text)}</div>'
+    
+    def _format_history_section(self, section_type: str, content: list) -> str:
+        """Format a single history section."""
+        content_text = ' '.join(content)
+        icon_map = {
+            'role': '👤',
+            'plan': '📋',
+            'description': '📝',
+            'code': '💻'
+        }
+        
+        icon = icon_map.get(section_type, '📄')
+        return f'''
+        <div class="history-section">
+            <div class="section-header">{icon} {section_type.title()}</div>
+            <div class="section-content">{self._escape_html(content_text)}</div>
+        </div>'''
     
     def _format_code_output(self, output: str) -> str:
         """Format code execution output for display."""
         if not output.strip():
             return '<span class="output-empty">No output</span>'
+        
+        # Fix over-escaped entities first
+        output = self._unescape_html_entities(output)
         
         # Escape HTML and preserve formatting
         formatted = self._escape_html(output)
@@ -651,6 +949,232 @@ class HTMLTaskLogger(BaseTaskLogger):
             transform: translateY(-2px);
         }}
         
+        /* Enhanced styles for examples and structured content */
+        .examples-container {{
+            margin: 20px 0;
+        }}
+        
+        .example-item {{
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }}
+        
+        .example-header {{
+            background: #e9ecef;
+            padding: 12px 16px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .example-icon {{
+            font-size: 1.1em;
+        }}
+        
+        .example-title {{
+            margin: 0;
+            font-size: 1em;
+            font-weight: 600;
+            color: #495057;
+        }}
+        
+        .example-content {{
+            padding: 16px;
+        }}
+        
+        .example-description {{
+            margin-bottom: 12px;
+            color: #6c757d;
+            font-style: italic;
+        }}
+        
+        .example-use-cases {{
+            margin-bottom: 12px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 12px;
+        }}
+        
+        .use-cases-header {{
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+        }}
+        
+        .use-cases-content {{
+            color: #856404;
+            font-size: 0.9em;
+        }}
+        
+        .example-code-block {{
+            margin-top: 12px;
+        }}
+        
+        .no-examples {{
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }}
+        
+        /* JSON history formatting */
+        .json-history-container {{
+            margin: 20px 0;
+        }}
+        
+        .history-step {{
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }}
+        
+        .step-header {{
+            background: #f1f3f4;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }}
+        
+        .step-number {{
+            background: #007bff;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: 600;
+        }}
+        
+        .step-role {{
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }}
+        
+        .step-content {{
+            padding: 16px;
+        }}
+        
+        .step-plan, .step-description, .step-code {{
+            margin-bottom: 12px;
+        }}
+        
+        .step-plan strong, .step-description strong, .step-code strong {{
+            color: #495057;
+        }}
+        
+        .inline-code {{
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #e83e8c;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }}
+        
+        .structured-history {{
+            margin: 20px 0;
+        }}
+        
+        .history-section {{
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }}
+        
+        .history-section .section-header {{
+            background: #f8f9fa;
+            padding: 8px 12px;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+        }}
+        
+        .history-section .section-content {{
+            padding: 12px;
+            color: #6c757d;
+        }}
+        
+        .no-history {{
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }}
+        
+        /* Dev-Test merged blocks */
+        .dev-test-block {{
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }}
+        
+        .dev-test-header {{
+            background: linear-gradient(135deg, #f3e5f5 0%, #e8f5e8 100%);
+            padding: 16px 20px;
+            border-bottom: 1px solid #e1e8ed;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }}
+        
+        .dev-test-badges {{
+            display: flex;
+            gap: 8px;
+        }}
+        
+        .dev-test-title {{
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #333;
+        }}
+        
+        .dev-test-content {{
+            padding: 20px;
+        }}
+        
+        .dev-section {{
+            margin-bottom: 20px;
+        }}
+        
+        .test-section {{
+            border-top: 1px solid #e9ecef;
+            padding-top: 20px;
+        }}
+        
+        .section-subtitle {{
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
         @media (max-width: 768px) {{
             .container {{
                 padding: 10px;
@@ -713,8 +1237,25 @@ class HTMLTaskLogger(BaseTaskLogger):
         self.conversations.append(conversation)
         self._update_html_log()
     
+    def _should_merge_with_previous(self, conv: Dict[str, Any]) -> bool:
+        """Check if this conversation should be merged with the previous one (dev-test pairing)."""
+        if not self.conversations:
+            return False
+            
+        current_role = conv["role"]
+        current_title = conv["title"]
+        
+        # Check if current is a tester and previous was developer
+        if current_role == "tester" and current_title == "Code Testing":
+            prev_conv = self.conversations[-1]
+            if (prev_conv["role"] == "developer" and 
+                "Code Execution" in prev_conv["title"]):
+                return True
+        
+        return False
+    
     def _render_conversation(self, conv: Dict[str, Any]) -> str:
-        """Render a single conversation entry to HTML."""
+        """Render a single conversation entry to HTML with improved formatting."""
         role = conv["role"]
         title = conv["title"]
         content = conv["content"]
@@ -723,14 +1264,30 @@ class HTMLTaskLogger(BaseTaskLogger):
         timestamp = conv.get("timestamp", "")
         metadata = conv.get("metadata", {})
         
+        # Skip developer history conversations - they're redundant
+        if role == "developer" and "History" in title:
+            return ""
+        
+        # Check if this should be merged with previous dev conversation
+        if self._should_merge_with_previous(conv):
+            return self._render_dev_test_merged(self.conversations[-1], conv)
+        
         # Format timestamp
         try:
             formatted_timestamp = datetime.fromisoformat(timestamp).strftime('%Y-%m-%d %H:%M:%S')
         except:
             formatted_timestamp = timestamp or "Unknown time"
         
-        # Format content with proper line breaks and paragraphs
-        formatted_content = self._format_content_text(content)
+        # Special handling for different content types
+        if role == "planner":
+            if "History" in title:
+                formatted_content = self._format_json_history(content)
+            else:
+                formatted_content = self._format_planner_content(content)
+        elif role == "developer" and ("Semantic Examples" in content or "Episodic Examples" in content):
+            formatted_content = self._format_developer_content(content)
+        else:
+            formatted_content = self._format_content_text(content)
         
         html_content = f"""
         <div class="conversation">
@@ -749,7 +1306,7 @@ class HTMLTaskLogger(BaseTaskLogger):
             html_content += f"""
                 <div class="code-block">
                     <div class="code-header">
-                        <span class="code-label">📝 Code</span>
+                        <span class="code-label">💻 Code</span>
                         <span class="code-lang">Python</span>
                     </div>
                     <div class="code-content">{self._highlight_python_code(code)}</div>
@@ -758,9 +1315,10 @@ class HTMLTaskLogger(BaseTaskLogger):
         
         if code_output:
             output_type = self._detect_output_type(code_output)
+            status_icon = "✅" if "success" in output_type else "❌" if "error" in output_type else "📄"
             html_content += f"""
                 <div class="output-section {output_type}">
-                    <div class="output-header">📄 Output</div>
+                    <div class="output-header">{status_icon} Execution Result</div>
                     <div class="output-content">{self._format_code_output(code_output)}</div>
                 </div>
             """
@@ -779,6 +1337,152 @@ class HTMLTaskLogger(BaseTaskLogger):
         """
         
         return html_content
+    
+    def _render_dev_test_merged(self, dev_conv: Dict[str, Any], test_conv: Dict[str, Any]) -> str:
+        """Render merged developer and tester conversation."""
+        # Format timestamps
+        try:
+            dev_timestamp = datetime.fromisoformat(dev_conv["timestamp"]).strftime('%Y-%m-%d %H:%M:%S')
+        except:
+            dev_timestamp = dev_conv.get("timestamp", "Unknown")
+        
+        try:
+            test_timestamp = datetime.fromisoformat(test_conv["timestamp"]).strftime('%Y-%m-%d %H:%M:%S')
+        except:
+            test_timestamp = test_conv.get("timestamp", "Unknown")
+        
+        dev_content = self._format_developer_content(dev_conv["content"])
+        test_content = self._format_content_text(test_conv["content"])
+        
+        code = dev_conv.get("code", "")
+        code_output = dev_conv.get("code_output", "")
+        
+        output_type = self._detect_output_type(code_output) if code_output else ""
+        status_icon = "✅" if "success" in output_type else "❌" if "error" in output_type else "📄"
+        
+        html_content = f"""
+        <div class="dev-test-block">
+            <div class="dev-test-header">
+                <div class="dev-test-badges">
+                    <span class="role-badge role-developer">developer</span>
+                    <span class="role-badge role-tester">tester</span>
+                </div>
+                <div class="dev-test-title">{self._escape_html(dev_conv["title"])}</div>
+                <div class="timestamp">{dev_timestamp} → {test_timestamp}</div>
+            </div>
+            <div class="dev-test-content">
+                <div class="dev-section">
+                    <div class="section-subtitle">🔧 Development</div>
+                    <div class="content-text">{dev_content}</div>
+        """
+        
+        if code:
+            html_content += f"""
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span class="code-label">💻 Implementation</span>
+                            <span class="code-lang">Python</span>
+                        </div>
+                        <div class="code-content">{self._highlight_python_code(code)}</div>
+                    </div>
+            """
+        
+        html_content += """
+                </div>
+                <div class="test-section">
+                    <div class="section-subtitle">🧪 Testing & Feedback</div>
+        """
+        
+        if code_output:
+            html_content += f"""
+                    <div class="output-section {output_type}">
+                        <div class="output-header">{status_icon} Execution Result</div>
+                        <div class="output-content">{self._format_code_output(code_output)}</div>
+                    </div>
+            """
+        
+        html_content += f"""
+                    <div class="content-text">{test_content}</div>
+                </div>
+            </div>
+        </div>
+        """
+        
+        # Remove the last conversation since we merged it
+        self.conversations.pop()
+        
+        return html_content
+    
+    def _format_planner_content(self, content: str) -> str:
+        """Format planner content with better structure."""
+        if "Episodic Examples:" in content:
+            parts = content.split("Episodic Examples:", 1)
+            task_part = parts[0].replace("Task:", "").strip()
+            examples_part = parts[1].strip() if len(parts) > 1 else ""
+            
+            html = f'<div class="task-section"><strong>🎯 Task:</strong><div class="task-content">{self._escape_html(task_part)}</div></div>'
+            
+            if examples_part:
+                html += f'<div class="examples-section"><strong>📚 Episodic Examples:</strong>{self._parse_examples(examples_part)}</div>'
+            
+            return html
+        else:
+            return self._format_content_text(content)
+    
+    def _format_developer_content(self, content: str) -> str:
+        """Format developer content with proper examples handling."""
+        # Parse different sections
+        sections = {}
+        current_section = None
+        current_content = []
+        
+        lines = content.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if line.startswith('Plan:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content)
+                current_section = 'plan'
+                current_content = [line[5:].strip()]
+            elif line.startswith('Description:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content)
+                current_section = 'description'
+                current_content = [line[12:].strip()]
+            elif line.startswith('Semantic Examples:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content)
+                current_section = 'semantic_examples'
+                current_content = [line[18:].strip()]
+            elif line.startswith('Episodic Examples:'):
+                if current_section:
+                    sections[current_section] = '\n'.join(current_content)
+                current_section = 'episodic_examples'
+                current_content = [line[18:].strip()]
+            else:
+                if current_section:
+                    current_content.append(line)
+        
+        # Add the last section
+        if current_section:
+            sections[current_section] = '\n'.join(current_content)
+        
+        html = ""
+        
+        if 'plan' in sections and sections['plan']:
+            html += f'<div class="plan-section"><strong>📋 Plan:</strong><div class="plan-content">{self._escape_html(sections["plan"])}</div></div>'
+        
+        if 'description' in sections and sections['description']:
+            html += f'<div class="description-section"><strong>📝 Description:</strong><div class="description-content">{self._escape_html(sections["description"])}</div></div>'
+        
+        if 'semantic_examples' in sections and sections['semantic_examples'] and sections['semantic_examples'] != 'None':
+            html += f'<div class="examples-section"><strong>🔍 Semantic Examples:</strong>{self._parse_examples(sections["semantic_examples"])}</div>'
+        
+        if 'episodic_examples' in sections and sections['episodic_examples'] and sections['episodic_examples'] != 'None':
+            html += f'<div class="examples-section"><strong>📚 Episodic Examples:</strong>{self._parse_examples(sections["episodic_examples"])}</div>'
+        
+        return html if html else self._format_content_text(content)
     
     def _update_html_log(self) -> None:
         """Update the HTML log file with current conversations."""
